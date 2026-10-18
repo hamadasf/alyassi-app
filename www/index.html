@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0e1c36">
+  <title>عمر الياسي للعقارات</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <!-- HOME -->
+  <section class="tab" id="home">
+    <div class="ptr" data-i="refresh"></div>
+    <div class="scroller"><div class="content"></div></div>
+  </section>
+
+  <!-- LANDS -->
+  <section class="tab" id="lands" hidden>
+    <header class="top">
+      <div class="searchbar"><span data-i="search"></span><input id="q" type="search" inputmode="search" placeholder="رقم القطعة، المشروع، النوع…" autocomplete="off"></div>
+      <button id="filterBtn" class="iconbtn" aria-label="الفلاتر"><span data-i="filter"></span><i class="n"></i></button>
+    </header>
+    <div class="chips scroll sticky"></div>
+    <div class="ptr" data-i="refresh"></div>
+    <div class="scroller"><div class="count"></div><div class="list"></div></div>
+  </section>
+
+  <!-- PROJECTS -->
+  <section class="tab" id="projects" hidden>
+    <header class="top"><h1>المشاريع</h1></header>
+    <div class="ptr" data-i="refresh"></div>
+    <div class="scroller"><div class="list"></div></div>
+  </section>
+
+  <!-- FAVOURITES -->
+  <section class="tab" id="favs" hidden>
+    <header class="top"><h1>المفضلة</h1></header>
+    <div class="ptr" data-i="refresh"></div>
+    <div class="scroller"><div class="list"></div></div>
+  </section>
+
+  <!-- CONTACT -->
+  <section class="tab" id="contact" hidden>
+    <header class="top"><h1>تواصل معنا</h1></header>
+    <div class="ptr" data-i="refresh"></div>
+    <div class="scroller"><div class="content"></div></div>
+  </section>
+
+  <nav class="nav">
+    <button data-tab="home" class="on"><span data-i="home"></span>الرئيسية</button>
+    <button data-tab="lands"><span data-i="grid"></span>الأراضي</button>
+    <button data-tab="projects"><span data-i="building"></span>المشاريع</button>
+    <button data-tab="favs"><span data-i="heart"></span>المفضلة</button>
+    <button data-tab="contact"><span data-i="chat"></span>تواصل</button>
+  </nav>
+
+  <!-- filter sheet -->
+  <div id="scrim"></div>
+  <div id="sheet" role="dialog" aria-label="الفلاتر">
+    <div class="grab"></div>
+    <h2>تصفية النتائج</h2>
+    <label>المشروع<select id="fProject"></select></label>
+    <div class="two">
+      <label>الحالة<select id="fStatus"><option value="av">متاحة</option><option value="res">محجوزة</option><option value="sold">مباعة</option><option value="">الكل</option></select></label>
+      <label>الترتيب<select id="fSort"><option value="default">المميزة أولاً</option><option value="price-asc">السعر: الأقل أولاً</option><option value="price-desc">السعر: الأعلى أولاً</option><option value="area-desc">المساحة: الأكبر أولاً</option><option value="area-asc">المساحة: الأصغر أولاً</option></select></label>
+    </div>
+    <div class="two">
+      <label>المساحة من (قدم²)<input id="fminA" inputmode="numeric" placeholder="0"></label>
+      <label>إلى<input id="fmaxA" inputmode="numeric" placeholder="أي مساحة"></label>
+    </div>
+    <div class="two">
+      <label>السعر من (د.إ)<input id="fminP" inputmode="numeric" placeholder="0"></label>
+      <label>إلى<input id="fmaxP" inputmode="numeric" placeholder="أي سعر"></label>
+    </div>
+    <div class="two btns"><button class="btn ghost" id="resetF">مسح</button><button class="btn primary" id="applyF">عرض النتائج</button></div>
+  </div>
+  <div id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

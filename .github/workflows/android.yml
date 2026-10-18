@@ -1,0 +1,95 @@
+name: Build Android app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install packages
+        run: npm ci
+
+      - name: Get company logo from the website
+        run: |
+          curl -fsSL -o /tmp/logo.png  "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/logo.png"
+          curl -fsSL -o /tmp/emblem.png "https://omaralyassirealestate.com/wp-content/uploads/2026/07/logo-2.png"
+          pip install --quiet pillow
+          python3 scripts/make_resources.py /tmp/logo.png /tmp/emblem.png
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Create Android project
+        run: |
+          npx cap add android
+          npx @capacitor/assets generate --android \
+            --iconBackgroundColor '#ffffff' --iconBackgroundColorDark '#ffffff' \
+            --splashBackgroundColor '#ffffff' --splashBackgroundColorDark '#ffffff'
+          npx cap sync android
+
+      - name: Version + signing
+        env:
+          RUN: ${{ github.run_number }}
+        run: |
+          G=android/app/build.gradle
+          sed -i "s/versionCode [0-9]*/versionCode $RUN/" $G
+          sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.$RUN\"/" $G
+          PW=$(cat signing/.pw)
+          cp signing/release.jks android/app/release.jks
+          cat >> $G <<EOF
+
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file('release.jks')
+                      storePassword '$PW'
+                      keyAlias 'alyassi'
+                      keyPassword '$PW'
+                  }
+              }
+              buildTypes { release { signingConfig signingConfigs.release; minifyEnabled false } }
+          }
+          EOF
+
+      - name: Build APK + AAB
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease bundleRelease
+
+      - name: Collect files
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk "out/OmarAlYassi-1.0.${{ github.run_number }}.apk"
+          cp android/app/build/outputs/bundle/release/app-release.aab "out/OmarAlYassi-1.0.${{ github.run_number }}.aab"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OmarAlYassi-android-1.0.${{ github.run_number }}
+          path: out/*
+
+      - name: Publish download (Releases)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: نسخة 1.0.${{ github.run_number }}
+          body: ملف APK للتثبيت المباشر على أندرويد، وملف AAB للرفع على Google Play.
+          files: out/*

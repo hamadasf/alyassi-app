@@ -1,0 +1,9 @@
+node_modules/
+android/
+ios/
+resources/
+www/app.js
+www/app.css
+www/fonts/
+www/assets/
+out/

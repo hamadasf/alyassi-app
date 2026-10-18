@@ -1,0 +1,22 @@
+{
+  "name": "alyassi-realestate-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Omar Al Yassi Real Estate – Android app",
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/inappbrowser": "4.1.0",
+    "@capacitor/splash-screen": "8.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "8.5.3",
+    "@fontsource/tajawal": "^5.3.0",
+    "esbuild": "^0.25.0"
+  }
+}
