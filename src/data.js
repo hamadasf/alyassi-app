@@ -64,7 +64,7 @@ async function fetchPlan(p) {
   const assets = JSON.parse(d.getElementById('assets')?.textContent || '{}');
   const cfg = plan.cfg || {};
   const types = cfg.types || DEFAULT_TYPES;
-  const plots = (plan.plots || []).map((q) => [q.n, q.t, q.ft || 0, q.m2 || 0, q.d ? 1 : 0]);
+  const plots = (plan.plots || []).map((q) => [q.n, q.t, q.ft || 0, q.m2 || 0, q.d ? 1 : 0, q.d ? [q.d[0], q.d[1], q.ir ? 1 : 0] : null]);
   const bldImg = {};
   Object.keys(assets).forEach((k) => { if (/\.(jpe?g|png|webp)/.test(assets[k]) && k !== 'bg') bldImg[k] = assets[k]; });
   return {
@@ -75,7 +75,7 @@ async function fetchPlan(p) {
 }
 
 async function getPlan(p, force) {
-  const key = 'plan:' + p.slug;
+  const key = 'plan2:' + p.slug;
   const c = cacheGet(key);
   if (!force && fresh(c, TTL.plan)) return c.d;
   try { const d = await fetchPlan(p); cacheSet(key, d); return d; }
@@ -114,7 +114,7 @@ function buildProject(p, plan, state) {
   const sp = (state && state.plots) || {};
   const bld = (state && state.bld) || {};
   // Only plots the company lists (present in the live state with a status) are shown — same as the website's «الأراضي» page.
-  const lands = plan.plots.filter(([n]) => sp[n] && sp[n].s).map(([n, t, ft, m2, exact]) => {
+  const lands = plan.plots.filter(([n]) => sp[n] && sp[n].s).map(([n, t, ft, m2, exact, dims]) => {
     const s = sp[n];
     const ty = plan.types[t] || DEFAULT_TYPES[t] || { use: 'أرض' };
     const area = s.ft || ft;
@@ -129,7 +129,8 @@ function buildProject(p, plan, state) {
       floors: ty.floors || '', color: ty.c || [200, 200, 200], cat: category(ty.use),
       ft: Math.round(area || 0), m2: Math.round((s.ft ? s.ft / 10.7639 : m2) || 0), approx: !exact && !s.ft,
       ppf: s.ppf || 0, total, inst, first: inst.length && total ? Math.max(0, total - instSum) : 0, img, sketch,
-      doc: (s.doc && s.doc.u) || '', docTitle: (s.doc && s.doc.t) || '',
+      doc: (s.doc && s.doc.u) || '', docTitle: (s.doc && s.doc.t) || '', dims: dims || null,
+      lo: /^https:\/\//.test(s.lo || '') ? s.lo : '', projectLoc: (state && state.loc) || '',
     };
   });
   const count = (st) => lands.filter((l) => l.status === st).length;
@@ -199,7 +200,7 @@ export function loadFromCache() {
   const ic = cacheGet('index'); if (!ic) return null;
   const projects = [];
   for (const p of ic.d) {
-    const pc = cacheGet('plan:' + p.slug); if (!pc) continue;
+    const pc = cacheGet('plan2:' + p.slug); if (!pc) continue;
     const sc = cacheGet('state:' + p.slug);
     projects.push(buildProject(p, pc.d, sc && sc.d));
   }

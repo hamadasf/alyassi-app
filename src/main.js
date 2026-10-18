@@ -166,18 +166,31 @@ const push = {
 const notifCard = () => `<div class="notif-card" hidden>${I.bell}<div><b>فعّل إشعارات الأسعار</b><p></p></div><button class="btn gold" data-notify>تفعيل</button></div>`;
 
 /* ---- sharing ---- */
+// same text as the «مشاركة» button on the website's plan
 function landShareText(l) {
-  const lines = [`🏡 قطعة رقم ${l.n} — مشروع ${l.projectName}`];
-  if (l.use) lines.push(`${l.use}${l.tag ? ' · ' + l.tag : ''}`);
-  if (l.ft) lines.push(`📐 المساحة: ${l.approx ? '≈ ' : ''}${money(l.ft)} قدم² (${money(l.m2)} م²)`);
-  if (l.floors) lines.push(`🏢 الارتفاع: ${l.floors}`);
-  if (l.status === 'sold') lines.push('الحالة: مباعة');
-  else lines.push(`💰 السعر: ${l.total ? money(l.total) + ' د.إ' : 'عند الاستفسار'}${l.status === 'res' ? ' (محجوزة)' : ''}`);
-  if (l.first && l.status !== 'sold') lines.push(`💳 دفعة أولى ${money(l.first)} د.إ + ${l.inst.length} أقساط`);
-  lines.push(`📍 على المخطط: ${landUrl(l)}`);
-  lines.push(`📞 واتساب: ${CONTACT.whatsappLabel}`);
-  lines.push('عمر الياسي للعقارات');
-  return lines.join('\n');
+  const ST = { av: 'متاحة', res: 'محجوزة', sold: 'مباعة' };
+  const dstr = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); return m ? `${m[1]}/${+m[2]}/${+m[3]}` : ''; };
+  const L = [];
+  L.push(`مخطط ${l.projectName} · قطعة رقم ${l.n}`);
+  L.push(`الحالة: ${ST[l.status] || 'للاستفسار'}`);
+  L.push(`الاستخدام: ${l.use}${l.floors ? ` (${l.floors})` : ''}${l.loc ? ` · ${l.loc}` : ''}`);
+  if (l.ft) L.push(`المساحة: ${l.approx ? '≈ ' : ''}${money(l.ft)} قدم² (${money(l.m2)} م²)`);
+  if (l.dims) L.push(`الأبعاد: ${l.dims[2] ? '≈ ' : ''}${(+l.dims[0]).toFixed(2)} × ${(+l.dims[1]).toFixed(2)} م`);
+  if (l.status === 'av' && l.total) {
+    L.push(`السعر الإجمالي: ${money(l.total)} درهم${l.ppf ? ` (سعر القدم ${money(l.ppf)} درهم)` : ''}`);
+    if (l.inst.length) {
+      L.push(`الدفعة المقدمة: ${money(l.first)} درهم`);
+      l.inst.forEach((x) => L.push(`قسط ${dstr(x[0])}: ${money(+x[1] || 0)} درهم`));
+    }
+  }
+  L.push('');
+  L.push('التفاصيل وموقع القطعة على المخطط:'); L.push(landUrl(l));
+  if (l.doc) { L.push('مخطط الأرض (PDF):'); L.push(l.doc); }
+  const proj = DATA().projects.find((p) => p.slug === l.project);
+  const loc = l.lo || l.projectLoc || (proj && proj.loc) || '';
+  if (loc) { L.push(l.lo ? 'موقع الأرض على الخريطة:' : 'موقع المشروع على الخريطة:'); L.push(loc); }
+  L.push('عمر الياسي للعقارات');
+  return L.join('\n');
 }
 function projectShareText(p) {
   return [`📍 مشروع ${p.name}${p.sub ? ' — ' + p.sub : ''}`, `${p.available} أرض متاحة`,
