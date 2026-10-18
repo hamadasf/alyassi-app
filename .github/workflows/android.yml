@@ -8,9 +8,14 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: android-build
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -27,12 +32,17 @@ jobs:
       - name: Install packages
         run: npm ci
 
-      - name: Get company logo from the website
+      - name: Company logo
         run: |
-          curl -fsSL -o /tmp/logo.png  "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/logo.png"
-          curl -fsSL -o /tmp/emblem.png "https://omaralyassirealestate.com/wp-content/uploads/2026/07/logo-2.png"
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36"
+          get() { [ -f "$2" ] || curl -fsSL --connect-timeout 15 --max-time 40 --retry 2 -A "$UA" -o "$2" "$1" || true; }
+          mkdir -p brand
+          get "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/logo.png" brand/logo.png
+          get "https://omaralyassirealestate.com/wp-content/uploads/2026/07/logo-2.png" brand/emblem.png
+          ls -la brand
+          test -s brand/logo.png && test -s brand/emblem.png
           pip install --quiet pillow
-          python3 scripts/make_resources.py /tmp/logo.png /tmp/emblem.png
+          python3 scripts/make_resources.py brand/logo.png brand/emblem.png
 
       - name: Build web app
         run: npm run build
