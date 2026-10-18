@@ -20,3 +20,6 @@ for name in ('splash.png', 'splash-dark.png'):
     s = logo.copy(); s.thumbnail((1100, 1100), Image.LANCZOS)
     c.alpha_composite(s, ((2732 - s.width) // 2, (2732 - s.height) // 2)); c.save('resources/' + name)
 print('resources ready')
+os.makedirs('www/icons', exist_ok=True)
+base = Image.open('resources/icon-only.png').convert('RGB')
+for s in (180, 192, 512): base.resize((s, s), Image.LANCZOS).save(f'www/icons/icon-{s}.png')

@@ -1,0 +1,57 @@
+name: iPhone web app
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '*/10 * * * *'   # refresh plots, prices and availability from the website
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Company logo + icons
+        run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36"
+          mkdir -p brand
+          curl -fsSL --connect-timeout 15 --max-time 40 --retry 2 -A "$UA" -o brand/logo.png  "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/logo.png"
+          curl -fsSL --connect-timeout 15 --max-time 40 --retry 2 -A "$UA" -o brand/emblem.png "https://omaralyassirealestate.com/wp-content/uploads/2026/07/logo-2.png"
+          pip install --quiet pillow
+          python3 scripts/make_resources.py brand/logo.png brand/emblem.png
+
+      - name: Build web app
+        run: node scripts/build-web.mjs
+
+      - name: Collect live data from the website
+        run: |
+          for i in 1 2 3; do node scripts/snapshot.mjs web/data.json && exit 0; sleep 20; done; exit 1
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deployment
+        uses: actions/deploy-pages@v4

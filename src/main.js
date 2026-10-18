@@ -398,6 +398,21 @@ async function boot() {
     App.addListener('resume', () => { if (Date.now() - (DATA().at || 0) > 5 * 60e3) refresh(false); });
     setTimeout(() => SplashScreen.hide({ fadeOutDuration: 250 }).catch(() => {}), 150);
   }
+  if (!native) setupWebApp();
   await refresh(false);
+}
+
+/* Web / iPhone version: offline shell + "Add to Home Screen" hint */
+function setupWebApp() {
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = window.navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+  let seen = false; try { seen = !!localStorage.getItem('oay:a2hs'); } catch { /* ignore */ }
+  if (!ios || standalone || seen) return;
+  const b = document.createElement('div');
+  b.className = 'a2hs';
+  b.innerHTML = `<img src="assets/emblem.png" alt=""><div><b>ثبّت التطبيق على جوالك</b><span>اضغط زر المشاركة <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg> في الأسفل ثم «إضافة إلى الشاشة الرئيسية»</span></div><button aria-label="إغلاق">✕</button>`;
+  b.querySelector('button').onclick = () => { b.remove(); try { localStorage.setItem('oay:a2hs', '1'); } catch { /* ignore */ } };
+  document.body.appendChild(b);
 }
 boot();

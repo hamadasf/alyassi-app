@@ -144,7 +144,22 @@ let memo = null;
 export function cached() { return memo; }
 
 /** Loads everything. onPartial is called with each finished project so the UI can paint early. */
+/* Web (iPhone) version: the website data is collected every few minutes into data.json next to the app. */
+const SNAPSHOT = typeof __SNAPSHOT__ !== 'undefined' ? __SNAPSHOT__ : '';
+function fromSnapshot(j) {
+  return { projects: j.projects, lands: j.projects.flatMap((p) => p.lands), at: j.at };
+}
+async function loadSnapshot() {
+  const r = await fetch(SNAPSHOT + '?t=' + Math.floor(now() / 60e3), { cache: 'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  cacheSet('snap', j);
+  memo = fromSnapshot(j);
+  return memo;
+}
+
 export async function loadAll({ force = false, onPartial } = {}) {
+  if (SNAPSHOT) return loadSnapshot();
   const index = await getIndex(force);
   const out = [];
   await Promise.all(index.map(async (p) => {
@@ -162,6 +177,7 @@ const sorted = (a) => [...a].sort((x, y) => x.order - y.order);
 
 /** Instant start: build from cache only (no network). */
 export function loadFromCache() {
+  if (SNAPSHOT) { const c = cacheGet('snap'); if (!c) return null; memo = { ...fromSnapshot(c.d), fromCache: true }; return memo; }
   const ic = cacheGet('index'); if (!ic) return null;
   const projects = [];
   for (const p of ic.d) {
