@@ -404,7 +404,7 @@ async function boot() {
 
 /* Web / iPhone version: offline shell + "Add to Home Screen" hint */
 function setupWebApp() {
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((r) => r.update()).catch(() => {});
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const standalone = window.navigator.standalone || matchMedia('(display-mode: standalone)').matches;
   let seen = false; try { seen = !!localStorage.getItem('oay:a2hs'); } catch { /* ignore */ }
