@@ -2,8 +2,8 @@
 export const SITE = 'https://omaralyassirealestate.com';
 
 export const CONTACT = {
-  phone: '+971565000088',          // زر الاتصال
-  phoneLabel: '056 500 0088',
+  phone: '+97167442027',           // زر الاتصال
+  phoneLabel: '06 744 2027',
   office: '+971568080655',         // هاتف المكتب (صفحة تواصل)
   officeLabel: '056 808 0655',
   whatsapp: '971568080655',        // واتساب (بدون +)
