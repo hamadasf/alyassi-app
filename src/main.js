@@ -86,8 +86,31 @@ const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platfo
 const standalone = () => window.navigator.standalone || matchMedia('(display-mode: standalone)').matches;
 const push = {
   ready: false,
+  nativeOn: false,
+  initNative() {
+    const go = async () => {
+      const OS = (window.plugins && window.plugins.OneSignal) || (window.OneSignal && (window.OneSignal.default || window.OneSignal));
+      if (!OS || !OS.initialize) return;
+      try {
+        OS.initialize(ONESIGNAL_APP_ID);
+        push.os = OS; push.ready = true;
+        OS.Notifications.addEventListener('click', () => { setTimeout(() => document.querySelector('[data-changes]')?.click(), 400); });
+        OS.Notifications.addEventListener('permissionChange', (granted) => { push.nativeOn = !!granted; push.render(); });
+        push.nativeOn = await OS.Notifications.getPermissionAsync();
+        push.render();
+        // ask once on first launch so clients are subscribed without hunting for the button
+        let asked = false; try { asked = !!localStorage.getItem('oay:askedPush'); } catch { /* ignore */ }
+        if (!push.nativeOn && !asked) {
+          try { localStorage.setItem('oay:askedPush', '1'); } catch { /* ignore */ }
+          setTimeout(() => push.enable(), 2500);
+        }
+      } catch (e) { console.warn('push', e); }
+    };
+    if ((window.plugins && window.plugins.OneSignal) || window.OneSignal) go(); else document.addEventListener('deviceready', go, { once: true });
+  },
   init() {
-    if (native || !('Notification' in window) || location.protocol !== 'https:') return;
+    if (native) { push.initNative(); return; }
+    if (!('Notification' in window) || location.protocol !== 'https:') return;
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     window.OneSignalDeferred.push(async (OS) => {
       try {
@@ -104,9 +127,12 @@ const push = {
       } catch (e) { console.warn('push', e); }
     });
   },
-  on() { return !!(push.os && push.os.Notifications.permission && push.os.User.PushSubscription.optedIn !== false); },
+  on() {
+    if (native) return push.nativeOn;
+    return !!(push.os && push.os.Notifications.permission && push.os.User.PushSubscription.optedIn !== false);
+  },
   state() {
-    if (native) return 'native';
+    if (native) return push.ready ? (push.nativeOn ? 'on' : 'off') : 'unsupported';
     if (!('Notification' in window)) return isIOS && !standalone() ? 'install' : 'unsupported';
     if (isIOS && !standalone()) return 'install';
     if (Notification.permission === 'denied') return 'denied';
@@ -115,8 +141,11 @@ const push = {
   async enable() {
     const st = push.state();
     if (st === 'install') { toast('أضف التطبيق إلى الشاشة الرئيسية أولاً ثم فعّل الإشعارات'); return; }
-    if (st === 'native') { openExternal(APP_URL + '#notify'); return; }
     if (!push.os) { toast('لحظة… جارِ التحضير'); return; }
+    if (native) {
+      try { push.nativeOn = await push.os.Notifications.requestPermission(true); push.os.User.pushSubscription.optIn(); } catch { /* ignore */ }
+      push.render(); if (push.nativeOn) toast('تم تفعيل الإشعارات ✓'); return;
+    }
     try { await push.os.Notifications.requestPermission(); await push.os.User.PushSubscription.optIn(); } catch { /* ignore */ }
     push.render();
     if (push.on()) toast('تم تفعيل الإشعارات ✓');
@@ -129,7 +158,6 @@ const push = {
       const p = el.querySelector('p');
       if (p) p.textContent = st === 'install' ? 'على الآيفون: أضف التطبيق للشاشة الرئيسية من زر المشاركة، ثم افتحه من الأيقونة وفعّل الإشعارات.'
         : st === 'denied' ? 'الإشعارات مرفوضة — فعّلها من إعدادات المتصفح لهذا الموقع.'
-        : st === 'native' ? 'لاستقبال الإشعارات على الجوال افتح نسخة التطبيق في المتصفح وفعّلها.'
         : 'يوصلك إشعار فوراً عند تغيّر سعر أو حالة أي أرض، أو نزول أرض جديدة.';
       const b = el.querySelector('button'); if (b) b.hidden = st === 'install' || st === 'denied';
     });
