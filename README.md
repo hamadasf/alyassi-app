@@ -14,4 +14,4 @@
 في الملف `src/config.js`.
 
 ## مفتاح التوقيع
-`signing/release.jks` هو مفتاح توقيع التطبيق — احتفظ بنسخة منه، فبدونه لا يمكن تحديث التطبيق على Google Play. يجب أن يبقى هذا المستودع **خاصاً (Private)**.
+مفتاح توقيع التطبيق محفوظ في أسرار المستودع (Settings → Secrets → Actions) باسم `ANDROID_KEYSTORE_BASE64` و`ANDROID_KEYSTORE_PASSWORD` — وليس داخل الملفات. احتفظ بنسخة منه، فبدونه لا يمكن تحديث التطبيق على Google Play.

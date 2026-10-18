@@ -59,21 +59,23 @@ jobs:
       - name: Version + signing
         env:
           RUN: ${{ github.run_number }}
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
+          if [ -z "$KS_B64" ] || [ -z "$KS_PW" ]; then echo "::error::Add the ANDROID_KEYSTORE_BASE64 and ANDROID_KEYSTORE_PASSWORD secrets"; exit 1; fi
           G=android/app/build.gradle
           sed -i "s/versionCode [0-9]*/versionCode $RUN/" $G
           sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.$RUN\"/" $G
-          PW=$(cat signing/.pw)
-          cp signing/release.jks android/app/release.jks
-          cat >> $G <<EOF
+          echo "$KS_B64" | base64 -d > android/app/release.jks
+          cat >> $G <<'EOF'
 
           android {
               signingConfigs {
                   release {
                       storeFile file('release.jks')
-                      storePassword '$PW'
+                      storePassword System.getenv('KS_PW')
                       keyAlias 'alyassi'
-                      keyPassword '$PW'
+                      keyPassword System.getenv('KS_PW')
                   }
               }
               buildTypes { release { signingConfig signingConfigs.release; minifyEnabled false } }
@@ -82,6 +84,8 @@ jobs:
 
       - name: Build APK + AAB
         working-directory: android
+        env:
+          KS_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease bundleRelease
