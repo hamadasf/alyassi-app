@@ -54,7 +54,7 @@ jobs:
           sed -i 's/minSdkVersion = [0-9]*/minSdkVersion = 26/' android/variables.gradle
           npx @capacitor/assets generate --android \
             --iconBackgroundColor '#ffffff' --iconBackgroundColorDark '#ffffff' \
-            --splashBackgroundColor '#ffffff' --splashBackgroundColorDark '#ffffff'
+            --splashBackgroundColor '#0e1c36' --splashBackgroundColorDark '#0e1c36'
           npx cap sync android
 
       - name: Version + signing

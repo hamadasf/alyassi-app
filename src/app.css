@@ -43,7 +43,7 @@ svg { flex: none; }
 /* ---------- home ---------- */
 .hero { background: linear-gradient(160deg, var(--navy) 0%, var(--navy2) 100%); color: #fff; padding: calc(var(--st) + 18px) 16px 22px; border-radius: 0 0 28px 28px; text-align: center; position: relative; }
 .hero::after { content: ''; position: absolute; inset: auto 24% -1px; height: 3px; border-radius: 3px; background: var(--gold); }
-.hero-logo { height: 74px; width: auto; margin: 0 auto 8px; background: #fff; border-radius: 14px; padding: 6px 14px; object-fit: contain; }
+.hero-logo { height: 64px; width: auto; max-width: 88%; margin: 4px auto 10px; object-fit: contain; }
 .hero p { margin: 0 0 14px; color: #cfd6e6; font-size: 14px; }
 .search-fake { width: 100%; display: flex; align-items: center; gap: 10px; background: #fff; color: var(--mute); border-radius: 14px; padding: 13px 14px; text-align: start; box-shadow: 0 6px 20px rgba(0,0,0,.18); }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
@@ -65,7 +65,7 @@ svg { flex: none; }
 .chip { flex: none; padding: 8px 16px; border-radius: 999px; background: #fff; border: 1px solid var(--line); font-weight: 500; font-size: 14px; white-space: nowrap; transition: all .15s; }
 .chip.on { background: var(--navy); color: #fff; border-color: var(--navy); }
 .searchbar { flex: 1; display: flex; align-items: center; gap: 8px; background: #fff; color: var(--mute); border-radius: 12px; padding: 0 12px; height: 44px; }
-.searchbar input { flex: 1; border: 0; outline: 0; background: none; color: var(--ink); height: 100%; min-width: 0; }
+.searchbar input { font-size: 16px; flex: 1; border: 0; outline: 0; background: none; color: var(--ink); height: 100%; min-width: 0; }
 .iconbtn { position: relative; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.12); color: #fff; }
 .iconbtn .n { position: absolute; top: -4px; left: -4px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--gold); color: var(--navy); font: 800 11px/18px Tajawal; font-style: normal; display: none; }
 .iconbtn.has .n { display: block; }
@@ -73,7 +73,6 @@ svg { flex: none; }
 
 /* ---------- cards ---------- */
 .list { display: grid; gap: 14px; padding: 0 16px; }
-@media (min-width: 640px) { .list { grid-template-columns: 1fr 1fr; } }
 .card { background: var(--card); border-radius: var(--r); overflow: hidden; box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 4px 14px rgba(16,24,40,.05); content-visibility: auto; contain-intrinsic-size: 340px; transition: transform .12s; }
 .card:active { transform: scale(.985); }
 .card .ph { position: relative; aspect-ratio: 16/9; background: #e9ecf2; overflow: hidden; }
@@ -208,7 +207,7 @@ svg { flex: none; }
 .grab { width: 40px; height: 4px; border-radius: 2px; background: #d8dce5; margin: 4px auto 12px; }
 #sheet h2 { font-size: 18px; font-weight: 800; margin-bottom: 12px; }
 #sheet label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 700; color: var(--mute); margin-bottom: 12px; }
-#sheet select, #sheet input { width: 100%; min-width: 0; height: 46px; border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; background: #f8f9fb; color: var(--ink); font-weight: 500; outline: 0; }
+#sheet select, #sheet input { font-size: 16px; width: 100%; min-width: 0; height: 46px; border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; background: #f8f9fb; color: var(--ink); font-weight: 500; outline: 0; }
 #sheet select:focus, #sheet input:focus { border-color: var(--gold); }
 .two { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; }
 .two.btns { margin-top: 6px; } .two.btns .btn { height: 50px; }
@@ -216,10 +215,35 @@ svg { flex: none; }
 #toast { position: fixed; z-index: 30; left: 50%; bottom: calc(var(--nav) + var(--sb) + 16px); transform: translate(-50%, 20px); background: var(--navy); color: #fff; padding: 10px 18px; border-radius: 12px; font-weight: 500; opacity: 0; transition: all .2s; pointer-events: none; white-space: nowrap; }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-.a2hs { position: fixed; z-index: 25; left: 12px; right: 12px; bottom: calc(var(--nav) + var(--sb) + 12px); display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #fff; box-shadow: 0 10px 30px rgba(10,16,30,.22); border: 1px solid var(--line); }
+.a2hs { position: fixed; z-index: 9; left: 12px; right: 12px; bottom: calc(var(--nav) + var(--sb) + 12px); display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #fff; box-shadow: 0 10px 30px rgba(10,16,30,.22); border: 1px solid var(--line); }
 .a2hs img { width: 42px; height: 42px; object-fit: contain; }
 .a2hs div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .a2hs b { font-size: 15px; }
 .a2hs span { color: var(--mute); font-size: 13px; line-height: 1.5; }
 .a2hs span svg { display: inline; vertical-align: -3px; color: #0a84ff; }
 .a2hs button { width: 30px; height: 30px; border-radius: 50%; background: #eef1f7; color: var(--mute); }
+
+/* ---------- mobile polish ---------- */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+button, a, .card, .chip, .nav button { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.scroller, .hscroll, .chips.scroll, #sheet { scrollbar-width: none; }
+.scroller::-webkit-scrollbar, #sheet::-webkit-scrollbar { display: none; }
+input, select { font-size: 16px; }                /* stops iPhone from zooming in on focus */
+img { -webkit-user-drag: none; }
+.hscroll > .card { width: 78%; }
+.hscroll.lands > .card { width: 86%; }
+@media (max-width: 360px) {                        /* small phones */
+  .stats b { font-size: 18px; }
+  .btn { font-size: 13.5px; padding: 0 10px; }
+  .pad h1 { font-size: 21px; }
+  .price.big { font-size: 23px; }
+  .nav button { font-size: 10.5px; }
+}
+/* larger screens (tablet / desktop browser): keep the phone layout, centred */
+@media (min-width: 560px) {
+  html { background: #dfe3ea; }
+  body { background: #dfe3ea; }
+  .tab, .page, .nav, #sheet, .bar, .a2hs { left: calc(50% - 240px) !important; right: calc(50% - 240px) !important; }
+  .tab, .page { background: var(--bg); box-shadow: 0 0 0 1px var(--line), 0 20px 60px rgba(14,28,54,.12); }
+  .a2hs { display: none; }
+}

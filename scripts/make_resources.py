@@ -16,7 +16,7 @@ place(emblem, 1024, .78, (255, 255, 255, 255)).save('resources/icon-only.png')
 place(emblem, 1024, .56, (0, 0, 0, 0)).save('resources/icon-foreground.png')
 Image.new('RGBA', (1024, 1024), (255, 255, 255, 255)).save('resources/icon-background.png')
 for name in ('splash.png', 'splash-dark.png'):
-    c = Image.new('RGBA', (2732, 2732), (255, 255, 255, 255))
+    c = Image.new('RGBA', (2732, 2732), (14, 28, 54, 255))
     s = logo.copy(); s.thumbnail((1100, 1100), Image.LANCZOS)
     c.alpha_composite(s, ((2732 - s.width) // 2, (2732 - s.height) // 2)); c.save('resources/' + name)
 print('resources ready')
