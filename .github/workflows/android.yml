@@ -3,7 +3,7 @@ name: Build Android app
 on:
   push:
     branches: [main]
-    paths-ignore: ['scripts/build-web.mjs', 'scripts/snapshot.mjs', '.github/workflows/web.yml', 'README.md']
+    paths-ignore: ['scripts/build-web.mjs', 'scripts/snapshot.mjs', 'scripts/diff.mjs', 'scripts/notify.mjs', '.github/workflows/web.yml', 'README.md']
   workflow_dispatch:
 
 permissions:

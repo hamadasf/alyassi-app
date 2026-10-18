@@ -4,7 +4,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { Share } from '@capacitor/share';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { SITE, CONTACT, LOGO, EMBLEM } from './config.js';
-import { loadAll, loadFromCache, cached, favs, STATUS } from './data.js';
+import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen } from './data.js';
 import { I } from './icons.js';
 
 const native = Capacitor.isNativePlatform();
@@ -38,6 +38,47 @@ async function openWeb(url, title) {
 async function openExternal(url) {
   if (!native) { window.open(url, '_blank'); return; }
   try { await InAppBrowser.openInExternalBrowser({ url }); } catch { location.href = url; }
+}
+
+/* ---- recent changes ---- */
+const DAY = 24 * 3600e3;
+function recentChange(id) {
+  const c = getChanges().find((x) => x.id === id);
+  return c && Date.now() - c.t < 3 * DAY ? c : null;
+}
+function changeBadge(l) {
+  const c = recentChange(l.id); if (!c) return '';
+  const txt = c.kind === 'new' ? 'جديدة' : c.kind === 'price' ? (c.to < c.from ? 'سعر أقل' : 'سعر جديد') : 'تحديث';
+  return `<span class="badge upd ${c.kind === 'price' && c.to < c.from ? 'down' : ''}">${txt}</span>`;
+}
+function changeLine(c) {
+  const st = (k) => (STATUS[k] || { label: k }).label;
+  if (c.kind === 'new') return `أرض جديدة متاحة${c.to ? ' · ' + money(c.to) + ' د.إ' : ''}`;
+  if (c.kind === 'status') return `الحالة: ${st(c.from)} ← <b>${st(c.to)}</b>`;
+  const arrow = c.to < c.from ? I.down : I.up;
+  return `السعر: <s>${c.from ? money(c.from) : 'للاستفسار'}</s> ← <b>${c.to ? money(c.to) + ' د.إ' : 'للاستفسار'}</b> <i class="arr ${c.to < c.from ? 'dn' : ''}">${arrow}</i>`;
+}
+function unseenCount() { const s = seen.get(); return getChanges().filter((c) => c.t > s).length; }
+function updateBell() {
+  const n = unseenCount(); const b = $('#bellN');
+  if (b) { b.textContent = n > 99 ? '99+' : n; b.hidden = !n; }
+}
+function changesPage() {
+  const items = getChanges();
+  if (!items.length) return `<div class="empty">${I.bell}<p>لا توجد تحديثات حالياً</p><p class="sub">ستظهر هنا أي تغييرات في الأسعار أو حالة الأراضي</p></div>`;
+  const fmtDay = (t) => new Date(t).toLocaleDateString('ar-AE', { weekday: 'long', day: 'numeric', month: 'long' });
+  let html = '', last = '';
+  const s = seen.get();
+  for (const c of items) {
+    const day = fmtDay(c.t);
+    if (day !== last) { html += `<h3 class="cday">${esc(day)}</h3>`; last = day; }
+    const has = DATA().lands.some((l) => l.id === c.id);
+    html += `<div class="citm${c.t > s ? ' unseen' : ''}" ${has ? `data-land="${esc(c.id)}"` : ''}>
+      <div class="ck ${c.kind}">${c.kind === 'price' ? I.tag : c.kind === 'new' ? I.star : I.info}</div>
+      <div class="cb"><b>قطعة ${esc(c.n)} · ${esc(c.projectName)}</b><span>${changeLine(c)}</span></div>
+      <time>${new Date(c.t).toLocaleTimeString('ar-AE', { hour: 'numeric', minute: '2-digit' })}</time></div>`;
+  }
+  return `<div class="pad changes">${html}</div>`;
 }
 
 /* ---- sharing ---- */
@@ -88,6 +129,7 @@ function landCard(l) {
     <div class="ph"><img loading="lazy" decoding="async" src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">
       <span class="badge ${st.cls}">${st.label}</span>
       ${l.featured && l.status === 'av' ? `<span class="badge star">${I.star} مميزة</span>` : ''}
+      ${changeBadge(l)}
       <button class="fav${fav ? ' on' : ''}" data-fav="${esc(l.id)}" aria-label="مفضلة">${I.heart}</button>
       <button class="fav sh" data-share="land:${esc(l.id)}" aria-label="مشاركة">${I.share}</button>
     </div>
@@ -144,6 +186,7 @@ function renderHome() {
   const el = $('#home .content');
   el.innerHTML = `
     <section class="hero">
+      <button class="bell" data-changes aria-label="التحديثات">${I.bell}<i id="bellN" hidden></i></button>
       <img class="hero-logo" src="${LOGO}" alt="عمر الياسي للعقارات">
       <p>أراضٍ ومشاريع في الشارقة بخطط سداد مرنة ومواقع استراتيجية</p>
       <button class="search-fake" data-go="lands" data-focus="1">${I.search}<span>ابحث برقم القطعة أو اسم المشروع…</span></button>
@@ -309,10 +352,11 @@ function pushPage(kind, id) {
   const d = DATA();
   let html = '', p, l;
   if (kind === 'project') { p = d.projects.find((x) => x.slug === id); if (!p) return; html = projectPage(p); }
+  else if (kind === 'changes') { html = changesPage(); }
   else { l = d.lands.find((x) => x.id === id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
   pg.className = 'page' + (kind === 'land' ? ' has-bar' : '');
-  pg.innerHTML = `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${kind === 'project' ? 'المشروع' : 'تفاصيل الأرض'}</span><button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button></header><div class="scroller">${html}</div>`;
+  pg.innerHTML = `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${kind === 'project' ? 'المشروع' : kind === 'changes' ? 'آخر التحديثات' : 'تفاصيل الأرض'}</span>${kind === 'changes' ? '' : `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>`}</header><div class="scroller">${html}</div>`;
   document.body.appendChild(pg);
   if (p) renderList($('#projList', pg), p.lands.filter((x) => x.status === 'av').sort((a, b) => (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12))), landCard, 'لا توجد أراضٍ متاحة حالياً في هذا المشروع');
   requestAnimationFrame(() => pg.classList.add('in'));
@@ -367,6 +411,7 @@ document.addEventListener('click', (e) => {
     else { const p = d.projects.find((x) => x.slug === id); if (p) shareText(`مشروع ${p.name}`, projectShareText(p)); }
     return;
   }
+  if (ds.changes !== undefined) { pushPage('changes'); const top = getChanges()[0]; if (top) seen.set(top.t); updateBell(); return; }
   if (ds.back !== undefined) return goBack();
   if (ds.tab) {
     if (ds.tab === current && !stack.length) { const sc = $('#' + current + ' .scroller'); sc && sc.scrollTo({ top: 0, behavior: 'smooth' }); return; }
@@ -410,7 +455,7 @@ document.querySelectorAll('.tab .scroller').forEach((sc) => {
 
 /* ================= boot ================= */
 function renderAll() {
-  renderHome(); renderLands(); renderProjects(); renderContact();
+  renderHome(); updateBell(); renderLands(); renderProjects(); renderContact();
   if (current === 'favs') renderFavs();
 }
 let loading = null;
@@ -419,6 +464,7 @@ function refresh(force) {
   const hadData = DATA().lands.length > 0;
   let raf = 0;
   loading = loadAll({ force, onPartial: hadData ? null : () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(renderAll); } })
+    .then(() => loadChanges().catch(() => {}))
     .then(() => { renderAll(); })
     .catch(() => { if (!DATA().lands.length) { $('#home .content').innerHTML = `<div class="empty">${I.wifi}<p>تعذّر الاتصال بالإنترنت</p><button class="btn ghost" id="retry">إعادة المحاولة</button></div>`; $('#retry').onclick = () => refresh(true); } else toast('تعذّر التحديث — تُعرض آخر بيانات محفوظة'); })
     .finally(() => { loading = null; });
@@ -437,6 +483,7 @@ async function boot() {
   }
   if (!native) setupWebApp();
   await refresh(false);
+  if (location.hash === '#updates') { history.replaceState(null, '', location.pathname); document.querySelector('[data-changes]')?.click(); }
 }
 
 /* Web / iPhone version: offline shell + "Add to Home Screen" hint */

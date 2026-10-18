@@ -1,5 +1,5 @@
 // Data layer: reads projects, plot sizes/types and live availability straight from the website.
-import { SITE, TTL, DEFAULT_TYPES } from './config.js';
+import { SITE, TTL, DEFAULT_TYPES, CHANGES_URL } from './config.js';
 
 const NS = 'oay:';
 const now = () => Date.now();
@@ -200,4 +200,22 @@ export const favs = {
     try { localStorage.setItem(NS + 'favs', JSON.stringify(a)); } catch { /* ignore */ }
     return i < 0;
   },
+};
+
+/* ---------- recent price / status changes ---------- */
+let changes = (cacheGet('changes') || {}).d || [];
+export function getChanges() { return changes; }
+export async function loadChanges() {
+  try {
+    const r = await fetch(CHANGES_URL + '?t=' + Math.floor(now() / 60e3), { cache: 'no-store' });
+    if (!r.ok) return changes;
+    const j = await r.json();
+    changes = Array.isArray(j.items) ? j.items : [];
+    cacheSet('changes', changes);
+  } catch { /* keep the cached list */ }
+  return changes;
+}
+export const seen = {
+  get() { try { return +localStorage.getItem(NS + 'seenChanges') || 0; } catch { return 0; } },
+  set(t) { try { localStorage.setItem(NS + 'seenChanges', String(t)); } catch { /* ignore */ } },
 };

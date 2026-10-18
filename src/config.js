@@ -14,6 +14,9 @@ export const CONTACT = {
   facebook: 'https://www.facebook.com/profile.php?id=61590477670523',
 };
 
+export const APP_URL = 'https://hamadasf.github.io/alyassi-app/';
+export const CHANGES_URL = APP_URL + 'changes.json';   // price / status changes, updated every few minutes
+
 export const LOGO = './assets/logo.png';     // added at build time from the website
 export const EMBLEM = './assets/emblem.png';
 
