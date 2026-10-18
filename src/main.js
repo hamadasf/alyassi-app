@@ -4,7 +4,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { Share } from '@capacitor/share';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
-import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen } from './data.js';
+import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen, offerFor } from './data.js';
 import { I } from './icons.js';
 
 const native = Capacitor.isNativePlatform();
@@ -42,22 +42,38 @@ async function openExternal(url) {
 
 /* ---- recent changes ---- */
 const DAY = 24 * 3600e3;
+const hrs = (h) => `${h} ${h >= 3 && h <= 10 ? 'ساعات' : 'ساعة'}`;
 function recentChange(id) {
   const c = getChanges().find((x) => x.id === id);
   return c && Date.now() - c.t < 3 * DAY ? c : null;
 }
 function changeBadge(l) {
-  const c = recentChange(l.id); if (!c) return '';
+  const c = recentChange(l.id); if (!c || c.kind === 'offer') return '';
   const txt = c.kind === 'new' ? 'جديدة' : c.kind === 'price' ? (c.to < c.from ? 'سعر أقل' : 'سعر جديد') : 'تحديث';
   return `<span class="badge upd ${c.kind === 'price' && c.to < c.from ? 'down' : ''}">${txt}</span>`;
 }
 function changeLine(c) {
   const st = (k) => (STATUS[k] || { label: k }).label;
+  if (c.kind === 'offer') return `<b class="ofr-t">🔥 عرض لفترة محدودة</b>${c.to || c.from ? ` · بسعر ${money(c.to || c.from)} د.إ` : ''}${c.to && c.from > c.to ? ` <s>${money(c.from)}</s>` : ''}${c.until ? ` · حتى ${dmy(c.until)}` : ''}`;
   if (c.kind === 'new') return `أرض جديدة متاحة${c.to ? ' · ' + money(c.to) + ' د.إ' : ''}`;
   if (c.kind === 'status') return `الحالة: ${st(c.from)} ← <b>${st(c.to)}</b>`;
   const arrow = c.to < c.from ? I.down : I.up;
   return `السعر: <s>${c.from ? money(c.from) : 'للاستفسار'}</s> ← <b>${c.to ? money(c.to) + ' د.إ' : 'للاستفسار'}</b> <i class="arr ${c.to < c.from ? 'dn' : ''}">${arrow}</i>`;
 }
+/* ---- limited-time offers ---- */
+const dmy = (t) => { const d = new Date(t); return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`; };
+function leftText(until) {
+  const ms = until - Date.now(); if (ms <= 0) return 'انتهى العرض';
+  const d = Math.floor(ms / DAY), h = Math.floor((ms % DAY) / 3600e3), m = Math.floor((ms % 3600e3) / 60e3);
+  if (d >= 1) return `ينتهي خلال ${d} ${d === 1 ? 'يوم' : d === 2 ? 'يومين' : d <= 10 ? 'أيام' : 'يوماً'}${h ? ` و${hrs(h)}` : ''}`;
+  if (h >= 1) return `ينتهي خلال ${hrs(h)}${m ? ` و${m} دقيقة` : ''}`;
+  return `ينتهي خلال ${Math.max(1, m)} ${m >= 3 && m <= 10 ? 'دقائق' : 'دقيقة'}`;
+}
+const offerPrice = (l, o) => (o && o.price) || l.total;
+const offerWas = (l, o) => { const was = l.total || o.old; return o.price && was > o.price ? was : 0; };
+const offerLands = () => DATA().lands.filter(offerFor).sort((a, b) => offerFor(a).until - offerFor(b).until);
+setInterval(() => document.querySelectorAll('[data-until]').forEach((el) => { el.textContent = leftText(+el.dataset.until); }), 30e3);
+
 function unseenCount() { const s = seen.get(); return getChanges().filter((c) => c.t > s).length; }
 function updateBell() {
   const n = unseenCount(); const b = $('#bellN');
@@ -74,7 +90,7 @@ function changesPage() {
     if (day !== last) { html += `<h3 class="cday">${esc(day)}</h3>`; last = day; }
     const has = DATA().lands.some((l) => l.id === c.id);
     html += `<div class="citm${c.t > s ? ' unseen' : ''}" ${has ? `data-land="${esc(c.id)}"` : ''}>
-      <div class="ck ${c.kind}">${c.kind === 'price' ? I.tag : c.kind === 'new' ? I.star : I.info}</div>
+      <div class="ck ${c.kind}">${c.kind === 'price' ? I.tag : c.kind === 'new' || c.kind === 'offer' ? I.star : I.info}</div>
       <div class="cb"><b>قطعة ${esc(c.n)} · ${esc(c.projectName)}</b><span>${changeLine(c)}</span></div>
       <time>${new Date(c.t).toLocaleTimeString('ar-AE', { hour: 'numeric', minute: '2-digit' })}</time></div>`;
   }
@@ -94,7 +110,7 @@ const push = {
       try {
         OS.initialize(ONESIGNAL_APP_ID);
         push.os = OS; push.ready = true;
-        OS.Notifications.addEventListener('click', () => { setTimeout(() => document.querySelector('[data-changes]')?.click(), 400); });
+        OS.Notifications.addEventListener('click', (ev) => { setTimeout(() => openFromPush(ev), 400); });
         OS.Notifications.addEventListener('permissionChange', (granted) => { push.nativeOn = !!granted; push.render(); });
         push.nativeOn = await OS.Notifications.getPermissionAsync();
         push.render();
@@ -122,7 +138,7 @@ const push = {
         });
         push.ready = true; push.os = OS;
         OS.Notifications.addEventListener('permissionChange', () => setTimeout(push.render, 300));
-        OS.Notifications.addEventListener('click', () => { document.querySelector('[data-changes]')?.click(); });
+        OS.Notifications.addEventListener('click', (ev) => openFromPush(ev));
         push.render();
       } catch (e) { console.warn('push', e); }
     });
@@ -163,6 +179,19 @@ const push = {
     });
   },
 };
+let lastOpen = { id: '', t: 0 };
+function openLandId(id) {
+  if (lastOpen.id === id && Date.now() - lastOpen.t < 4000) return;
+  lastOpen = { id, t: Date.now() };
+  const go = () => { if (DATA().lands.some((l) => l.id === id)) { closeAll(); pushPage('land', id); return true; } return false; };
+  if (!go()) (loading || Promise.resolve()).then(() => { if (!go()) document.querySelector('[data-changes]')?.click(); });
+}
+function openFromPush(ev) {
+  const n = (ev && (ev.notification || ev.result && ev.result.notification)) || {};
+  const data = n.additionalData || n.data || {};
+  if (data.open === 'land' && data.id) { refresh(false); openLandId(String(data.id)); return; }
+  refresh(false).then(() => document.querySelector('[data-changes]')?.click());
+}
 const notifCard = () => `<div class="notif-card" hidden>${I.bell}<div><b>فعّل إشعارات الأسعار</b><p></p></div><button class="btn gold" data-notify>تفعيل</button></div>`;
 
 /* ---- sharing ---- */
@@ -173,6 +202,8 @@ function landShareText(l) {
   const L = [];
   L.push(`مخطط ${l.projectName} · قطعة رقم ${l.n}`);
   L.push(`الحالة: ${ST[l.status] || 'للاستفسار'}`);
+  const o = offerFor(l);
+  if (o) L.push(`🔥 عرض لفترة محدودة حتى ${dmy(o.until)}${offerPrice(l, o) ? `: بسعر ${money(offerPrice(l, o))} درهم` : ''}${offerWas(l, o) ? ` بدلاً من ${money(offerWas(l, o))} درهم` : ''}${o.note ? ` · ${o.note}` : ''}`);
   L.push(`الاستخدام: ${l.use}${l.floors ? ` (${l.floors})` : ''}${l.loc ? ` · ${l.loc}` : ''}`);
   if (l.ft) L.push(`المساحة: ${l.approx ? '≈ ' : ''}${money(l.ft)} قدم² (${money(l.m2)} م²)`);
   if (l.dims) L.push(`الأبعاد: ${l.dims[2] ? '≈ ' : ''}${(+l.dims[0]).toFixed(2)} × ${(+l.dims[1]).toFixed(2)} م`);
@@ -213,6 +244,8 @@ function toast(msg) {
 /* ================= cards ================= */
 function priceHTML(l, big) {
   if (l.status === 'sold') return `<div class="price muted">تم البيع</div>`;
+  const o = offerFor(l);
+  if (o && offerPrice(l, o)) return `<div class="price ofr${big ? ' big' : ''}">${offerWas(l, o) ? `<s>${money(offerWas(l, o))}</s>` : ''}${money(offerPrice(l, o))} <small>د.إ</small></div>`;
   if (!l.total) return `<div class="price ask">السعر عند الاستفسار</div>`;
   return `<div class="price${big ? ' big' : ''}">${money(l.total)} <small>د.إ</small></div>`;
 }
@@ -222,10 +255,11 @@ const dot = (c) => `<i class="dot" style="background:rgb(${c.join(',')})"></i>`;
 function landCard(l) {
   const st = STATUS[l.status] || STATUS.av;
   const fav = favs.has(l.id);
-  return `<article class="card land" data-land="${esc(l.id)}">
+  const o = offerFor(l);
+  return `<article class="card land${o ? ' has-ofr' : ''}" data-land="${esc(l.id)}">
     <div class="ph"><img loading="lazy" decoding="async" src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">
       <span class="badge ${st.cls}">${st.label}</span>
-      ${l.featured && l.status === 'av' ? `<span class="badge star">${I.star} مميزة</span>` : ''}
+      ${o ? `<span class="badge ofr">🔥 عرض</span>` : l.featured && l.status === 'av' ? `<span class="badge star">${I.star} مميزة</span>` : ''}
       ${changeBadge(l)}
       <button class="fav${fav ? ' on' : ''}" data-fav="${esc(l.id)}" aria-label="مفضلة">${I.heart}</button>
       <button class="fav sh" data-share="land:${esc(l.id)}" aria-label="مشاركة">${I.share}</button>
@@ -234,6 +268,7 @@ function landCard(l) {
       <div class="row between"><h3>قطعة رقم ${esc(l.n)}</h3>${priceHTML(l)}</div>
       <div class="type">${dot(l.color)}${esc(l.use)}${l.tag ? ` · ${esc(l.tag)}` : ''}</div>
       <div class="meta">${I.pin}<span>${esc(l.projectName)}</span></div>
+      ${o ? `<div class="ofr-line">⏳ <span data-until="${o.until}">${leftText(o.until)}</span>${o.note ? ` · ${esc(o.note)}` : ''}</div>` : ''}
       <div class="specs"><span>${I.area}${areaHTML(l)}</span>${l.floors ? `<span>${I.floors}${esc(l.floors)}</span>` : ''}</div>
       ${l.first && l.status !== 'sold' ? `<div class="plan-pay">${I.wallet} دفعة أولى ${money(l.first)} د.إ + ${l.inst.length} أقساط</div>` : ''}
       <div class="actions">
@@ -278,6 +313,7 @@ function renderHome() {
   const { projects, lands } = DATA();
   const av = lands.filter((l) => l.status === 'av');
   const featured = av.filter((l) => l.featured);
+  const ofr = offerLands();
   const best = av.filter((l) => l.total).sort((a, b) => a.total - b.total).slice(0, 10);
   const cats = [...new Set(av.map((l) => l.cat))];
   const el = $('#home .content');
@@ -294,6 +330,8 @@ function renderHome() {
       </div>
     </section>
     ${notifCard()}
+    ${ofr.length ? `<div class="sec-h ofr-h"><h2>🔥 عروض لفترة محدودة</h2><button data-go="lands" data-offers="1">عرض الكل</button></div>
+      <div class="hscroll lands">${ofr.map(landCard).join('')}</div>` : ''}
     ${cats.length ? `<div class="chips scroll">${cats.map((c) => `<button class="chip" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}
     <div class="sec-h"><h2>مشاريعنا</h2><button data-go="projects">عرض الكل</button></div>
     <div class="hscroll">${projects.length ? projects.map((p) => projectCard(p)).join('') : skeleton(2)}</div>
@@ -308,12 +346,12 @@ function renderHome() {
 }
 
 /* ---- lands with filters ---- */
-const F = { q: '', project: '', status: 'av', cat: '', minA: '', maxA: '', minP: '', maxP: '', sort: 'default', feat: false };
+const F = { q: '', project: '', status: 'av', cat: '', minA: '', maxA: '', minP: '', maxP: '', sort: 'default', feat: false, offers: false };
 function filtered() {
   const q = F.q.trim();
   let a = DATA().lands.filter((l) =>
     (!F.status || l.status === F.status) && (!F.project || l.project === F.project) && (!F.cat || l.cat === F.cat) &&
-    (!F.feat || l.featured) &&
+    (!F.feat || l.featured) && (!F.offers || offerFor(l)) &&
     (!F.minA || l.ft >= +F.minA) && (!F.maxA || l.ft <= +F.maxA) &&
     (!F.minP || (l.total && l.total >= +F.minP)) && (!F.maxP || (l.total && l.total <= +F.maxP)) &&
     (!q || l.n.includes(q) || l.projectName.includes(q) || l.use.includes(q) || (l.tag && l.tag.includes(q))));
@@ -323,17 +361,19 @@ function filtered() {
   else if (s === 'price-desc') a.sort((x, y) => (y.total || 0) - (x.total || 0));
   else if (s === 'area-desc') a.sort((x, y) => y.ft - x.ft);
   else if (s === 'area-asc') a.sort((x, y) => x.ft - y.ft);
-  else a.sort((x, y) => (y.featured - x.featured) || (!!y.total - !!x.total));
+  else a.sort((x, y) => (!!offerFor(y) - !!offerFor(x)) || (y.featured - x.featured) || (!!y.total - !!x.total));
   return a;
 }
 function activeFilterCount() {
-  return ['project', 'cat', 'minA', 'maxA', 'minP', 'maxP'].filter((k) => F[k]).length + (F.status !== 'av') + (F.sort !== 'default') + F.feat;
+  return ['project', 'cat', 'minA', 'maxA', 'minP', 'maxP'].filter((k) => F[k]).length + (F.status !== 'av') + (F.sort !== 'default') + F.feat + F.offers;
 }
 function renderLandsHead() {
   const { projects, lands } = DATA();
   const cats = [...new Set(lands.map((l) => l.cat))];
+  const hasOfr = DATA().lands.some(offerFor);
   $('#lands .chips').innerHTML =
-    `<button class="chip${!F.cat ? ' on' : ''}" data-fcat="">الكل</button>` +
+    `<button class="chip${!F.cat && !F.offers ? ' on' : ''}" data-fcat="">الكل</button>` +
+    (hasOfr || F.offers ? `<button class="chip ofr${F.offers ? ' on' : ''}" data-foffers>🔥 العروض</button>` : '') +
     cats.map((c) => `<button class="chip${F.cat === c ? ' on' : ''}" data-fcat="${esc(c)}">${esc(c)}</button>`).join('');
   const n = activeFilterCount();
   $('#filterBtn .n').textContent = n || ''; $('#filterBtn').classList.toggle('has', !!n);
@@ -384,7 +424,7 @@ function renderContact() {
 function projectPage(p) {
   const types = {};
   p.lands.filter((l) => l.status === 'av').forEach((l) => { const k = l.use + (l.tag ? ' · ' + l.tag : ''); (types[k] = types[k] || { c: l.color, n: 0 }).n++; });
-  const av = p.lands.filter((l) => l.status === 'av').sort((a, b) => (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12)));
+  const av = p.lands.filter((l) => l.status === 'av').sort((a, b) => (!!offerFor(b) - !!offerFor(a)) || (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12)));
   return `<div class="hero-img" data-plan="${esc(p.plan)}"><img src="${esc(p.poster)}" alt=""><span class="open-plan">${I.map} افتح المخطط التفاعلي</span></div>
     <div class="pad">
       <h1>${esc(p.name)}</h1>${p.sub ? `<div class="meta">${I.pin}<span>${esc(p.sub)}</span></div>` : ''}
@@ -406,12 +446,14 @@ function landPage(l) {
   const st = STATUS[l.status] || STATUS.av;
   const fav = favs.has(l.id);
   const sumInst = l.inst.reduce((a, x) => a + (+x[1] || 0), 0);
+  const o = offerFor(l);
   return `<div class="hero-img land"><img src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">
       <span class="badge ${st.cls}">${st.label}</span>
       <button class="fav big${fav ? ' on' : ''}" data-fav="${esc(l.id)}" aria-label="مفضلة">${I.heart}</button></div>
     <div class="pad">
       <div class="row between"><h1>قطعة رقم ${esc(l.n)}</h1>${l.featured && l.status === 'av' ? `<span class="badge star inline">${I.star} مميزة</span>` : ''}</div>
       <button class="meta link" data-project="${esc(l.project)}">${I.pin}<span>مشروع ${esc(l.projectName)}</span></button>
+      ${o ? `<div class="ofr-box"><b>🔥 عرض لفترة محدودة</b>${o.note ? `<span>${esc(o.note)}</span>` : ''}<div class="ofr-t2">⏳ <span data-until="${o.until}">${leftText(o.until)}</span> · حتى ${dmy(o.until)}</div></div>` : ''}
       <div class="pricebox">${priceHTML(l, true)}${l.ppf && l.status !== 'sold' ? `<span>سعر القدم ${money(l.ppf)} د.إ</span>` : ''}</div>
       <div class="spec-grid">
         <div>${I.tag}<span>الاستخدام</span><b>${esc(l.use || '—')}</b></div>
@@ -456,7 +498,7 @@ function pushPage(kind, id) {
   pg.className = 'page' + (kind === 'land' ? ' has-bar' : '');
   pg.innerHTML = `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${kind === 'project' ? 'المشروع' : kind === 'changes' ? 'آخر التحديثات' : 'تفاصيل الأرض'}</span>${kind === 'changes' ? '' : `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>`}</header><div class="scroller">${html}</div>`;
   document.body.appendChild(pg);
-  if (p) renderList($('#projList', pg), p.lands.filter((x) => x.status === 'av').sort((a, b) => (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12))), landCard, 'لا توجد أراضٍ متاحة حالياً في هذا المشروع');
+  if (p) renderList($('#projList', pg), p.lands.filter((x) => x.status === 'av').sort((a, b) => (!!offerFor(b) - !!offerFor(a)) || (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12))), landCard, 'لا توجد أراضٍ متاحة حالياً في هذا المشروع');
   push.render();
   requestAnimationFrame(() => pg.classList.add('in'));
   stack.push(pg);
@@ -490,7 +532,7 @@ function applySheet() {
   ['minA', 'maxA', 'minP', 'maxP'].forEach((k) => { F[k] = $('#f' + k).value.replace(/[^\d]/g, ''); });
   closeSheet(); renderLands(); $('#lands .scroller').scrollTop = 0;
 }
-function resetFilters() { Object.assign(F, { q: '', project: '', status: 'av', cat: '', minA: '', maxA: '', minP: '', maxP: '', sort: 'default', feat: false }); $('#q').value = ''; renderLands(); }
+function resetFilters() { Object.assign(F, { q: '', project: '', status: 'av', cat: '', minA: '', maxA: '', minP: '', maxP: '', sort: 'default', feat: false, offers: false }); $('#q').value = ''; renderLands(); }
 
 /* ================= events ================= */
 document.addEventListener('click', (e) => {
@@ -521,11 +563,12 @@ document.addEventListener('click', (e) => {
   if (ds.web) return openWeb(ds.web);
   if (ds.reset !== undefined) return resetFilters();
   if (ds.go) {
-    if (ds.go === 'lands') { resetFilters(); if (ds.sort) F.sort = ds.sort; if (ds.feat) F.feat = true; renderLands(); }
+    if (ds.go === 'lands') { resetFilters(); if (ds.sort) F.sort = ds.sort; if (ds.feat) F.feat = true; if (ds.offers) F.offers = true; renderLands(); }
     closeAll(); return showTab(ds.go, { focus: !!ds.focus });
   }
   if (ds.cat !== undefined && !ds.fcat) { resetFilters(); F.cat = ds.cat; renderLands(); closeAll(); return showTab('lands'); }
-  if (ds.fcat !== undefined) { F.cat = ds.fcat; renderLands(); return; }
+  if (ds.foffers !== undefined) { F.offers = !F.offers; renderLands(); return; }
+  if (ds.fcat !== undefined) { F.cat = ds.fcat; F.offers = false; renderLands(); return; }
   if (ds.land) return pushPage('land', ds.land);
   if (ds.project) return pushPage('project', ds.project);
 });
@@ -585,6 +628,8 @@ async function boot() {
   push.init(); push.render();
   await refresh(false);
   if (location.hash === '#notify') { history.replaceState(null, '', location.pathname); setTimeout(() => push.enable(), 1200); }
+  const hm = /^#land=(.+)$/.exec(location.hash);
+  if (hm) { history.replaceState(null, '', location.pathname); openLandId(decodeURIComponent(hm[1])); }
   if (location.hash === '#updates') { history.replaceState(null, '', location.pathname); document.querySelector('[data-changes]')?.click(); }
 }
 

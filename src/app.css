@@ -279,3 +279,19 @@ img { -webkit-user-drag: none; }
 .notif-card p { margin: 2px 0 0; font-size: 12.5px; color: #cfd6e6; line-height: 1.5; }
 .notif-card .btn { height: 40px; flex: none; }
 .changes .notif-card { margin: 0 0 14px; }
+
+/* ---- limited-time offers ---- */
+.badge.ofr { right: auto; left: 54px; background: linear-gradient(135deg, #ef4444, #f97316); box-shadow: 0 2px 8px rgba(239, 68, 68, .35); }
+.card.has-ofr { box-shadow: 0 0 0 2px #f97316, 0 6px 18px rgba(249, 115, 22, .18); }
+.price.ofr { color: #dc2626; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.price.ofr s { color: #94a3b8; font-size: 12px; font-weight: 600; }
+.price.ofr.big s { font-size: 15px; }
+.ofr-line { margin-top: 6px; font-size: 12.5px; font-weight: 700; color: #c2410c; background: #fff4ec; border-radius: 8px; padding: 5px 9px; display: inline-block; }
+.ofr-box { margin: 12px 0 4px; padding: 12px 14px; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #dc2626, #f97316); display: flex; flex-direction: column; gap: 4px; }
+.ofr-box b { font-size: 16px; } .ofr-box span { font-size: 13.5px; opacity: .95; }
+.ofr-box .ofr-t2 { font-size: 13px; font-weight: 700; }
+.ofr-h h2 { color: #dc2626; }
+.chip.ofr { border-color: #f97316; color: #c2410c; }
+.chip.ofr.on { background: #f97316; border-color: #f97316; color: #fff; }
+.citm .ck.offer { background: #fff1e8; color: #ea580c; }
+.ofr-t { color: #ea580c; }

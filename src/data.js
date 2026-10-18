@@ -223,7 +223,13 @@ export const favs = {
 
 /* ---------- recent price / status changes ---------- */
 let changes = (cacheGet('changes') || {}).d || [];
+let offers = (cacheGet('offers') || {}).d || [];
 export function getChanges() { return changes; }
+/** Active limited-time offer for a plot (only while it is still available). */
+export function offerFor(l) {
+  const o = offers.find((x) => x.id === l.id);
+  return o && o.until > now() && l.status === 'av' ? o : null;
+}
 export async function loadChanges() {
   try {
     const r = await fetch(CHANGES_URL + '&t=' + Math.floor(now() / 15e3), { cache: 'no-store' });
@@ -231,6 +237,7 @@ export async function loadChanges() {
     const j = await r.json();
     changes = Array.isArray(j.items) ? j.items : [];
     cacheSet('changes', changes);
+    if (Array.isArray(j.offers)) { offers = j.offers; cacheSet('offers', offers); }
   } catch { /* keep the cached list */ }
   return changes;
 }
