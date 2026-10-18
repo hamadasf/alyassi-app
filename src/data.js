@@ -153,6 +153,24 @@ async function loadSnapshot() {
   const r = await fetch(SNAPSHOT + '?t=' + Math.floor(now() / 60e3), { cache: 'no-store' });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   const j = await r.json();
+  // the snapshot can be a few minutes old: overlay the live availability & prices straight from the website
+  await Promise.all(j.projects.map(async (p) => {
+    try {
+      const st = await getState(p);
+      const sp = (st && st.plots) || {};
+      p.lands.forEach((l) => {
+        const s = sp[l.n]; if (!s || !s.s) return;
+        l.status = s.s; l.featured = !!s.fe;
+        const total = s.total || (s.ppf && l.ft ? Math.round(s.ppf * l.ft) : 0);
+        l.total = total; l.ppf = s.ppf || 0;
+        l.inst = Array.isArray(s.inst) ? s.inst : [];
+        const sum = l.inst.reduce((a, x) => a + (+x[1] || 0), 0);
+        l.first = l.inst.length && total ? Math.max(0, total - sum) : 0;
+      });
+      const c = (k) => p.lands.filter((l) => l.status === k).length;
+      p.available = c('av'); p.reserved = c('res'); p.sold = c('sold');
+    } catch { /* keep snapshot values */ }
+  }));
   cacheSet('snap', j);
   memo = fromSnapshot(j);
   return memo;
@@ -207,7 +225,7 @@ let changes = (cacheGet('changes') || {}).d || [];
 export function getChanges() { return changes; }
 export async function loadChanges() {
   try {
-    const r = await fetch(CHANGES_URL + '?t=' + Math.floor(now() / 60e3), { cache: 'no-store' });
+    const r = await fetch(CHANGES_URL + '&t=' + Math.floor(now() / 15e3), { cache: 'no-store' });
     if (!r.ok) return changes;
     const j = await r.json();
     changes = Array.isArray(j.items) ? j.items : [];

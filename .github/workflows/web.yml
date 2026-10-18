@@ -61,10 +61,3 @@ jobs:
           path: web
       - id: deployment
         uses: actions/deploy-pages@v4
-
-      - name: Push notification
-        if: success()
-        env:
-          ONESIGNAL_APP_ID: 9ea9b0f0-c240-495a-8c63-3a2d4a1a11be
-          ONESIGNAL_REST_KEY: ${{ secrets.ONESIGNAL_REST_KEY }}
-        run: node scripts/notify.mjs /tmp/new-changes.json
