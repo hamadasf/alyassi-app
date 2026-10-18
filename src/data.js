@@ -110,6 +110,14 @@ export function category(use = '') {
   return 'أخرى';
 }
 
+/* Investment residential villas (ground + 2 floors) use the company's own photo in the app. */
+const VILLA_INVEST = './assets/villa-invest.jpg';
+function typeImage(l) {
+  if (!l.ownImg && /استثمار/.test(l.use || '') && /سكن|فلل|فيلا/.test(l.use || '') && !/تجاري|صناع|محل/.test(l.use || '') &&
+      /اثنين|طابقين|\+\s*2/.test(l.floors || '')) l.img = VILLA_INVEST;
+  return l;
+}
+
 function buildProject(p, plan, state) {
   const sp = (state && state.plots) || {};
   const bld = (state && state.bld) || {};
@@ -129,10 +137,10 @@ function buildProject(p, plan, state) {
       floors: ty.floors || '', color: ty.c || [200, 200, 200], cat: category(ty.use),
       ft: Math.round(area || 0), m2: Math.round((s.ft ? s.ft / 10.7639 : m2) || 0), approx: !exact && !s.ft,
       ppf: s.ppf || 0, total, inst, first: inst.length && total ? Math.max(0, total - instSum) : 0, img, sketch,
-      doc: (s.doc && s.doc.u) || '', docTitle: (s.doc && s.doc.t) || '', dims: dims || null,
+      ownImg: !!(s.img && s.img.u), doc: (s.doc && s.doc.u) || '', docTitle: (s.doc && s.doc.t) || '', dims: dims || null,
       lo: /^https:\/\//.test(s.lo || '') ? s.lo : '', projectLoc: (state && state.loc) || '',
     };
-  });
+  }).map(typeImage);
   const count = (st) => lands.filter((l) => l.status === st).length;
   return {
     ...p, name: plan.name || p.title, sub: plan.sub, note: plan.note, poster: plan.poster || p.poster,
@@ -148,6 +156,7 @@ export function cached() { return memo; }
 /* Web (iPhone) version: the website data is collected every few minutes into data.json next to the app. */
 const SNAPSHOT = typeof __SNAPSHOT__ !== 'undefined' ? __SNAPSHOT__ : '';
 function fromSnapshot(j) {
+  j.projects.forEach((p) => p.lands.forEach(typeImage));
   return { projects: j.projects, lands: j.projects.flatMap((p) => p.lands), at: j.at };
 }
 async function loadSnapshot() {
