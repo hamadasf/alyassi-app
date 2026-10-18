@@ -20,6 +20,7 @@ html = html.replace('<title>', `<link rel="manifest" href="manifest.webmanifest"
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="عمر الياسي">
   <meta name="description" content="أراضٍ ومشاريع عمر الياسي للعقارات في الشارقة — الأسعار والمتاح أولاً بأول">
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <title>`).replace('app.css"', `app.css?v=${V}"`).replace('app.js"', `app.js?v=${V}"`);
 writeFileSync('web/index.html', html);
 writeFileSync('web/manifest.webmanifest', JSON.stringify({
@@ -27,7 +28,8 @@ writeFileSync('web/manifest.webmanifest', JSON.stringify({
   start_url: './', scope: './', display: 'standalone', background_color: '#ffffff', theme_color: '#0e1c36',
   icons: [192, 512].map((s) => ({ src: `icons/icon-${s}.png`, sizes: `${s}x${s}`, type: 'image/png', purpose: 'any' })),
 }, null, 1));
-writeFileSync('web/sw.js', `// offline shell — app files cached, data always fetched fresh
+writeFileSync('web/sw.js', `// push notifications (OneSignal) + offline shell — app files cached, data always fetched fresh
+try { importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js'); } catch (e) {}
 const C = 'oay-${V}';
 const SHELL = ['./', 'index.html', 'app.js?v=${V}', 'app.css?v=${V}', 'assets/logo.png', 'assets/emblem.png'];
 self.addEventListener('install', (e) => { self.skipWaiting(); e.waitUntil(caches.open(C).then((c) => c.addAll(SHELL)).catch(() => {})); });

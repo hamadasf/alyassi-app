@@ -17,6 +17,8 @@ export const CONTACT = {
 export const APP_URL = 'https://hamadasf.github.io/alyassi-app/';
 export const CHANGES_URL = APP_URL + 'changes.json';   // price / status changes, updated every few minutes
 
+export const ONESIGNAL_APP_ID = '9ea9b0f0-c240-495a-8c63-3a2d4a1a11be';   // push notifications
+
 export const LOGO = './assets/logo.png';     // added at build time from the website
 export const EMBLEM = './assets/emblem.png';
 

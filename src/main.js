@@ -3,7 +3,7 @@ import { App } from '@capacitor/app';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { Share } from '@capacitor/share';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
-import { SITE, CONTACT, LOGO, EMBLEM } from './config.js';
+import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
 import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen } from './data.js';
 import { I } from './icons.js';
 
@@ -65,7 +65,7 @@ function updateBell() {
 }
 function changesPage() {
   const items = getChanges();
-  if (!items.length) return `<div class="empty">${I.bell}<p>لا توجد تحديثات حالياً</p><p class="sub">ستظهر هنا أي تغييرات في الأسعار أو حالة الأراضي</p></div>`;
+  if (!items.length) return `<div class="pad changes">${notifCard()}</div><div class="empty">${I.bell}<p>لا توجد تحديثات حالياً</p><p class="sub">ستظهر هنا أي تغييرات في الأسعار أو حالة الأراضي</p></div>`;
   const fmtDay = (t) => new Date(t).toLocaleDateString('ar-AE', { weekday: 'long', day: 'numeric', month: 'long' });
   let html = '', last = '';
   const s = seen.get();
@@ -78,8 +78,64 @@ function changesPage() {
       <div class="cb"><b>قطعة ${esc(c.n)} · ${esc(c.projectName)}</b><span>${changeLine(c)}</span></div>
       <time>${new Date(c.t).toLocaleTimeString('ar-AE', { hour: 'numeric', minute: '2-digit' })}</time></div>`;
   }
-  return `<div class="pad changes">${html}</div>`;
+  return `<div class="pad changes">${notifCard()}${html}</div>`;
 }
+
+/* ---- push notifications ---- */
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const standalone = () => window.navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+const push = {
+  ready: false,
+  init() {
+    if (native || !('Notification' in window) || location.protocol !== 'https:') return;
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(async (OS) => {
+      try {
+        await OS.init({
+          appId: ONESIGNAL_APP_ID,
+          serviceWorkerPath: new URL('sw.js', location.href).pathname.slice(1),
+          serviceWorkerParam: { scope: new URL('./', location.href).pathname },
+          notifyButton: { enable: false }, autoResubscribe: true,
+        });
+        push.ready = true; push.os = OS;
+        OS.Notifications.addEventListener('permissionChange', () => setTimeout(push.render, 300));
+        OS.Notifications.addEventListener('click', () => { document.querySelector('[data-changes]')?.click(); });
+        push.render();
+      } catch (e) { console.warn('push', e); }
+    });
+  },
+  on() { return !!(push.os && push.os.Notifications.permission && push.os.User.PushSubscription.optedIn !== false); },
+  state() {
+    if (native) return 'native';
+    if (!('Notification' in window)) return isIOS && !standalone() ? 'install' : 'unsupported';
+    if (isIOS && !standalone()) return 'install';
+    if (Notification.permission === 'denied') return 'denied';
+    return push.on() ? 'on' : 'off';
+  },
+  async enable() {
+    const st = push.state();
+    if (st === 'install') { toast('أضف التطبيق إلى الشاشة الرئيسية أولاً ثم فعّل الإشعارات'); return; }
+    if (st === 'native') { openExternal(APP_URL + '#notify'); return; }
+    if (!push.os) { toast('لحظة… جارِ التحضير'); return; }
+    try { await push.os.Notifications.requestPermission(); await push.os.User.PushSubscription.optIn(); } catch { /* ignore */ }
+    push.render();
+    if (push.on()) toast('تم تفعيل الإشعارات ✓');
+    else if (Notification.permission === 'denied') toast('الإشعارات مرفوضة من إعدادات المتصفح');
+  },
+  render() {
+    const st = push.state();
+    document.querySelectorAll('.notif-card').forEach((el) => {
+      el.hidden = st === 'on' || st === 'unsupported';
+      const p = el.querySelector('p');
+      if (p) p.textContent = st === 'install' ? 'على الآيفون: أضف التطبيق للشاشة الرئيسية من زر المشاركة، ثم افتحه من الأيقونة وفعّل الإشعارات.'
+        : st === 'denied' ? 'الإشعارات مرفوضة — فعّلها من إعدادات المتصفح لهذا الموقع.'
+        : st === 'native' ? 'لاستقبال الإشعارات على الجوال افتح نسخة التطبيق في المتصفح وفعّلها.'
+        : 'يوصلك إشعار فوراً عند تغيّر سعر أو حالة أي أرض، أو نزول أرض جديدة.';
+      const b = el.querySelector('button'); if (b) b.hidden = st === 'install' || st === 'denied';
+    });
+  },
+};
+const notifCard = () => `<div class="notif-card" hidden>${I.bell}<div><b>فعّل إشعارات الأسعار</b><p></p></div><button class="btn gold" data-notify>تفعيل</button></div>`;
 
 /* ---- sharing ---- */
 function landShareText(l) {
@@ -196,6 +252,7 @@ function renderHome() {
         <div><b>${lands.filter((l) => l.status === 'sold').length || '—'}</b><span>تم بيعها</span></div>
       </div>
     </section>
+    ${notifCard()}
     ${cats.length ? `<div class="chips scroll">${cats.map((c) => `<button class="chip" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}
     <div class="sec-h"><h2>مشاريعنا</h2><button data-go="projects">عرض الكل</button></div>
     <div class="hscroll">${projects.length ? projects.map((p) => projectCard(p)).join('') : skeleton(2)}</div>
@@ -359,6 +416,7 @@ function pushPage(kind, id) {
   pg.innerHTML = `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${kind === 'project' ? 'المشروع' : kind === 'changes' ? 'آخر التحديثات' : 'تفاصيل الأرض'}</span>${kind === 'changes' ? '' : `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>`}</header><div class="scroller">${html}</div>`;
   document.body.appendChild(pg);
   if (p) renderList($('#projList', pg), p.lands.filter((x) => x.status === 'av').sort((a, b) => (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12))), landCard, 'لا توجد أراضٍ متاحة حالياً في هذا المشروع');
+  push.render();
   requestAnimationFrame(() => pg.classList.add('in'));
   stack.push(pg);
   history.pushState({ depth: stack.length }, '');
@@ -411,6 +469,7 @@ document.addEventListener('click', (e) => {
     else { const p = d.projects.find((x) => x.slug === id); if (p) shareText(`مشروع ${p.name}`, projectShareText(p)); }
     return;
   }
+  if (ds.notify !== undefined) { push.enable(); return; }
   if (ds.changes !== undefined) { pushPage('changes'); const top = getChanges()[0]; if (top) seen.set(top.t); updateBell(); return; }
   if (ds.back !== undefined) return goBack();
   if (ds.tab) {
@@ -455,7 +514,7 @@ document.querySelectorAll('.tab .scroller').forEach((sc) => {
 
 /* ================= boot ================= */
 function renderAll() {
-  renderHome(); updateBell(); renderLands(); renderProjects(); renderContact();
+  renderHome(); updateBell(); push.render(); renderLands(); renderProjects(); renderContact();
   if (current === 'favs') renderFavs();
 }
 let loading = null;
@@ -482,7 +541,9 @@ async function boot() {
     setTimeout(() => SplashScreen.hide({ fadeOutDuration: 250 }).catch(() => {}), 150);
   }
   if (!native) setupWebApp();
+  push.init(); push.render();
   await refresh(false);
+  if (location.hash === '#notify') { history.replaceState(null, '', location.pathname); setTimeout(() => push.enable(), 1200); }
   if (location.hash === '#updates') { history.replaceState(null, '', location.pathname); document.querySelector('[data-changes]')?.click(); }
 }
 
