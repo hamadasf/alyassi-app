@@ -1,6 +1,7 @@
 import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { Share } from '@capacitor/share';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { SITE, CONTACT, LOGO, EMBLEM } from './config.js';
 import { loadAll, loadFromCache, cached, favs, STATUS } from './data.js';
@@ -39,6 +40,33 @@ async function openExternal(url) {
   try { await InAppBrowser.openInExternalBrowser({ url }); } catch { location.href = url; }
 }
 
+/* ---- sharing ---- */
+function landShareText(l) {
+  const lines = [`🏡 قطعة رقم ${l.n} — مشروع ${l.projectName}`];
+  if (l.use) lines.push(`${l.use}${l.tag ? ' · ' + l.tag : ''}`);
+  if (l.ft) lines.push(`📐 المساحة: ${l.approx ? '≈ ' : ''}${money(l.ft)} قدم² (${money(l.m2)} م²)`);
+  if (l.floors) lines.push(`🏢 الارتفاع: ${l.floors}`);
+  if (l.status === 'sold') lines.push('الحالة: مباعة');
+  else lines.push(`💰 السعر: ${l.total ? money(l.total) + ' د.إ' : 'عند الاستفسار'}${l.status === 'res' ? ' (محجوزة)' : ''}`);
+  if (l.first && l.status !== 'sold') lines.push(`💳 دفعة أولى ${money(l.first)} د.إ + ${l.inst.length} أقساط`);
+  lines.push(`📍 على المخطط: ${landUrl(l)}`);
+  lines.push(`📞 واتساب: ${CONTACT.whatsappLabel}`);
+  lines.push('عمر الياسي للعقارات');
+  return lines.join('\n');
+}
+function projectShareText(p) {
+  return [`📍 مشروع ${p.name}${p.sub ? ' — ' + p.sub : ''}`, `${p.available} أرض متاحة`,
+    `المخطط التفاعلي: ${p.plan}`, `📞 واتساب: ${CONTACT.whatsappLabel}`, 'عمر الياسي للعقارات'].join('\n');
+}
+async function shareText(title, text) {
+  try {
+    if (native) { await Share.share({ title, text, dialogTitle: 'مشاركة' }); return; }
+    if (navigator.share) { await navigator.share({ title, text }); return; }
+  } catch (e) { if (e && (e.name === 'AbortError' || /cancel/i.test(e.message || ''))) return; }
+  try { await navigator.clipboard.writeText(text); toast('تم نسخ التفاصيل — الصقها في أي محادثة'); }
+  catch { openExternal('https://wa.me/?text=' + encodeURIComponent(text)); }
+}
+
 function toast(msg) {
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200);
@@ -61,6 +89,7 @@ function landCard(l) {
       <span class="badge ${st.cls}">${st.label}</span>
       ${l.featured && l.status === 'av' ? `<span class="badge star">${I.star} مميزة</span>` : ''}
       <button class="fav${fav ? ' on' : ''}" data-fav="${esc(l.id)}" aria-label="مفضلة">${I.heart}</button>
+      <button class="fav sh" data-share="land:${esc(l.id)}" aria-label="مشاركة">${I.share}</button>
     </div>
     <div class="body">
       <div class="row between"><h3>قطعة رقم ${esc(l.n)}</h3>${priceHTML(l)}</div>
@@ -194,7 +223,7 @@ function renderContact() {
     <section class="about"><img src="${EMBLEM}" alt=""><h2>عمر الياسي للعقارات</h2><p>نساعدك في اختيار الأرض المناسبة للتطوير أو الاستثمار في الشارقة، بخيارات تنافسية وخطط سداد مرنة.</p></section>
     <div class="clist">
       <a class="citem" href="tel:${CONTACT.phone}">${I.phone}<div><b>اتصل بنا</b><span dir="ltr">${CONTACT.phoneLabel}</span></div></a>
-      <a class="citem" href="${waLink('مرحباً، أرغب بالاستفسار عن الأراضي المتاحة')}" data-ext>${I.wa}<div><b>واتساب</b><span dir="ltr">${CONTACT.phoneLabel}</span></div></a>
+      <a class="citem" href="${waLink('مرحباً، أرغب بالاستفسار عن الأراضي المتاحة')}" data-ext>${I.wa}<div><b>واتساب</b><span dir="ltr">${CONTACT.whatsappLabel}</span></div></a>
       <a class="citem" href="tel:${CONTACT.office}">${I.office}<div><b>هاتف المكتب</b><span dir="ltr">${CONTACT.officeLabel}</span></div></a>
       <a class="citem" href="mailto:${CONTACT.email}">${I.mail}<div><b>البريد الإلكتروني</b><span>${CONTACT.email}</span></div></a>
       <div class="citem">${I.pin}<div><b>العنوان</b><span>${CONTACT.address}</span></div></div>
@@ -255,6 +284,7 @@ function landPage(l) {
         <div class="r total"><span>الإجمالي</span><b>${money(l.first + sumInst)} د.إ</b></div></div>` : ''}
       ${l.sketch && l.sketch !== l.img ? `<h2 class="h2">كروكي القطعة</h2><img class="sketch" src="${esc(l.sketch)}" alt="" loading="lazy" data-web="${esc(l.sketch)}">` : ''}
       <button class="btn primary block" data-plan="${esc(landUrl(l))}">${I.map} عرض القطعة على المخطط</button>
+      <button class="btn ghost block" data-share="land:${esc(l.id)}">${I.share} مشاركة تفاصيل الأرض</button>
       ${l.doc ? `<a class="btn ghost block" href="${esc(l.doc)}" data-ext>${I.pdf} مخطط القطعة (PDF)</a>` : ''}
     </div>
     <div class="bar">
@@ -282,7 +312,7 @@ function pushPage(kind, id) {
   else { l = d.lands.find((x) => x.id === id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
   pg.className = 'page' + (kind === 'land' ? ' has-bar' : '');
-  pg.innerHTML = `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${kind === 'project' ? 'المشروع' : 'تفاصيل الأرض'}</span></header><div class="scroller">${html}</div>`;
+  pg.innerHTML = `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${kind === 'project' ? 'المشروع' : 'تفاصيل الأرض'}</span><button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button></header><div class="scroller">${html}</div>`;
   document.body.appendChild(pg);
   if (p) renderList($('#projList', pg), p.lands.filter((x) => x.status === 'av').sort((a, b) => (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12))), landCard, 'لا توجد أراضٍ متاحة حالياً في هذا المشروع');
   requestAnimationFrame(() => pg.classList.add('in'));
@@ -329,6 +359,13 @@ document.addEventListener('click', (e) => {
     const href = t.getAttribute('href') || '';
     if (ds.ext !== undefined || /^https?:/.test(href)) { e.preventDefault(); openExternal(href); }
     return;  // tel: / mailto: handled by the system
+  }
+  if (ds.share) {
+    e.stopPropagation();
+    const [kind, ...rest] = ds.share.split(':'); const id = rest.join(':'); const d = DATA();
+    if (kind === 'land') { const l = d.lands.find((x) => x.id === id); if (l) shareText(`قطعة رقم ${l.n}`, landShareText(l)); }
+    else { const p = d.projects.find((x) => x.slug === id); if (p) shareText(`مشروع ${p.name}`, projectShareText(p)); }
+    return;
   }
   if (ds.back !== undefined) return goBack();
   if (ds.tab) {

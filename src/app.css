@@ -247,3 +247,6 @@ img { -webkit-user-drag: none; }
   .tab, .page { background: var(--bg); box-shadow: 0 0 0 1px var(--line), 0 20px 60px rgba(14,28,54,.12); }
   .a2hs { display: none; }
 }
+
+.share-top { margin-inline-start: auto; }
+.fav.sh { top: 52px; }

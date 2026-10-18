@@ -6,7 +6,8 @@ export const CONTACT = {
   phoneLabel: '056 500 0088',
   office: '+971568080655',         // هاتف المكتب (صفحة تواصل)
   officeLabel: '056 808 0655',
-  whatsapp: '971565000088',        // واتساب (بدون +)
+  whatsapp: '971568080655',        // واتساب (بدون +)
+  whatsappLabel: '056 808 0655',
   email: 'omaralyassi.realestate@gmail.com',
   address: 'الشارقة، شارع مليحة، مكتب رقم 2',
   instagram: 'https://www.instagram.com/omaralyassi.uae3',
