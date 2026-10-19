@@ -8,12 +8,27 @@ def trim(im):
     bb = im.getbbox(); return im.crop(bb) if bb else im
 logo, emblem = trim(logo), trim(emblem)
 logo.save('www/assets/logo.png'); emblem.save('www/assets/emblem.png')
+def gold_only(im):
+    """Crop to the gold calligraphy emblem only (drops a white/navy wordmark if the file has one)."""
+    px = im.load(); w, h = im.size
+    m = Image.new('L', im.size, 0); mp = m.load()
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a > 40 and r - b > 35 and r > 90: mp[x, y] = 255
+    bb = m.getbbox()
+    if not bb: return im
+    pad = int(max(bb[2] - bb[0], bb[3] - bb[1]) * .02)
+    return im.crop((max(0, bb[0] - pad), max(0, bb[1] - pad), min(w, bb[2] + pad), min(h, bb[3] + pad)))
+mark = gold_only(emblem)
 def place(src, size, frac, bg):
     c = Image.new('RGBA', (size, size), bg)
-    s = src.copy(); s.thumbnail((int(size * frac), int(size * frac)), Image.LANCZOS)
+    k = size * frac / max(src.width, src.height)   # scale up or down to fill the box
+    s = src.resize((max(1, round(src.width * k)), max(1, round(src.height * k))), Image.LANCZOS)
     c.alpha_composite(s, ((size - s.width) // 2, (size - s.height) // 2)); return c
-place(emblem, 1024, .78, (255, 255, 255, 255)).save('resources/icon-only.png')
-place(emblem, 1024, .56, (0, 0, 0, 0)).save('resources/icon-foreground.png')
+# big, clear emblem: fills the icon (adaptive foreground stays inside Android's safe zone)
+place(mark, 1024, .80, (255, 255, 255, 255)).save('resources/icon-only.png')
+place(mark, 1024, .52, (0, 0, 0, 0)).save('resources/icon-foreground.png')
 Image.new('RGBA', (1024, 1024), (255, 255, 255, 255)).save('resources/icon-background.png')
 for name in ('splash.png', 'splash-dark.png'):
     c = Image.new('RGBA', (2732, 2732), (14, 28, 54, 255))
