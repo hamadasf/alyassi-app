@@ -65,19 +65,20 @@ async function fetchPlan(p) {
   const cfg = plan.cfg || {};
   const types = cfg.types || DEFAULT_TYPES;
   const r1 = (v) => Math.round(v * 10) / 10;
-  const plots = (plan.plots || []).map((q) => [q.n, q.t, q.ft || 0, q.m2 || 0, q.d ? 1 : 0, q.d ? [q.d[0], q.d[1], q.ir ? 1 : 0] : null, Array.isArray(q.p) ? q.p.map((pt) => [r1(pt[0]), r1(pt[1])]) : null]);
+  const plots = (plan.plots || []).map((q) => [q.n, q.t, q.ft || 0, q.m2 || 0, q.d ? 1 : 0, q.d ? [q.d[0], q.d[1], q.ir ? 1 : 0] : null, Array.isArray(q.p) ? q.p.map((pt) => [r1(pt[0]), r1(pt[1])]) : null, q.c ? [r1(q.c[0]), r1(q.c[1])] : null, r1(q.r || 0)]);
   const bldImg = {};
   Object.keys(assets).forEach((k) => { if (/\.(jpe?g|png|webp)/.test(assets[k]) && k !== 'bg') bldImg[k] = assets[k]; });
   return {
     name: cfg.name || p.title, sub: cfg.sub || '', note: cfg.note || '',
     types, order: cfg.order || Object.keys(types), plots, bldImg,
     poster: p.poster || assets.reg || '',
-    map: plan.w && plan.h && assets.bg ? { w: plan.w, h: plan.h, bg: assets.bg } : null,   // project plan image + its coordinate space
+    // the project plan as the website draws it: aerial photo + line drawing (vector) in plan units
+    map: plan.w && plan.h && assets.bg ? { w: plan.w, h: plan.h, bg: assets.bg, bgRaw: assets.bgRaw || '', vec: assets.vec || '', vs: plan.vs || [], vq: plan.vq || 50 } : null,
   };
 }
 
 async function getPlan(p, force) {
-  const key = 'plan3:' + p.slug;
+  const key = 'plan4:' + p.slug;
   const c = cacheGet(key);
   if (!force && fresh(c, TTL.plan)) return c.d;
   try { const d = await fetchPlan(p); cacheSet(key, d); return d; }
@@ -124,7 +125,7 @@ function buildProject(p, plan, state) {
   const sp = (state && state.plots) || {};
   const bld = (state && state.bld) || {};
   // Only plots the company lists (present in the live state with a status) are shown — same as the website's «الأراضي» page.
-  const lands = plan.plots.filter(([n]) => sp[n] && sp[n].s).map(([n, t, ft, m2, exact, dims, poly]) => {
+  const lands = plan.plots.filter(([n]) => sp[n] && sp[n].s).map(([n, t, ft, m2, exact, dims, poly, pc, pr]) => {
     const s = sp[n];
     const ty = plan.types[t] || DEFAULT_TYPES[t] || { use: 'أرض' };
     const area = s.ft || ft;
@@ -139,7 +140,7 @@ function buildProject(p, plan, state) {
       floors: ty.floors || '', color: ty.c || [200, 200, 200], cat: category(ty.use),
       ft: Math.round(area || 0), m2: Math.round((s.ft ? s.ft / 10.7639 : m2) || 0), approx: !exact && !s.ft,
       ppf: s.ppf || 0, total, inst, first: inst.length && total ? Math.max(0, total - instSum) : 0, img, sketch,
-      ownImg: !!(s.img && s.img.u), doc: (s.doc && s.doc.u) || '', docId: (s.doc && s.doc.id) || 0, docTitle: (s.doc && s.doc.t) || '', dims: dims || null, poly: poly || null,
+      ownImg: !!(s.img && s.img.u), doc: (s.doc && s.doc.u) || '', docId: (s.doc && s.doc.id) || 0, docTitle: (s.doc && s.doc.t) || '', dims: dims || null, poly: poly || null, pc: pc || null, pr: pr || 0,
       lo: /^https:\/\//.test(s.lo || '') ? s.lo : '', projectLoc: (state && state.loc) || '',
     };
   }).map(typeImage);
@@ -212,7 +213,7 @@ export function loadFromCache() {
   const ic = cacheGet('index'); if (!ic) return null;
   const projects = [];
   for (const p of ic.d) {
-    const pc = cacheGet('plan3:' + p.slug); if (!pc) continue;
+    const pc = cacheGet('plan4:' + p.slug); if (!pc) continue;
     const sc = cacheGet('state:' + p.slug);
     projects.push(buildProject(p, pc.d, sc && sc.d));
   }

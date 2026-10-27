@@ -4,7 +4,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { cardModel, buildLandPdf } from './card.js';
-import { planLocHTML } from './planloc.js';
+import { paintPlanLoc } from './planloc.js';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
 import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen, offerFor } from './data.js';
@@ -202,30 +202,34 @@ const notifCard = () => `<div class="notif-card" hidden>${I.bell}<div><b>فعّ�
 function landModel(l) {
   const proj = DATA().projects.find((p) => p.slug === l.project);
   const m = cardModel(l, offerFor(l), l.projectLoc || (proj && proj.loc) || '');
-  m.map = (proj && proj.map) || null;
+  m.map = (proj && proj.map) || null; m.lands = proj ? proj.lands : [l];
   return m;
 }
 function landShareText(l, withPdf) {
   const m = landModel(l);
+  const proj = DATA().projects.find((p) => p.slug === l.project);
+  const projLoc = l.projectLoc || (proj && proj.loc) || '';
   const ST = { av: '✅ متاحة', res: '🟠 محجوزة', sold: '⛔ مباعة' };
+  const area = l.ft ? `${l.approx ? '≈ ' : ''}${money(l.ft)} قدم² (${money(l.m2)} م²)` : '';
   const L = [];
-  L.push(`*🏡 قطعة رقم ${l.n} · مشروع ${l.projectName}*`);
-  L.push(`الحالة: ${ST[l.status] || 'للاستفسار'}`);
+  L.push(`*🏡 قطعة رقم ${l.n}*`, `*المشروع:* ${l.projectName}`);
+  if (area) L.push(`*المساحة:* ${area}`);
+  L.push(`*الحالة:* ${ST[l.status] || 'للاستفسار'}`);
   if (m.offer) L.push(`🔥 *عرض لفترة محدودة* حتى ${dmy(m.offer.until)}${m.offer.note ? ` · ${m.offer.note}` : ''}`);
-  L.push('', '📐 *بيانات القطعة*'); m.info.slice(2).forEach((r) => L.push(`• ${r[0]}: ${r[1]}`));
-  if (m.terms.length) { L.push('', '📋 *شروط التخطيط*'); m.terms.forEach((r) => L.push(`• ${r[0]}: ${r[1]}`)); }
-  if (m.price) {
-    L.push('', `💰 *السعر الإجمالي: ${money(m.price)} درهم*${m.was ? ` بدلاً من ${money(m.was)}` : ''}${l.ppf && !(m.offer && m.offer.price) ? ` (سعر القدم ${money(l.ppf)} درهم)` : ''}`);
-  } else if (l.status === 'av') L.push('', '💰 السعر: عند الاستفسار');
+  if (m.price) L.push('', `💰 *السعر الإجمالي:* ${money(m.price)} درهم${m.was ? ` بدلاً من ${money(m.was)}` : ''}`);
+  else if (l.status === 'av') L.push('', '💰 *السعر:* عند الاستفسار');
   if (m.pay.length) {
-    L.push('', '🗓️ *خطة السداد*'); m.pay.forEach((r) => L.push(`• ${r[0]}: ${money(r[1])} درهم`));
+    L.push('', '🗓️ *الدفعات وتواريخها:*');
+    m.pay.forEach((r) => L.push(`• ${r[0]}: ${money(r[1])} درهم`));
   }
   L.push('');
-  if (withPdf && withPdf.hasPdf) L.push('📎 مرفق: بطاقة القطعة + مخطط الأرض (PDF)');
-  else { if (withPdf) L.push('📎 مرفق: بطاقة القطعة (PDF)'); if (l.doc) L.push('📎 مخطط الأرض (PDF):', l.doc); }
-  if (m.loc) L.push(`📍 ${l.lo ? 'موقع الأرض' : 'موقع المشروع'} على الخريطة:`, m.loc);
-  L.push('🗺️ القطعة على المخطط التفاعلي:', m.planUrl);
-  L.push('', `📞 للحجز: ${CONTACT.phoneLabel} · واتساب ${CONTACT.whatsappLabel}`, '*عمر الياسي للعقارات*');
+  if (projLoc) L.push('📍 *موقع المشروع على الخريطة:*', projLoc);
+  if (l.lo) L.push('📌 *موقع الأرض على الخريطة:*', l.lo);
+  L.push('🗺️ *موقع الأرض على المخطط التفاعلي:*', m.planUrl);
+  if (withPdf && withPdf.hasPdf) L.push('', '📎 مرفق: بطاقة القطعة + مخطط الأرض (PDF)');
+  else if (withPdf) { L.push('', '📎 مرفق: بطاقة القطعة (PDF)'); if (l.doc) L.push('مخطط الأرض:', l.doc); }
+  else if (l.doc) L.push('📎 *مخطط الأرض (PDF):*', l.doc);
+  L.push('', '*عمر الياسي للعقارات*');
   return L.join('\n');
 }
 
@@ -245,7 +249,13 @@ async function sendPdf(l, pdf) {
     return;
   }
   const file = new File([pdf.bytes], pdf.name, { type: 'application/pdf' });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title, text }); return; }
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    // WhatsApp on iPhone keeps only the file, so the details are also put on the clipboard to paste as a message
+    let copied = false; try { await navigator.clipboard.writeText(text); copied = true; } catch { /* ignore */ }
+    await navigator.share({ files: [file], title, text });
+    if (copied && isIOS) toast('تم نسخ التفاصيل كنص — الصقها في نفس المحادثة');
+    return;
+  }
   // desktop browsers: save the PDF and open WhatsApp with the text
   const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = pdf.name; a.click();
   openExternal('https://wa.me/?text=' + encodeURIComponent(text));
@@ -503,7 +513,7 @@ function landPage(l) {
   const sumInst = l.inst.reduce((a, x) => a + (+x[1] || 0), 0);
   const o = offerFor(l);
   const proj = DATA().projects.find((p) => p.slug === l.project);
-  const loc = planLocHTML(l, proj && proj.map, esc);
+  const loc = proj && proj.map && l.poly && l.poly.length > 2 ? '<canvas class="planloc-cv"></canvas>' : '';
   return `<div class="hero-img land${loc ? ' planloc' : ''}"${loc ? ` data-plan="${esc(landUrl(l))}"` : ''}>${loc || `<img src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">`}
       ${loc ? `<span class="planloc-cap">${I.map} موقع القطعة في مخطط المشروع · اضغط للتكبير</span>` : ''}
       <span class="badge ${st.cls}">${st.label}</span>
@@ -556,6 +566,7 @@ function pushPage(kind, id) {
   pg.className = 'page' + (kind === 'land' ? ' has-bar' : '');
   pg.innerHTML = `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${kind === 'project' ? 'المشروع' : kind === 'changes' ? 'آخر التحديثات' : 'تفاصيل الأرض'}</span>${kind === 'changes' ? '' : `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>`}</header><div class="scroller">${html}</div>`;
   document.body.appendChild(pg);
+  if (l && l.poly) { const cv = pg.querySelector('.planloc-cv'), proj = d.projects.find((x) => x.slug === l.project); if (cv && proj) requestAnimationFrame(() => paintPlanLoc(cv, l, proj.lands, proj.map).then(() => cv.classList.add('on')).catch(() => { const im = document.createElement('img'); im.src = l.img; im.alt = ''; cv.replaceWith(im); pg.querySelector('.planloc-cap')?.remove(); })); }
   if (p) renderList($('#projList', pg), p.lands.filter((x) => x.status === 'av').sort((a, b) => (!!offerFor(b) - !!offerFor(a)) || (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12))), landCard, 'لا توجد أراضٍ متاحة حالياً في هذا المشروع');
   push.render();
   requestAnimationFrame(() => pg.classList.add('in'));

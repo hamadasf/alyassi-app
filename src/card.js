@@ -2,7 +2,7 @@
 import { PDFDocument } from 'pdf-lib';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { SITE, LOGO } from './config.js';
-import { loadPlanImage, drawPlanLoc } from './planloc.js';
+import { loadPlan, drawPlanLoc } from './planloc.js';
 
 const native = Capacitor.isNativePlatform();
 const nf = new Intl.NumberFormat('en-US');
@@ -37,7 +37,7 @@ async function drawCard(m, { aspect = 1.414, planImg = null } = {}) {
   await Promise.all(['400', '500', '700', '800'].map((w) => document.fonts.load(`${w} 40px Tajawal`, 'عربي 123').catch(() => {})));
   const logo = await loadImg(LOGO);
   const rowH = 70;
-  const hasMap = !!(planImg && m.map && m.l.poly && m.l.poly.length > 2);
+  const hasMap = !!(planImg && m.map && m.l.poly && m.l.poly.length > 2);   // planImg = loaded plan files
   const fixed = 308 + 190 + (m.offer ? 150 : 0) + (m.price ? 210 : 80) + (m.pay.length ? 100 + (m.pay.length + 1) * rowH + 30 : 0) + 60;
   const target = Math.round(W * aspect);
   const mapH = hasMap ? Math.min(980, Math.max(460, target - fixed - 90)) : 0;
@@ -94,7 +94,8 @@ async function drawCard(m, { aspect = 1.414, planImg = null } = {}) {
     text('موقع القطعة في مخطط المشروع', R, y + 30, { w: 800, s: 40, col: NAVY });
     x.fillStyle = GOLD; x.fillRect(R - 90, y + 62, 90, 6);
     y += 90;
-    drawPlanLoc(x, planImg, m.l, m.map, { x: L, y, w: R - L, h: mapH }, `قطعة ${m.l.n}`);
+    drawPlanLoc(x, planImg, m.l, m.lands || [m.l], m.map, { x: L, y, w: R - L, h: mapH, radius: 24 });
+    x.lineWidth = 3; x.strokeStyle = '#e6e9ef'; x.beginPath(); x.roundRect(L, y, R - L, mapH, 24); x.stroke();
     y += mapH + 30;
   }
 
@@ -143,7 +144,7 @@ export async function buildLandPdf(m) {
   // the card page gets the same size as the plot plan's page, so both open at the same zoom
   let pw = 595.28, ph = 841.89;
   if (src) { try { const p0 = src.getPage(0); const sz = p0.getSize(); const rot = ((p0.getRotation().angle % 360) + 360) % 360; [pw, ph] = rot === 90 || rot === 270 ? [sz.height, sz.width] : [sz.width, sz.height]; } catch { /* keep A4 */ } }
-  const planImg = m.map && m.l.poly ? await loadPlanImage(m.l.project, m.map) : null;
+  const planImg = m.map && m.l.poly ? await loadPlan(m.l.project, m.map).catch(() => null) : null;
   const card = await drawCard(m, { aspect: Math.max(1.2, ph / pw), planImg });
   const doc = await PDFDocument.create();
   doc.setTitle(`قطعة ${m.l.n} - ${m.l.projectName}`); doc.setAuthor('عمر الياسي للعقارات'); doc.setCreator('Omar Al Yassi Real Estate');

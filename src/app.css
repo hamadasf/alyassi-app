@@ -312,7 +312,9 @@ img { -webkit-user-drag: none; }
 
 /* ---- plot location on the project plan (plot page hero) ---- */
 .hero-img.planloc { background: #fff; cursor: pointer; }
-.planloc-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.planloc-cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity .3s; }
+.planloc-cv.on { opacity: 1; }
+.hero-img.planloc { background: #efe9dd; }
 .planloc-cap { position: absolute; bottom: 10px; right: 10px; display: flex; align-items: center; gap: 6px; background: rgba(14, 28, 54, .85); color: #fff; font-size: 12.5px; font-weight: 700; padding: 6px 12px; border-radius: 999px; }
 .planloc-cap svg { width: 16px; height: 16px; }
 .btn.share-big { margin: 14px 0 6px; min-height: 58px; font-size: 17px; font-weight: 800; border-radius: 16px; box-shadow: 0 6px 16px rgba(31, 168, 85, .3); }
