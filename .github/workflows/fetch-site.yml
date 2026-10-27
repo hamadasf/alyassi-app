@@ -1,0 +1,20 @@
+name: Fetch site plan code (reference)
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download
+        run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36"
+          mkdir ref && cd ref
+          curl -fsSL -A "$UA" -o app.js "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/app.js"
+          curl -fsSL -A "$UA" -o plan.html "https://omaralyassirealestate.com/dabdaba-north/"
+          ls -la
+      - name: Push to ref branch
+        run: |
+          cd ref && git init -q -b site-ref && git add -A
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm ref
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" site-ref
