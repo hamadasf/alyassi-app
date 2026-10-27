@@ -319,3 +319,5 @@ img { -webkit-user-drag: none; }
 .planloc-cap svg { width: 16px; height: 16px; }
 .btn.share-big { margin: 14px 0 6px; min-height: 58px; font-size: 17px; font-weight: 800; border-radius: 16px; box-shadow: 0 6px 16px rgba(31, 168, 85, .3); }
 .btn.share-big svg { width: 24px; height: 24px; }
+.card.proj .btn.pshare { margin-top: 12px; min-height: 50px; font-size: 15.5px; font-weight: 800; border-radius: 14px; }
+.card.proj .btn.pshare svg { width: 22px; height: 22px; }

@@ -1,4 +1,4 @@
-import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core';
+import { Capacitor, CapacitorHttp, SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { Share } from '@capacitor/share';
@@ -241,8 +241,8 @@ function landPdf(l) {
   return pdfCache.get(key);
 }
 const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
-async function sendPdf(l, pdf) {
-  const text = landShareText(l, pdf), title = `قطعة رقم ${l.n}`;
+function sendPdf(l, pdf) { return shareFile(pdf, landShareText(l, pdf), `قطعة رقم ${l.n}`); }
+async function shareFile(pdf, text, title) {
   if (native) {
     const w = await Filesystem.writeFile({ path: pdf.name, data: b64(pdf.bytes), directory: Directory.Cache });
     await Share.share({ title, text, files: [w.uri], dialogTitle: 'إرسال عبر واتساب' });
@@ -288,9 +288,72 @@ function openShareSheet(l) {
     catch (e) { if (!(e && (e.name === 'AbortError' || /cancel/i.test(e.message || '')))) toast('تعذّر فتح المشاركة'); }
   };
 }
-function projectShareText(p) {
-  return [`📍 مشروع ${p.name}${p.sub ? ' — ' + p.sub : ''}`, `${p.available} أرض متاحة`,
-    `المخطط التفاعلي: ${p.plan}`, `📞 واتساب: ${CONTACT.whatsappLabel}`, 'عمر الياسي للعقارات'].join('\n');
+function projectShareText(p, withPdf) {
+  const L = [`*📍 مشروع ${p.name}*`];
+  if (p.sub) L.push(p.sub);
+  L.push('', `✅ *${p.available}* أرض متاحة${p.reserved ? ` · ${p.reserved} محجوزة` : ''}${p.sold ? ` · ${p.sold} مباعة` : ''}`);
+  const uses = [...new Set(p.lands.filter((l) => l.status === 'av').map((l) => l.use).filter(Boolean))];
+  if (uses.length) L.push(`🏗️ ${uses.join(' · ')}`);
+  L.push('');
+  if (p.loc) L.push('📍 *موقع المشروع على الخريطة:*', p.loc);
+  L.push('🗺️ *المخطط التفاعلي:*', p.plan);
+  if (withPdf) L.push('', '📎 مرفق: ملف المخطط الكامل (PDF)');
+  L.push('', '*عمر الياسي للعقارات*');
+  return L.join('\n');
+}
+
+/* ---- full project PDF: made by the website's own «تحميل ملف المشروع» and published next to the app ---- */
+const projPdfCache = new Map();
+async function fetchAppFile(path) {
+  const url = new URL(path, native ? APP_URL : location.href).href;
+  if (native) {
+    const r = await CapacitorHttp.request({ url, method: 'GET', responseType: 'arraybuffer', readTimeout: 60000, connectTimeout: 15000 });
+    if (r.status >= 300) throw new Error('HTTP ' + r.status);
+    return typeof r.data === 'string' ? Uint8Array.from(atob(r.data), (c) => c.charCodeAt(0)) : new Uint8Array(r.data);
+  }
+  const r = await fetch(url, { cache: 'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return new Uint8Array(await r.arrayBuffer());
+}
+function projectPdf(p) {
+  if (!projPdfCache.has(p.slug)) {
+    projPdfCache.set(p.slug, (async () => {
+      const idx = JSON.parse(new TextDecoder().decode(await fetchAppFile('pdf/index.json?t=' + Date.now())));
+      const e = idx[p.slug]; if (!e) throw new Error('none');
+      const bytes = await fetchAppFile(`pdf/${encodeURIComponent(p.slug)}.pdf?v=${e.v || ''}`);
+      if (String.fromCharCode(...bytes.subarray(0, 5)) !== '%PDF-') throw new Error('bad');
+      return { bytes, name: `مخطط ${p.name.replace(/[\\/:*?"<>|]+/g, ' ').trim()}.pdf`, size: bytes.length };
+    })().catch((e) => { projPdfCache.delete(p.slug); throw e; }));
+  }
+  return projPdfCache.get(p.slug);
+}
+function openProjectShare(p) {
+  document.querySelector('.ssheet')?.remove();
+  const el = document.createElement('div'); el.className = 'ssheet';
+  el.innerHTML = `<div class="ss-scrim" data-ssclose></div><div class="ss-box">
+    <div class="ss-grip"></div>
+    <h3>مشاركة مشروع ${esc(p.name)}</h3>
+    <p class="ss-sub">ملف المخطط الكامل PDF — نفس ملف «تحميل ملف المشروع» في الموقع، بالحالات والأرقام المحدّثة</p>
+    <div class="ss-state"><i class="spin"></i><span>جارِ تجهيز ملف المشروع…</span></div>
+    <button class="btn wa block" data-sspdf disabled>${I.wa} إرسال ملف المشروع PDF</button>
+    <button class="btn ghost block" data-sstext>${I.share} إرسال النص فقط</button>
+  </div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('open'));
+  const close = () => { el.classList.remove('open'); setTimeout(() => el.remove(), 250); };
+  el.querySelector('[data-ssclose]').onclick = close;
+  el.querySelector('[data-sstext]').onclick = () => { close(); shareText(`مشروع ${p.name}`, projectShareText(p, false)); };
+  const btn = el.querySelector('[data-sspdf]'), st = el.querySelector('.ss-state');
+  let ready = null;
+  projectPdf(p).then((pdf) => {
+    ready = pdf; btn.disabled = false;
+    st.innerHTML = `<b class="ok">✓</b><span>ملف المشروع جاهز (${(pdf.size / 1048576).toFixed(1)} MB)</span>`;
+  }).catch(() => { st.innerHTML = '<span>ملف المشروع غير متوفر الآن — يمكنك إرسال النص مع رابط المخطط</span>'; });
+  btn.onclick = async () => {
+    if (!ready) return;
+    try { await shareFile(ready, projectShareText(p, true), `مشروع ${p.name}`); close(); }
+    catch (e) { if (!(e && (e.name === 'AbortError' || /cancel/i.test(e.message || '')))) toast('تعذّر فتح المشاركة'); }
+  };
 }
 async function shareText(title, text) {
   try {
@@ -348,7 +411,8 @@ function projectCard(p, wide) {
   return `<article class="card proj${wide ? ' wide' : ''}" data-project="${esc(p.slug)}">
     <div class="ph"><img loading="lazy" decoding="async" src="${esc(p.poster)}" alt="" onerror="this.style.opacity=0">
       <span class="badge av">${p.available} متاحة</span></div>
-    <div class="body"><h3>${esc(p.name)}</h3>${p.sub ? `<div class="meta">${I.pin}<span>${esc(p.sub)}</span></div>` : ''}</div>
+    <div class="body"><h3>${esc(p.name)}</h3>${p.sub ? `<div class="meta">${I.pin}<span>${esc(p.sub)}</span></div>` : ''}
+      ${wide ? `<button class="btn wa block pshare" data-pshare="${esc(p.slug)}">${I.wa} مشاركة المشروع PDF</button>` : ''}</div>
   </article>`;
 }
 
@@ -493,6 +557,7 @@ function projectPage(p) {
   return `<div class="hero-img" data-plan="${esc(p.plan)}"><img src="${esc(p.poster)}" alt=""><span class="open-plan">${I.map} افتح المخطط التفاعلي</span></div>
     <div class="pad">
       <h1>${esc(p.name)}</h1>${p.sub ? `<div class="meta">${I.pin}<span>${esc(p.sub)}</span></div>` : ''}
+      <button class="btn wa block share-big" data-pshare="${esc(p.slug)}">${I.wa} مشاركة المشروع PDF</button>
       <div class="stat3"><div class="av"><b>${p.available}</b>متاحة</div><div class="res"><b>${p.reserved}</b>محجوزة</div><div class="sold"><b>${p.sold}</b>مباعة</div></div>
       <div class="grid2">
         <button class="btn primary" data-plan="${esc(p.plan)}">${I.map} المخطط التفاعلي</button>
@@ -618,9 +683,10 @@ document.addEventListener('click', (e) => {
     e.stopPropagation();
     const [kind, ...rest] = ds.share.split(':'); const id = rest.join(':'); const d = DATA();
     if (kind === 'land') { const l = d.lands.find((x) => x.id === id); if (l) openShareSheet(l); }
-    else { const p = d.projects.find((x) => x.slug === id); if (p) shareText(`مشروع ${p.name}`, projectShareText(p)); }
+    else { const p = d.projects.find((x) => x.slug === id); if (p) openProjectShare(p); }
     return;
   }
+  if (ds.pshare) { e.stopPropagation(); const p = DATA().projects.find((x) => x.slug === ds.pshare); if (p) openProjectShare(p); return; }
   if (ds.notify !== undefined) { push.enable(); return; }
   if (ds.changes !== undefined) { pushPage('changes'); const top = getChanges()[0]; if (top) seen.set(top.t); updateBell(); return; }
   if (ds.back !== undefined) return goBack();

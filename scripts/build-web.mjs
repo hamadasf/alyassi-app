@@ -36,7 +36,7 @@ self.addEventListener('install', (e) => { self.skipWaiting(); e.waitUntil(caches
 self.addEventListener('activate', (e) => e.waitUntil(caches.keys().then((k) => Promise.all(k.filter((x) => x !== C).map((x) => caches.delete(x)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', (e) => {
   const u = new URL(e.request.url);
-  if (e.request.method !== 'GET' || u.origin !== location.origin || u.pathname.endsWith('data.json')) return;
+  if (e.request.method !== 'GET' || u.origin !== location.origin || u.pathname.endsWith('data.json') || u.pathname.includes('/pdf/')) return;   // data and project PDFs: always from the network
   const put = (res) => { if (res.ok) { const cp = res.clone(); caches.open(C).then((c) => c.put(e.request, cp)); } return res; };
   // pages: always try the network first so updates show up right away; versioned files: cache first
   if (e.request.mode === 'navigate' || u.pathname.endsWith('/') || u.pathname.endsWith('.html') || u.pathname.endsWith('sw.js')) {
