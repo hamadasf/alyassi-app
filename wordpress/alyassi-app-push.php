@@ -262,7 +262,9 @@ function oay_ajax_img() {
 	$slug  = isset( $_GET['project'] ) ? sanitize_key( wp_unslash( $_GET['project'] ) ) : '';
 	$kinds = array( 'bg' => array( 'bg.jpg', 'image/jpeg' ), 'bgraw' => array( 'bg.bin', 'application/octet-stream' ), 'vec' => array( 'vec.bin', 'application/octet-stream' ) );
 	$kind  = isset( $_GET['kind'], $kinds[ $_GET['kind'] ] ) ? $_GET['kind'] : 'bg';
-	$file  = $slug ? WP_PLUGIN_DIR . '/alyassi-dabdaba-plan/assets/p/' . $slug . '/' . $kinds[ $kind ][0] : '';
+	$dir   = $slug ? WP_PLUGIN_DIR . '/alyassi-dabdaba-plan/assets/p/' . $slug . '/' : '';
+	$file  = $dir ? $dir . $kinds[ $kind ][0] : '';
+	if ( 'vec' === $kind && $dir && ! is_readable( $file ) ) { $file = $dir . 'vec.z'; }   // most plans keep the drawing gzip-compressed; the app unpacks it
 	if ( ! $file || ! is_readable( $file ) ) { status_header( 404 ); exit; }
 	header( 'Access-Control-Allow-Origin: *' );
 	header( 'Content-Type: ' . $kinds[ $kind ][1] );

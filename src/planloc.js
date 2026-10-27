@@ -58,6 +58,14 @@ function decodeVec(u, VQ) {
   return { n, st, o0, p0, bb, ops, xy, end };
 }
 
+// vec.z files are gzip: unpack with the browser's own decompressor
+async function gunzipIfNeeded(u8) {
+  if (!(u8[0] === 0x1f && u8[1] === 0x8b)) return u8;
+  if (typeof DecompressionStream !== 'function') throw new Error('gz');
+  const buf = await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  return new Uint8Array(buf);
+}
+
 const cache = new Map();
 /** { img, V, VS } for a project — aerial photo (full size when available) and decoded line drawing. */
 export function loadPlan(project, map) {
@@ -71,7 +79,7 @@ export function loadPlan(project, map) {
       let img = await bytesToImg(raw);
       if (!img) img = await bytesToImg(await getBytes(project, 'bg', map.bg).catch(() => null));
       let V = null;
-      try { if (vec) V = decodeVec(vec, map.vq || 50); } catch { V = null; }
+      try { if (vec) V = decodeVec(await gunzipIfNeeded(vec), map.vq || 50); } catch { V = null; }
       const VS = (map.vs || []).map((s) => Object.assign({ css: `rgb(${s.c.join(',')})` }, s));
       if (!img && !V) throw new Error('plan');
       return { img, V, VS };

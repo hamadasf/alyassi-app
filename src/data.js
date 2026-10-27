@@ -73,7 +73,7 @@ async function fetchPlan(p) {
     types, order: cfg.order || Object.keys(types), plots, bldImg,
     poster: p.poster || assets.reg || '',
     // the project plan as the website draws it: aerial photo + line drawing (vector) in plan units
-    map: plan.w && plan.h && assets.bg ? { w: plan.w, h: plan.h, bg: assets.bg, bgRaw: assets.bgRaw || '', vec: assets.vec || '', vs: plan.vs || [], vq: plan.vq || 50 } : null,
+    map: plan.w && plan.h && assets.bg ? { w: plan.w, h: plan.h, bg: assets.bg, bgRaw: assets.bgRaw || '', vec: assets.vec || assets.vecz || '', vs: plan.vs || [], vq: plan.vq || 50 } : null,
   };
 }
 
