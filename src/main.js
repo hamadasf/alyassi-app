@@ -4,6 +4,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { cardModel, buildLandPdf } from './card.js';
+import { planLocHTML } from './planloc.js';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
 import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen, offerFor } from './data.js';
@@ -200,7 +201,9 @@ const notifCard = () => `<div class="notif-card" hidden>${I.bell}<div><b>فعّ�
 // organised WhatsApp message (same facts as the PDF card)
 function landModel(l) {
   const proj = DATA().projects.find((p) => p.slug === l.project);
-  return cardModel(l, offerFor(l), l.projectLoc || (proj && proj.loc) || '');
+  const m = cardModel(l, offerFor(l), l.projectLoc || (proj && proj.loc) || '');
+  m.map = (proj && proj.map) || null;
+  return m;
 }
 function landShareText(l, withPdf) {
   const m = landModel(l);
@@ -499,12 +502,16 @@ function landPage(l) {
   const fav = favs.has(l.id);
   const sumInst = l.inst.reduce((a, x) => a + (+x[1] || 0), 0);
   const o = offerFor(l);
-  return `<div class="hero-img land"><img src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">
+  const proj = DATA().projects.find((p) => p.slug === l.project);
+  const loc = planLocHTML(l, proj && proj.map, esc);
+  return `<div class="hero-img land${loc ? ' planloc' : ''}"${loc ? ` data-plan="${esc(landUrl(l))}"` : ''}>${loc || `<img src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">`}
+      ${loc ? `<span class="planloc-cap">${I.map} موقع القطعة في مخطط المشروع · اضغط للتكبير</span>` : ''}
       <span class="badge ${st.cls}">${st.label}</span>
       <button class="fav big${fav ? ' on' : ''}" data-fav="${esc(l.id)}" aria-label="مفضلة">${I.heart}</button></div>
     <div class="pad">
       <div class="row between"><h1>قطعة رقم ${esc(l.n)}</h1>${l.featured && l.status === 'av' ? `<span class="badge star inline">${I.star} مميزة</span>` : ''}</div>
       <button class="meta link" data-project="${esc(l.project)}">${I.pin}<span>مشروع ${esc(l.projectName)}</span></button>
+      <button class="btn wa block share-big" data-share="land:${esc(l.id)}">${I.wa} مشاركة التفاصيل + مخطط الأرض PDF</button>
       ${o ? `<div class="ofr-box"><b>🔥 عرض لفترة محدودة</b>${o.note ? `<span>${esc(o.note)}</span>` : ''}<div class="ofr-t2">⏳ <span data-until="${o.until}">${leftText(o.until)}</span> · حتى ${dmy(o.until)}</div></div>` : ''}
       <div class="pricebox">${priceHTML(l, true)}${l.ppf && l.status !== 'sold' ? `<span>سعر القدم ${money(l.ppf)} د.إ</span>` : ''}</div>
       <div class="spec-grid">
@@ -519,7 +526,6 @@ function landPage(l) {
         <div class="r total"><span>الإجمالي</span><b>${money(l.first + sumInst)} د.إ</b></div></div>` : ''}
       ${l.sketch && l.sketch !== l.img ? `<h2 class="h2">كروكي القطعة</h2><img class="sketch" src="${esc(l.sketch)}" alt="" loading="lazy" data-web="${esc(l.sketch)}">` : ''}
       <button class="btn primary block" data-plan="${esc(landUrl(l))}">${I.map} عرض القطعة على المخطط</button>
-      <button class="btn wa block" data-share="land:${esc(l.id)}">${I.wa} مشاركة التفاصيل + مخطط الأرض PDF</button>
       ${l.doc ? `<a class="btn ghost block" href="${esc(l.doc)}" data-ext>${I.pdf} مخطط القطعة (PDF)</a>` : ''}
     </div>
     <div class="bar">

@@ -255,3 +255,18 @@ function oay_ajax_doc() {
 }
 add_action( 'wp_ajax_oay_doc', 'oay_ajax_doc' );
 add_action( 'wp_ajax_nopriv_oay_doc', 'oay_ajax_doc' );
+
+/* Project plan image (bg.jpg of the interactive plan) with CORS, so the app can draw the plot's location on its share card. */
+function oay_ajax_img() {
+	$slug = isset( $_GET['project'] ) ? sanitize_key( wp_unslash( $_GET['project'] ) ) : '';
+	$file = $slug ? WP_PLUGIN_DIR . '/alyassi-dabdaba-plan/assets/p/' . $slug . '/bg.jpg' : '';
+	if ( ! $file || ! is_readable( $file ) ) { status_header( 404 ); exit; }
+	header( 'Access-Control-Allow-Origin: *' );
+	header( 'Content-Type: image/jpeg' );
+	header( 'Content-Length: ' . filesize( $file ) );
+	header( 'Cache-Control: public, max-age=3600' );
+	readfile( $file );
+	exit;
+}
+add_action( 'wp_ajax_oay_img', 'oay_ajax_img' );
+add_action( 'wp_ajax_nopriv_oay_img', 'oay_ajax_img' );
