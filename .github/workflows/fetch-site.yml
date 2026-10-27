@@ -12,6 +12,10 @@ jobs:
           mkdir ref && cd ref
           curl -fsSL -A "$UA" -o app.js "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/app.js"
           curl -fsSL -A "$UA" -o plan.html "https://omaralyassirealestate.com/dabdaba-north/"
+          curl -fsSL -A "$UA" -o bg.bin "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/p/dabdaba-north/bg.bin"
+          curl -fsSL -A "$UA" -o bg.jpg "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/p/dabdaba-north/bg.jpg"
+          curl -fsSL -A "$UA" -o vec.bin "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/p/dabdaba-north/vec.bin"
+          curl -fsSL -A "$UA" -o state.json "https://omaralyassirealestate.com/wp-admin/admin-ajax.php?action=dn_state&project=dabdaba-north"
           curl -fsSL -A "$UA" -o app.css "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/app.css"
           ls -la
       - name: Push to ref branch
