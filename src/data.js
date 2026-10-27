@@ -137,7 +137,7 @@ function buildProject(p, plan, state) {
       floors: ty.floors || '', color: ty.c || [200, 200, 200], cat: category(ty.use),
       ft: Math.round(area || 0), m2: Math.round((s.ft ? s.ft / 10.7639 : m2) || 0), approx: !exact && !s.ft,
       ppf: s.ppf || 0, total, inst, first: inst.length && total ? Math.max(0, total - instSum) : 0, img, sketch,
-      ownImg: !!(s.img && s.img.u), doc: (s.doc && s.doc.u) || '', docTitle: (s.doc && s.doc.t) || '', dims: dims || null,
+      ownImg: !!(s.img && s.img.u), doc: (s.doc && s.doc.u) || '', docId: (s.doc && s.doc.id) || 0, docTitle: (s.doc && s.doc.t) || '', dims: dims || null,
       lo: /^https:\/\//.test(s.lo || '') ? s.lo : '', projectLoc: (state && state.loc) || '',
     };
   }).map(typeImage);
@@ -171,6 +171,7 @@ async function loadSnapshot() {
       p.lands.forEach((l) => {
         const s = sp[l.n]; if (!s || !s.s) return;
         l.status = s.s; l.featured = !!s.fe;
+        if (s.doc && s.doc.u) { l.doc = s.doc.u; l.docId = s.doc.id || 0; }
         const total = s.total || (s.ppf && l.ft ? Math.round(s.ppf * l.ft) : 0);
         l.total = total; l.ppf = s.ppf || 0;
         l.inst = Array.isArray(s.inst) ? s.inst : [];

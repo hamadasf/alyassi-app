@@ -236,3 +236,22 @@ function oay_offers_page() {
 	}
 	echo '</div>';
 }
+
+/* ================= Plot PDF for the app's share card =================
+ * The iPhone (web) app cannot read files from another site, so the plot PDF is served here with CORS.
+ * Only PDF attachments are served. */
+function oay_ajax_doc() {
+	$id = isset( $_GET['id'] ) ? absint( $_GET['id'] ) : 0;
+	$post = $id ? get_post( $id ) : null;
+	if ( ! $post || 'attachment' !== $post->post_type || 'application/pdf' !== get_post_mime_type( $post ) ) { status_header( 404 ); exit; }
+	$file = get_attached_file( $id );
+	if ( ! $file || ! is_readable( $file ) || filesize( $file ) > 30 * MB_IN_BYTES ) { status_header( 404 ); exit; }
+	header( 'Access-Control-Allow-Origin: *' );
+	header( 'Content-Type: application/pdf' );
+	header( 'Content-Length: ' . filesize( $file ) );
+	header( 'Cache-Control: public, max-age=3600' );
+	readfile( $file );
+	exit;
+}
+add_action( 'wp_ajax_oay_doc', 'oay_ajax_doc' );
+add_action( 'wp_ajax_nopriv_oay_doc', 'oay_ajax_doc' );

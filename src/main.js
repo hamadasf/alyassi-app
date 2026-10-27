@@ -2,6 +2,8 @@ import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { cardModel, buildLandPdf } from './card.js';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
 import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen, offerFor } from './data.js';
@@ -195,33 +197,83 @@ function openFromPush(ev) {
 const notifCard = () => `<div class="notif-card" hidden>${I.bell}<div><b>فعّل إشعارات الأسعار</b><p></p></div><button class="btn gold" data-notify>تفعيل</button></div>`;
 
 /* ---- sharing ---- */
-// same text as the «مشاركة» button on the website's plan
-function landShareText(l) {
-  const ST = { av: 'متاحة', res: 'محجوزة', sold: 'مباعة' };
-  const dstr = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); return m ? `${m[1]}/${+m[2]}/${+m[3]}` : ''; };
+// organised WhatsApp message (same facts as the PDF card)
+function landModel(l) {
+  const proj = DATA().projects.find((p) => p.slug === l.project);
+  return cardModel(l, offerFor(l), l.projectLoc || (proj && proj.loc) || '');
+}
+function landShareText(l, withPdf) {
+  const m = landModel(l);
+  const ST = { av: '✅ متاحة', res: '🟠 محجوزة', sold: '⛔ مباعة' };
   const L = [];
-  L.push(`مخطط ${l.projectName} · قطعة رقم ${l.n}`);
+  L.push(`*🏡 قطعة رقم ${l.n} · مشروع ${l.projectName}*`);
   L.push(`الحالة: ${ST[l.status] || 'للاستفسار'}`);
-  const o = offerFor(l);
-  if (o) L.push(`🔥 عرض لفترة محدودة حتى ${dmy(o.until)}${offerPrice(l, o) ? `: بسعر ${money(offerPrice(l, o))} درهم` : ''}${offerWas(l, o) ? ` بدلاً من ${money(offerWas(l, o))} درهم` : ''}${o.note ? ` · ${o.note}` : ''}`);
-  L.push(`الاستخدام: ${l.use}${l.floors ? ` (${l.floors})` : ''}${l.loc ? ` · ${l.loc}` : ''}`);
-  if (l.ft) L.push(`المساحة: ${l.approx ? '≈ ' : ''}${money(l.ft)} قدم² (${money(l.m2)} م²)`);
-  if (l.dims) L.push(`الأبعاد: ${l.dims[2] ? '≈ ' : ''}${(+l.dims[0]).toFixed(2)} × ${(+l.dims[1]).toFixed(2)} م`);
-  if (l.status === 'av' && l.total) {
-    L.push(`السعر الإجمالي: ${money(l.total)} درهم${l.ppf ? ` (سعر القدم ${money(l.ppf)} درهم)` : ''}`);
-    if (l.inst.length) {
-      L.push(`الدفعة المقدمة: ${money(l.first)} درهم`);
-      l.inst.forEach((x) => L.push(`قسط ${dstr(x[0])}: ${money(+x[1] || 0)} درهم`));
-    }
+  if (m.offer) L.push(`🔥 *عرض لفترة محدودة* حتى ${dmy(m.offer.until)}${m.offer.note ? ` · ${m.offer.note}` : ''}`);
+  L.push('', '📐 *بيانات القطعة*'); m.info.slice(2).forEach((r) => L.push(`• ${r[0]}: ${r[1]}`));
+  if (m.terms.length) { L.push('', '📋 *شروط التخطيط*'); m.terms.forEach((r) => L.push(`• ${r[0]}: ${r[1]}`)); }
+  if (m.price) {
+    L.push('', `💰 *السعر الإجمالي: ${money(m.price)} درهم*${m.was ? ` بدلاً من ${money(m.was)}` : ''}${l.ppf && !(m.offer && m.offer.price) ? ` (سعر القدم ${money(l.ppf)} درهم)` : ''}`);
+  } else if (l.status === 'av') L.push('', '💰 السعر: عند الاستفسار');
+  if (m.pay.length) {
+    L.push('', '🗓️ *خطة السداد*'); m.pay.forEach((r) => L.push(`• ${r[0]}: ${money(r[1])} درهم`));
   }
   L.push('');
-  L.push('التفاصيل وموقع القطعة على المخطط:'); L.push(landUrl(l));
-  if (l.doc) { L.push('مخطط الأرض (PDF):'); L.push(l.doc); }
-  const proj = DATA().projects.find((p) => p.slug === l.project);
-  const loc = l.lo || l.projectLoc || (proj && proj.loc) || '';
-  if (loc) { L.push(l.lo ? 'موقع الأرض على الخريطة:' : 'موقع المشروع على الخريطة:'); L.push(loc); }
-  L.push('عمر الياسي للعقارات');
+  if (withPdf && withPdf.hasPdf) L.push('📎 مرفق: بطاقة القطعة + مخطط الأرض (PDF)');
+  else { if (withPdf) L.push('📎 مرفق: بطاقة القطعة (PDF)'); if (l.doc) L.push('📎 مخطط الأرض (PDF):', l.doc); }
+  if (m.loc) L.push(`📍 ${l.lo ? 'موقع الأرض' : 'موقع المشروع'} على الخريطة:`, m.loc);
+  L.push('🗺️ القطعة على المخطط التفاعلي:', m.planUrl);
+  L.push('', `📞 للحجز: ${CONTACT.phoneLabel} · واتساب ${CONTACT.whatsappLabel}`, '*عمر الياسي للعقارات*');
   return L.join('\n');
+}
+
+/* ---- share sheet: complete PDF card (details + plot plan) ---- */
+const pdfCache = new Map();
+function landPdf(l) {
+  const key = l.id + '|' + l.status + '|' + l.total + '|' + (offerFor(l) ? offerFor(l).until : '');
+  if (!pdfCache.has(key)) pdfCache.set(key, buildLandPdf(landModel(l)).catch((e) => { pdfCache.delete(key); throw e; }));
+  return pdfCache.get(key);
+}
+const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+async function sendPdf(l, pdf) {
+  const text = landShareText(l, pdf), title = `قطعة رقم ${l.n}`;
+  if (native) {
+    const w = await Filesystem.writeFile({ path: pdf.name, data: b64(pdf.bytes), directory: Directory.Cache });
+    await Share.share({ title, text, files: [w.uri], dialogTitle: 'إرسال عبر واتساب' });
+    return;
+  }
+  const file = new File([pdf.bytes], pdf.name, { type: 'application/pdf' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title, text }); return; }
+  // desktop browsers: save the PDF and open WhatsApp with the text
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = pdf.name; a.click();
+  openExternal('https://wa.me/?text=' + encodeURIComponent(text));
+}
+function openShareSheet(l) {
+  document.querySelector('.ssheet')?.remove();
+  const el = document.createElement('div'); el.className = 'ssheet';
+  el.innerHTML = `<div class="ss-scrim" data-ssclose></div><div class="ss-box">
+    <div class="ss-grip"></div>
+    <h3>مشاركة تفاصيل القطعة ${esc(l.n)}</h3>
+    <p class="ss-sub">بطاقة كاملة: التفاصيل، شروط التخطيط، السعر والدفعات مع تواريخها${l.doc ? '، ومخطط الأرض PDF' : ''} — في ملف واحد</p>
+    <div class="ss-state"><i class="spin"></i><span>جارِ تجهيز الملف…</span></div>
+    <button class="btn wa block" data-sspdf disabled>${I.wa} إرسال البطاقة + المخطط PDF</button>
+    <button class="btn ghost block" data-sstext>${I.share} إرسال النص فقط</button>
+  </div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('open'));
+  const close = () => { el.classList.remove('open'); setTimeout(() => el.remove(), 250); };
+  el.querySelector('[data-ssclose]').onclick = close;
+  el.querySelector('[data-sstext]').onclick = () => { close(); shareText(`قطعة رقم ${l.n}`, landShareText(l, false)); };
+  const btn = el.querySelector('[data-sspdf]'), st = el.querySelector('.ss-state');
+  let ready = null;
+  landPdf(l).then((pdf) => {
+    ready = pdf; btn.disabled = false;
+    st.innerHTML = `<b class="ok">✓</b><span>${pdf.hasPdf ? 'البطاقة ومخطط الأرض جاهزان في ملف PDF واحد' : l.doc ? 'البطاقة جاهزة (تعذّر إرفاق المخطط — سيُرسل رابطه)' : 'البطاقة جاهزة (لا يوجد مخطط PDF لهذه القطعة)'}</span>`;
+  }).catch(() => { st.innerHTML = '<span>تعذّر تجهيز الملف — يمكنك إرسال النص</span>'; });
+  btn.onclick = async () => {
+    if (!ready) return;
+    try { await sendPdf(l, ready); close(); }
+    catch (e) { if (!(e && (e.name === 'AbortError' || /cancel/i.test(e.message || '')))) toast('تعذّر فتح المشاركة'); }
+  };
 }
 function projectShareText(p) {
   return [`📍 مشروع ${p.name}${p.sub ? ' — ' + p.sub : ''}`, `${p.available} أرض متاحة`,
@@ -467,7 +519,7 @@ function landPage(l) {
         <div class="r total"><span>الإجمالي</span><b>${money(l.first + sumInst)} د.إ</b></div></div>` : ''}
       ${l.sketch && l.sketch !== l.img ? `<h2 class="h2">كروكي القطعة</h2><img class="sketch" src="${esc(l.sketch)}" alt="" loading="lazy" data-web="${esc(l.sketch)}">` : ''}
       <button class="btn primary block" data-plan="${esc(landUrl(l))}">${I.map} عرض القطعة على المخطط</button>
-      <button class="btn ghost block" data-share="land:${esc(l.id)}">${I.share} مشاركة تفاصيل الأرض</button>
+      <button class="btn wa block" data-share="land:${esc(l.id)}">${I.wa} مشاركة التفاصيل + مخطط الأرض PDF</button>
       ${l.doc ? `<a class="btn ghost block" href="${esc(l.doc)}" data-ext>${I.pdf} مخطط القطعة (PDF)</a>` : ''}
     </div>
     <div class="bar">
@@ -548,7 +600,7 @@ document.addEventListener('click', (e) => {
   if (ds.share) {
     e.stopPropagation();
     const [kind, ...rest] = ds.share.split(':'); const id = rest.join(':'); const d = DATA();
-    if (kind === 'land') { const l = d.lands.find((x) => x.id === id); if (l) shareText(`قطعة رقم ${l.n}`, landShareText(l)); }
+    if (kind === 'land') { const l = d.lands.find((x) => x.id === id); if (l) openShareSheet(l); }
     else { const p = d.projects.find((x) => x.slug === id); if (p) shareText(`مشروع ${p.name}`, projectShareText(p)); }
     return;
   }
