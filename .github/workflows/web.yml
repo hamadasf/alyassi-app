@@ -19,7 +19,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -48,6 +48,27 @@ jobs:
       - name: Collect live data from the website
         run: |
           for i in 1 2 3; do node scripts/snapshot.mjs web/data.json && exit 0; sleep 20; done; exit 1
+
+      - name: Restore project PDFs
+        uses: actions/cache/restore@v4
+        with:
+          path: .pdfcache
+          key: projpdf-${{ github.run_id }}
+          restore-keys: projpdf-
+
+      - name: Project PDFs (made by the website's own «تحميل ملف المشروع»)
+        id: pdfs
+        continue-on-error: true
+        run: |
+          node scripts/project-pdfs.mjs web/data.json web/pdf .pdfcache
+          echo "changed=$(cat .pdfcache/.changed)" >> "$GITHUB_OUTPUT"
+
+      - name: Keep project PDFs for the next run
+        if: steps.pdfs.outputs.changed == '1'
+        uses: actions/cache/save@v4
+        with:
+          path: .pdfcache
+          key: projpdf-${{ github.run_id }}
 
       - name: Detect price / status changes
         run: |
