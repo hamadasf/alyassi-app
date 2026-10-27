@@ -12,6 +12,7 @@ jobs:
           mkdir ref && cd ref
           curl -fsSL -A "$UA" -o app.js "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/app.js"
           curl -fsSL -A "$UA" -o plan.html "https://omaralyassirealestate.com/dabdaba-north/"
+          curl -fsSL -A "$UA" -o app.css "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/app.css"
           ls -la
       - name: Push to ref branch
         run: |
