@@ -52,6 +52,14 @@ jobs:
         run: |
           npx cap add android
           sed -i 's/minSdkVersion = [0-9]*/minSdkVersion = 26/' android/variables.gradle
+          # Google sign-in returns to the app through its own link: com.omaralyassi.realestate://auth
+          python3 - <<'PY'
+          p = 'android/app/src/main/AndroidManifest.xml'; s = open(p).read()
+          f = ('<intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" />'
+               '<category android:name="android.intent.category.BROWSABLE" /><data android:scheme="com.omaralyassi.realestate" android:host="auth" /></intent-filter>')
+          i = s.index('</activity>'); s = s[:i] + f + s[i:]
+          open(p, 'w').write(s); print('deep link added')
+          PY
           npx @capacitor/assets generate --android \
             --iconBackgroundColor '#ffffff' --iconBackgroundColorDark '#ffffff' \
             --splashBackgroundColor '#0e1c36' --splashBackgroundColorDark '#0e1c36'

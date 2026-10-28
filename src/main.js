@@ -5,6 +5,8 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { cardModel, buildLandPdf } from './card.js';
 import { paintPlanLoc } from './planloc.js';
+import { session, refreshMe, ownerLands, loadOwnerLands } from './owner.js';
+import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard } from './owner-ui.js';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
 import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen, offerFor } from './data.js';
@@ -466,11 +468,13 @@ function renderHome() {
     <div class="hscroll">${projects.length ? projects.map((p) => projectCard(p)).join('') : skeleton(2)}</div>
     ${featured.length ? `<div class="sec-h"><h2>أراضٍ مميزة</h2><button data-go="lands" data-feat="1">عرض الكل</button></div>
       <div class="hscroll lands">${featured.map(landCard).join('')}</div>` : ''}
+    ${ownerLands().length ? `<div class="sec-h"><h2>أراضٍ معروضة للبيع</h2><button data-olands>عرض الكل</button></div>
+      <div class="hscroll lands">${ownerLands().slice(0, 10).map(oLandCard).join('')}</div>` : ''}
     <div class="sec-h"><h2>أفضل الأسعار</h2><button data-go="lands" data-sort="price-asc">عرض الكل</button></div>
     <div class="list">${best.length ? best.slice(0, 6).map(landCard).join('') : (projects.length ? '<div class="empty">لا توجد أسعار معروضة حالياً</div>' : skeleton(2))}</div>
     <section class="cta">
-      <div><h3>عندك أرض للبيع؟</h3><p>أضف أرضك ونتواصل معك لتسويقها</p></div>
-      <button class="btn gold" data-web="${SITE}/add-property/">أضف أرضك</button>
+      <div><h3>عندك أرض للبيع؟</h3><p>سجّل وأضف أرضك من التطبيق — تُعرض بعد موافقة الإدارة</p></div>
+      <button class="btn gold" data-addland>أضف أرضك</button>
     </section>`;
 }
 
@@ -529,7 +533,9 @@ function renderFavs() {
 }
 
 function renderContact() {
+  const me = session.user();
   $('#contact .content').innerHTML = `
+    <button class="accrow" data-account><span class="acc-av">${esc(me ? (me.name || me.email || '?').charAt(0) : '👤')}</span><div><b>${me ? esc(me.name || 'حسابي') : 'تسجيل الدخول / حساب جديد'}</b><span>${me ? 'طلباتي وإضافة أرض للبيع' : 'بالبريد الإلكتروني أو حساب جوجل'}</span></div><i>‹</i></button>
     <section class="about"><img src="${EMBLEM}" alt=""><h2>عمر الياسي للعقارات</h2><p>نساعدك في اختيار الأرض المناسبة للتطوير أو الاستثمار في الشارقة، بخيارات تنافسية وخطط سداد مرنة.</p></section>
     <div class="clist">
       <a class="citem" href="tel:${CONTACT.phone}">${I.phone}<div><b>اتصل بنا</b><span dir="ltr">${CONTACT.phoneLabel}</span></div></a>
@@ -626,11 +632,18 @@ function pushPage(kind, id) {
   let html = '', p, l;
   if (kind === 'project') { p = d.projects.find((x) => x.slug === id); if (!p) return; html = projectPage(p); }
   else if (kind === 'changes') { html = changesPage(); }
+  else if (kind === 'account') { html = accountPage(); }
+  else if (kind === 'addland') { html = addLandPage(); }
+  else if (kind === 'olands') { html = oLandsPage(); }
+  else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = d.lands.find((x) => x.id === id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  pg.className = 'page' + (kind === 'land' ? ' has-bar' : '');
-  pg.innerHTML = `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${kind === 'project' ? 'المشروع' : kind === 'changes' ? 'آخر التحديثات' : 'تفاصيل الأرض'}</span>${kind === 'changes' ? '' : `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>`}</header><div class="scroller">${html}</div>`;
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
+  pg.innerHTML = `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${TITLE[kind] || 'تفاصيل الأرض'}</span>${kind === 'land' || kind === 'project' ? `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>` : ''}</header><div class="scroller">${html}</div>`;
   document.body.appendChild(pg);
+  if (kind === 'account') initAccount(pg, id);
+  if (kind === 'addland') initAddLand(pg);
   if (l && l.poly) { const cv = pg.querySelector('.planloc-cv'), proj = d.projects.find((x) => x.slug === l.project); if (cv && proj) requestAnimationFrame(() => paintPlanLoc(cv, l, proj.lands, proj.map).then(() => cv.classList.add('on')).catch(() => { const im = document.createElement('img'); im.src = l.img; im.alt = ''; cv.replaceWith(im); pg.querySelector('.planloc-cap')?.remove(); })); }
   if (p) renderList($('#projList', pg), p.lands.filter((x) => x.status === 'av').sort((a, b) => (!!offerFor(b) - !!offerFor(a)) || (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12))), landCard, 'لا توجد أراضٍ متاحة حالياً في هذا المشروع');
   push.render();
@@ -670,7 +683,7 @@ function resetFilters() { Object.assign(F, { q: '', project: '', status: 'av', c
 
 /* ================= events ================= */
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('button, a, [data-land], [data-project], [data-plan], [data-web]');
+  const t = e.target.closest('button, a, [data-land], [data-oland], [data-project], [data-plan], [data-web]');
   if (!t) return;
   const ds = t.dataset;
   if (ds.fav) { e.stopPropagation(); const on = favs.toggle(ds.fav); document.querySelectorAll(`[data-fav="${CSS.escape(ds.fav)}"]`).forEach((b) => b.classList.toggle('on', on)); toast(on ? 'أضيفت إلى المفضلة' : 'أزيلت من المفضلة'); if (current === 'favs' && !stack.length) renderFavs(); return; }
@@ -688,6 +701,10 @@ document.addEventListener('click', (e) => {
   }
   if (ds.pshare) { e.stopPropagation(); const p = DATA().projects.find((x) => x.slug === ds.pshare); if (p) openProjectShare(p); return; }
   if (ds.notify !== undefined) { push.enable(); return; }
+  if (ds.account !== undefined) { pushPage('account'); return; }
+  if (ds.addland !== undefined) { if (session.token()) pushPage('addland'); else { toast('سجّل الدخول أولاً لإضافة أرضك'); pushPage('account', 'add'); } return; }
+  if (ds.olands !== undefined) { pushPage('olands'); return; }
+  if (ds.oland) { pushPage('oland', ds.oland); return; }
   if (ds.changes !== undefined) { pushPage('changes'); const top = getChanges()[0]; if (top) seen.set(top.t); updateBell(); return; }
   if (ds.back !== undefined) return goBack();
   if (ds.tab) {
@@ -707,6 +724,7 @@ document.addEventListener('click', (e) => {
   if (ds.land) return pushPage('land', ds.land);
   if (ds.project) return pushPage('project', ds.project);
 });
+function closeTop() { if (stack.length) history.back(); }
 function closeAll() { const n = stack.length; if (n) { stack.splice(0).forEach((p) => p.remove()); history.go(-n); } }
 
 let qT;
@@ -742,12 +760,15 @@ function refresh(force) {
   const hadData = DATA().lands.length > 0;
   let raf = 0;
   loading = loadAll({ force, onPartial: hadData ? null : () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(renderAll); } })
-    .then(() => loadChanges().catch(() => {}))
+    .then(() => Promise.all([loadChanges().catch(() => {}), loadOwnerLands()]))
     .then(() => { renderAll(); })
     .catch(() => { if (!DATA().lands.length) { $('#home .content').innerHTML = `<div class="empty">${I.wifi}<p>تعذّر الاتصال بالإنترنت</p><button class="btn ghost" id="retry">إعادة المحاولة</button></div>`; $('#retry').onclick = () => refresh(true); } else toast('تعذّر التحديث — تُعرض آخر بيانات محفوظة'); })
     .finally(() => { loading = null; });
   return loading;
 }
+
+initOwnerUI({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), waLink, CONTACT });
+session.subs.add(() => { renderContact(); });
 
 async function boot() {
   document.querySelectorAll('[data-i]').forEach((el) => { el.innerHTML = I[el.dataset.i] + el.innerHTML; });
@@ -761,6 +782,7 @@ async function boot() {
   }
   if (!native) setupWebApp();
   push.init(); push.render();
+  if (session.token()) refreshMe().then(() => renderContact());
   await refresh(false);
   if (location.hash === '#notify') { history.replaceState(null, '', location.pathname); setTimeout(() => push.enable(), 1200); }
   const hm = /^#land=(.+)$/.exec(location.hash);
