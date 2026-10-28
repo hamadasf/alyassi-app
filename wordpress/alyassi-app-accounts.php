@@ -58,7 +58,21 @@ function oay_acc_user_from_token( $token ) {
 function oay_acc_need_user() {
 	$u = oay_acc_user_from_token( oay_acc_arg( 'token', 120 ) );
 	if ( ! $u ) { oay_acc_err( 'انتهت الجلسة — سجّل الدخول مرة أخرى', 401 ); }
+	$now = time(); if ( $now - (int) get_user_meta( $u->ID, 'oay_seen', true ) > 20 ) { update_user_meta( $u->ID, 'oay_seen', $now ); }
 	return $u;
+}
+/* ---------------- presence: «متصل الآن» while the app is open (it checks in every ~40 s) ---------------- */
+const OAY_ONLINE_SECS = 75;
+function oay_seen_ms( $uid ) { return (int) get_user_meta( $uid, 'oay_seen', true ) * 1000; }
+function oay_is_online( $uid ) { return time() - (int) get_user_meta( $uid, 'oay_seen', true ) < OAY_ONLINE_SECS; }
+/** The office counts as online when any of its admins is. */
+function oay_office_seen() { $m = 0; foreach ( get_users( array( 'capability' => 'manage_options', 'fields' => 'ID' ) ) as $a ) { $m = max( $m, oay_seen_ms( $a ) ); } return $m; }
+function oay_online_count() {
+	return count( get_users( array( 'fields' => 'ID', 'number' => 500, 'meta_query' => array( array( 'key' => 'oay_seen', 'value' => time() - OAY_ONLINE_SECS, 'compare' => '>', 'type' => 'NUMERIC' ) ) ) ) );
+}
+/** Phone numbers are not allowed in chats (Arabic digits included) — contact goes through the office. */
+function oay_no_phones( $t ) {
+	return preg_replace( '/(?:\+|00)?[0-9٠-٩۰-۹](?:[\s\-().\/]*[0-9٠-٩۰-۹]){8,}/u', '📵 [رقم محذوف]', $t );
 }
 function oay_acc_is_admin( $u ) { return $u && user_can( $u, 'manage_options' ); }
 function oay_acc_userdata( $u ) {
@@ -80,7 +94,7 @@ function oay_acc_new_user( $email, $name, $pass ) {
 
 /* ---------------- account API ---------------- */
 $oay_acc_actions = array( 'register', 'login', 'google', 'me', 'profile', 'logout', 'meta', 'upload', 'submit', 'mine', 'public', 'delete', 'plotcheck', 'feature',
-	'forgot', 'delete_account', 'avatar', 'verify_request', 'adm_verifs', 'adm_verify', 'chat_get', 'chat_send', 'chat_unread', 'adm_chats', 'adm_chat', 'adm_chat_send', 'notif_get', 'notif_save', 'group_get', 'group_send', 'group_delete',
+	'forgot', 'delete_account', 'avatar', 'verify_request', 'adm_verifs', 'adm_verify', 'chat_get', 'chat_send', 'chat_unread', 'adm_chats', 'adm_chat', 'adm_chat_send', 'notif_get', 'notif_save', 'group_get', 'group_send', 'group_delete', 'chat_file', 'user_get',
 	'adm_ads', 'adm_review', 'adm_save', 'adm_delete', 'adm_feature', 'adm_users', 'adm_user', 'adm_points', 'adm_ban' );
 foreach ( $oay_acc_actions as $a ) {
 	add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a );
@@ -600,14 +614,17 @@ function oay_chat_msgs( $tid, $admin ) {
 	$cs = get_comments( array( 'post_id' => $tid, 'type' => 'oay_msg', 'order' => 'ASC', 'number' => 300, 'status' => 'all' ) );
 	return array_map( function ( $c ) use ( $admin ) {
 		$lid = (int) get_comment_meta( $c->comment_ID, 'listing', true );
-		return array( 'id' => (int) $c->comment_ID, 't' => strtotime( $c->comment_date_gmt . ' UTC' ) * 1000, 'from' => get_comment_meta( $c->comment_ID, 'from', true ) ?: 'user', 'text' => $c->comment_content, 'ref' => $lid ? oay_chat_ref( $lid, $admin ) : null );
+		return array( 'id' => (int) $c->comment_ID, 't' => strtotime( $c->comment_date_gmt . ' UTC' ) * 1000, 'from' => get_comment_meta( $c->comment_ID, 'from', true ) ?: 'user', 'text' => $c->comment_content, 'ref' => $lid ? oay_chat_ref( $lid, $admin ) : null, 'files' => oay_chat_files_out( $c->comment_ID ) );
 	}, $cs );
 }
 function oay_chat_add( $tid, $uid, $from, $text, $lid ) {
 	$text = trim( mb_substr( sanitize_textarea_field( $text ), 0, 2000 ) );
-	if ( '' === $text && ! $lid ) { oay_acc_err( 'اكتب رسالة' ); }
+	if ( 'admin' !== $from ) { $text = oay_no_phones( $text ); }
+	$files = oay_chat_files_in( $uid );
+	if ( '' === $text && ! $lid && ! $files ) { oay_acc_err( 'اكتب رسالة' ); }
 	$cid = wp_insert_comment( array( 'comment_post_ID' => $tid, 'comment_content' => $text, 'user_id' => $uid, 'comment_type' => 'oay_msg', 'comment_approved' => 1 ) );
 	update_comment_meta( $cid, 'from', $from ); if ( $lid ) { update_comment_meta( $cid, 'listing', $lid ); }
+	if ( $files ) { update_comment_meta( $cid, 'files', $files ); if ( '' === $text ) { $text = oay_files_label( $files ); } }
 	$now = (int) round( microtime( true ) * 1000 );
 	update_post_meta( $tid, 'oay_last', $now ); update_post_meta( $tid, 'oay_last_from', $from ); update_post_meta( $tid, 'oay_last_text', mb_substr( $text ?: '📎 إعلان', 0, 120 ) );
 	update_post_meta( $tid, 'admin' === $from ? 'oay_read_admin' : 'oay_read_user', $now );
@@ -636,7 +653,7 @@ function oay_admin_ids() { return get_users( array( 'capability' => 'manage_opti
 function oay_acc_chat_get() {
 	$u = oay_acc_need_user(); $tid = oay_chat_thread( $u->ID, false );
 	if ( $tid ) { update_post_meta( $tid, 'oay_read_user', (int) round( microtime( true ) * 1000 ) ); }
-	oay_acc_ok( array( 'items' => $tid ? oay_chat_msgs( $tid, false ) : array() ) );
+	oay_acc_ok( array( 'items' => $tid ? oay_chat_msgs( $tid, false ) : array() ) + oay_chat_peer_office( $tid ) );
 }
 function oay_acc_chat_send() {
 	$u = oay_acc_need_user(); oay_acc_limit( 'chat_' . $u->ID, 60 );
@@ -646,25 +663,27 @@ function oay_acc_chat_send() {
 	oay_chat_add( $tid, $u->ID, 'user', oay_acc_arg( 'text', 2000 ), $lid );
 	$who = get_user_meta( $u->ID, 'oay_company', true ) ?: $u->display_name;
 	oay_push_to( oay_notif_filter( oay_admin_ids(), $first ? 'chat_first' : 'chat_all' ), 'رسالة جديدة · ' . $who, mb_substr( oay_acc_arg( 'text', 2000 ) ?: 'استفسار عن إعلان', 0, 120 ), array( 'user' => $u->ID ) );
-	oay_acc_ok( array( 'items' => oay_chat_msgs( $tid, false ) ) );
+	oay_acc_ok( array( 'items' => oay_chat_msgs( $tid, false ) ) + oay_chat_peer_office( $tid ) );
 }
+function oay_chat_peer_office( $tid ) { $s = oay_office_seen(); return array( 'seen' => $tid ? (int) get_post_meta( $tid, 'oay_read_admin', true ) : 0, 'peer' => array( 'online' => time() * 1000 - $s < OAY_ONLINE_SECS * 1000, 'last' => $s ) ); }
+function oay_chat_peer_user( $tid, $uid ) { return array( 'seen' => $tid ? (int) get_post_meta( $tid, 'oay_read_user', true ) : 0, 'peer' => array( 'online' => oay_is_online( $uid ), 'last' => oay_seen_ms( $uid ) ) ); }
 function oay_acc_chat_unread() { $u = oay_acc_need_user(); $tid = oay_chat_thread( $u->ID, false );
 	if ( oay_acc_is_admin( $u ) ) { $n = 0; foreach ( get_posts( array( 'post_type' => 'oay_chat', 'post_status' => 'private', 'numberposts' => 200, 'fields' => 'ids', 'meta_key' => 'oay_last' ) ) as $t ) { $n += oay_chat_unread_count( $t, 'admin' ); } oay_acc_ok( array( 'n' => $n, 'group' => oay_group_summary( $u->ID ) ) ); }
-	oay_acc_ok( array( 'n' => oay_chat_unread_count( $tid, 'user' ), 'group' => oay_group_summary( $u->ID ), 'private' => array( 'unread' => oay_chat_unread_count( $tid, 'user' ), 'last' => $tid ? (int) get_post_meta( $tid, 'oay_last', true ) : 0, 'lastText' => $tid ? (string) get_post_meta( $tid, 'oay_last_text', true ) : '' ) ) ); }
+	oay_acc_ok( array( 'n' => oay_chat_unread_count( $tid, 'user' ), 'group' => oay_group_summary( $u->ID ), 'private' => array( 'unread' => oay_chat_unread_count( $tid, 'user' ), 'last' => $tid ? (int) get_post_meta( $tid, 'oay_last', true ) : 0, 'lastText' => $tid ? (string) get_post_meta( $tid, 'oay_last_text', true ) : '', 'online' => time() * 1000 - oay_office_seen() < OAY_ONLINE_SECS * 1000 ) ) ); }
 function oay_acc_adm_chats() {
 	oay_acc_need_admin();
 	$q = get_posts( array( 'post_type' => 'oay_chat', 'post_status' => 'private', 'numberposts' => 200, 'meta_key' => 'oay_last', 'orderby' => 'meta_value_num', 'order' => 'DESC' ) );
 	$q = array_values( array_filter( $q, function ( $t ) { return ! get_post_meta( $t->ID, 'oay_group', true ); } ) );
 	oay_acc_ok( array( 'items' => array_values( array_filter( array_map( function ( $t ) {
 		$u = get_userdata( $t->post_author ); if ( ! $u ) { return null; }
-		return array( 'user' => array( 'id' => $u->ID, 'name' => $u->display_name, 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ), 'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ) ),
+		return array( 'user' => array( 'id' => $u->ID, 'name' => $u->display_name, 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ), 'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ), 'online' => oay_is_online( $u->ID ) ),
 			'last' => (int) get_post_meta( $t->ID, 'oay_last', true ), 'lastText' => (string) get_post_meta( $t->ID, 'oay_last_text', true ), 'lastFrom' => (string) get_post_meta( $t->ID, 'oay_last_from', true ), 'unread' => oay_chat_unread_count( $t->ID, 'admin' ) );
 	}, $q ) ) ) ) );
 }
 function oay_acc_adm_chat() {
 	oay_acc_need_admin(); $u = oay_acc_adm_target(); $tid = oay_chat_thread( $u->ID, false );
 	if ( $tid ) { update_post_meta( $tid, 'oay_read_admin', (int) round( microtime( true ) * 1000 ) ); }
-	oay_acc_ok( array( 'user' => oay_acc_adm_userrow( $u ), 'items' => $tid ? oay_chat_msgs( $tid, true ) : array() ) );
+	oay_acc_ok( array( 'user' => oay_acc_adm_userrow( $u ), 'items' => $tid ? oay_chat_msgs( $tid, true ) : array() ) + oay_chat_peer_user( $tid, $u->ID ) );
 }
 function oay_acc_adm_chat_send() {
 	$me = oay_acc_need_admin(); $u = oay_acc_adm_target(); $tid = oay_chat_thread( $u->ID );
@@ -672,7 +691,7 @@ function oay_acc_adm_chat_send() {
 	$first = 0 === oay_chat_unread_count( $tid, 'user' );
 	oay_chat_add( $tid, $me->ID, 'admin', oay_acc_arg( 'text', 2000 ), $lid );
 	oay_push_to( oay_notif_filter( array( $u->ID ), $first ? 'chat_first' : 'chat_all' ), 'عمر الياسي للعقارات', mb_substr( oay_acc_arg( 'text', 2000 ) ?: 'رسالة جديدة', 0, 120 ) );
-	oay_acc_ok( array( 'items' => oay_chat_msgs( $tid, true ) ) );
+	oay_acc_ok( array( 'items' => oay_chat_msgs( $tid, true ) ) + oay_chat_peer_user( $tid, $u->ID ) );
 }
 // keep chat messages out of the site's normal comments screens and counts
 add_action( 'pre_get_comments', function ( $q ) {
@@ -706,7 +725,7 @@ function oay_group_id() {
 }
 /** Phone numbers and links in members' posts are hidden — contact goes through the office. */
 function oay_group_clean( $t ) {
-	$t = preg_replace( '/(?:\+|00)?\d[\d\s\-().]{7,}\d/u', '📞 [الرقم عبر الإدارة]', $t );
+	$t = oay_no_phones( $t );
 	$t = preg_replace( '#(?:https?://|www\.|wa\.me/)\S+#iu', '🔗 [رابط محذوف]', $t );
 	return $t;
 }
@@ -717,29 +736,31 @@ function oay_group_msgs( $after = 0, $me = 0 ) {
 	if ( $after ) { $cs = array_values( array_filter( $cs, function ( $c ) use ( $after ) { return (int) $c->comment_ID > $after; } ) ); }
 	return array_map( function ( $c ) use ( $me ) {
 		$u = get_userdata( $c->user_id ); $uid = (int) $c->user_id;
-		return array( 'id' => (int) $c->comment_ID, 't' => strtotime( $c->comment_date_gmt . ' UTC' ) * 1000, 'text' => $c->comment_content, 'mine' => $uid === $me,
+		return array( 'id' => (int) $c->comment_ID, 't' => strtotime( $c->comment_date_gmt . ' UTC' ) * 1000, 'text' => $c->comment_content, 'mine' => $uid === $me, 'files' => oay_chat_files_out( $c->comment_ID ),
 			'user' => array( 'id' => $uid, 'name' => $u ? ( get_user_meta( $uid, 'oay_verified', true ) && get_user_meta( $uid, 'oay_company', true ) ? get_user_meta( $uid, 'oay_company', true ) : $u->display_name ) : 'عضو',
-				'avatar' => (string) get_user_meta( $uid, 'oay_avatar', true ), 'verified' => (bool) get_user_meta( $uid, 'oay_verified', true ), 'admin' => $u && user_can( $u, 'manage_options' ) ) );
+				'avatar' => (string) get_user_meta( $uid, 'oay_avatar', true ), 'verified' => (bool) get_user_meta( $uid, 'oay_verified', true ), 'admin' => $u && user_can( $u, 'manage_options' ), 'online' => oay_is_online( $uid ) ) );
 	}, $cs );
 }
 function oay_acc_group_get() {
 	$u = oay_acc_need_user();
 	$items = oay_group_msgs( absint( oay_acc_arg( 'after', 12 ) ), $u->ID );
 	$last = $items ? end( $items )['id'] : 0; if ( $last ) { update_user_meta( $u->ID, 'oay_group_read', max( $last, (int) get_user_meta( $u->ID, 'oay_group_read', true ) ) ); }
-	oay_acc_ok( array( 'items' => $items, 'admin' => oay_acc_is_admin( $u ) ) );
+	oay_acc_ok( array( 'items' => $items, 'admin' => oay_acc_is_admin( $u ), 'online' => oay_online_count() ) );
 }
 function oay_acc_group_send() {
 	$u = oay_acc_need_user(); oay_acc_limit( 'group_' . $u->ID, 30 );
 	$text = trim( mb_substr( sanitize_textarea_field( oay_acc_arg( 'text', 3000 ) ), 0, 3000 ) );
-	if ( '' === $text ) { oay_acc_err( 'اكتب رسالة' ); }
+	$files = oay_chat_files_in( $u->ID );
+	if ( '' === $text && ! $files ) { oay_acc_err( 'اكتب رسالة' ); }
 	if ( ! oay_acc_is_admin( $u ) ) { $text = oay_group_clean( $text ); }
 	$cid = wp_insert_comment( array( 'comment_post_ID' => oay_group_id(), 'comment_content' => $text, 'user_id' => $u->ID, 'comment_type' => 'oay_gmsg', 'comment_approved' => 1 ) );
+	if ( $files ) { update_comment_meta( $cid, 'files', $files ); if ( '' === $text ) { $text = oay_files_label( $files ); } }
 	update_user_meta( $u->ID, 'oay_group_read', $cid );
 	update_option( 'oay_group_last', array( 't' => (int) round( microtime( true ) * 1000 ), 'text' => mb_substr( $text, 0, 120 ), 'id' => $cid ), false );
 	$who = get_user_meta( $u->ID, 'oay_company', true ) ?: $u->display_name;
 	$fans = get_users( array( 'meta_key' => 'oay_notif_group', 'meta_value' => '1', 'fields' => 'ID', 'number' => 1900, 'exclude' => array( $u->ID ) ) );
 	if ( $fans ) { oay_push_to( $fans, 'المجموعة العامة · ' . $who, mb_substr( $text, 0, 120 ), array( 'open' => 'group' ) ); }
-	oay_acc_ok( array( 'items' => oay_group_msgs( absint( oay_acc_arg( 'after', 12 ) ), $u->ID ) ) );
+	oay_acc_ok( array( 'items' => oay_group_msgs( absint( oay_acc_arg( 'after', 12 ) ), $u->ID ), 'online' => oay_online_count() ) );
 }
 function oay_acc_group_delete() {
 	$u = oay_acc_need_user(); $c = get_comment( absint( oay_acc_arg( 'id', 12 ) ) );
@@ -754,4 +775,70 @@ function oay_group_summary( $uid ) {
 		$n = count( array_filter( get_comments( array( 'post_id' => oay_group_id(), 'type' => 'oay_gmsg', 'number' => 100, 'orderby' => 'comment_ID', 'order' => 'DESC', 'fields' => 'ids' ) ), function ( $id ) use ( $read ) { return (int) $id > $read; } ) );
 	}
 	return array( 'last' => (int) ( $last['t'] ?? 0 ), 'lastText' => (string) ( $last['text'] ?? '' ), 'unread' => $n );
+}
+
+/* ================= photos & files in chats ================= */
+const OAY_CHAT_TYPES = array( 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp', 'pdf' => 'application/pdf',
+	'doc' => 'application/msword', 'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+	'xls' => 'application/vnd.ms-excel', 'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	'ppt' => 'application/vnd.ms-powerpoint', 'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'txt' => 'text/plain' );
+function oay_acc_chat_file() {
+	$u = oay_acc_need_user(); oay_acc_limit( 'cfile_' . $u->ID, 60 );
+	$in = oay_acc_in(); $b64 = isset( $in['data'] ) ? (string) $in['data'] : '';
+	$name = sanitize_file_name( oay_acc_arg( 'name', 120 ) ); if ( ! $name ) { $name = 'file'; }
+	$c = strpos( $b64, ',' ); if ( false === $c || 0 !== strpos( $b64, 'data:' ) ) { oay_acc_err( 'ملف غير صالح' ); }
+	$bin = base64_decode( substr( $b64, $c + 1 ), true );
+	if ( ! $bin ) { oay_acc_err( 'ملف غير صالح' ); }
+	if ( strlen( $bin ) > 10 * MB_IN_BYTES ) { oay_acc_err( 'الحد الأقصى لحجم الملف 10 ميجابايت' ); }
+	$ext = strtolower( pathinfo( $name, PATHINFO_EXTENSION ) );
+	if ( ! isset( OAY_CHAT_TYPES[ $ext ] ) ) { oay_acc_err( 'نوع الملف غير مسموح — صور، PDF، Word، Excel، PowerPoint' ); }
+	$img = in_array( $ext, array( 'jpg', 'jpeg', 'png', 'webp' ), true );
+	if ( $img && ! @getimagesizefromstring( $bin ) ) { oay_acc_err( 'صورة غير صالحة' ); }
+	if ( ! $img && 'pdf' === $ext && 0 !== strpos( $bin, '%PDF' ) ) { oay_acc_err( 'ملف PDF غير صالح' ); }
+	$up = wp_upload_bits( 'chat-' . wp_generate_password( 16, false, false ) . '.' . $ext, null, $bin );
+	if ( ! empty( $up['error'] ) ) { oay_acc_err( 'تعذّر رفع الملف' ); }
+	$aid = wp_insert_attachment( array( 'post_mime_type' => OAY_CHAT_TYPES[ $ext ], 'post_title' => mb_substr( $name, 0, 100 ), 'post_status' => 'inherit', 'post_author' => $u->ID ), $up['file'] );
+	if ( ! $aid || is_wp_error( $aid ) ) { @unlink( $up['file'] ); oay_acc_err( 'تعذّر رفع الملف' ); }
+	update_post_meta( $aid, '_oay_chat_file', $u->ID ); update_post_meta( $aid, '_oay_chat_name', mb_substr( $name, 0, 100 ) );
+	if ( $img ) { $sz = @getimagesize( $up['file'] ); if ( $sz ) { update_post_meta( $aid, '_oay_chat_wh', array( (int) $sz[0], (int) $sz[1] ) ); } }
+	oay_acc_ok( array( 'id' => $aid ) );
+}
+/** The attachments the sender uploaded for this message (only their own). */
+function oay_chat_files_in( $uid ) {
+	$in = oay_acc_in(); $ids = isset( $in['files'] ) && is_array( $in['files'] ) ? array_slice( $in['files'], 0, 10 ) : array();
+	return array_values( array_filter( array_map( 'absint', $ids ), function ( $id ) use ( $uid ) { return $id && (int) get_post_meta( $id, '_oay_chat_file', true ) === (int) $uid; } ) );
+}
+function oay_chat_files_out( $cid ) {
+	$ids = get_comment_meta( $cid, 'files', true ); if ( ! is_array( $ids ) || ! $ids ) { return array(); }
+	return array_values( array_filter( array_map( function ( $id ) {
+		$url = wp_get_attachment_url( $id ); if ( ! $url ) { return null; }
+		$mime = get_post_mime_type( $id ); $f = get_attached_file( $id ); $wh = get_post_meta( $id, '_oay_chat_wh', true );
+		return array( 'u' => $url, 'n' => (string) get_post_meta( $id, '_oay_chat_name', true ), 'k' => 0 === strpos( (string) $mime, 'image/' ) ? 'img' : 'file',
+			's' => $f && file_exists( $f ) ? filesize( $f ) : 0, 'w' => is_array( $wh ) ? $wh[0] : 0, 'h' => is_array( $wh ) ? $wh[1] : 0 );
+	}, $ids ) ) );
+}
+function oay_files_label( $ids ) {
+	$imgs = count( array_filter( $ids, function ( $id ) { return 0 === strpos( (string) get_post_mime_type( $id ), 'image/' ); } ) );
+	return $imgs === count( $ids ) ? '📷 ' . ( $imgs > 1 ? $imgs . ' صور' : 'صورة' ) : '📎 ' . ( count( $ids ) > 1 ? count( $ids ) . ' ملفات' : 'ملف' );
+}
+
+/* ================= profiles seen from the chats ================= */
+function oay_acc_user_get() {
+	$me = oay_acc_need_user(); $adm = oay_acc_is_admin( $me ); $id = absint( oay_acc_arg( 'id', 12 ) );
+	$t = $id ? get_userdata( $id ) : null;
+	if ( ! $id || ( $t && oay_acc_is_admin( $t ) && ! $adm ) ) {   // the office itself
+		$s = oay_office_seen(); $n = (int) wp_count_posts( 'lands' )->publish;
+		oay_acc_ok( array( 'office' => true, 'profile' => array( 'id' => 0, 'name' => 'عمر الياسي للعقارات', 'verified' => true, 'online' => time() * 1000 - $s < OAY_ONLINE_SECS * 1000, 'last' => $s, 'ads' => $n ) ) );
+	}
+	if ( ! $t || get_user_meta( $t->ID, 'oay_banned', true ) && ! $adm ) { oay_acc_err( 'الحساب غير متاح', 404 ); }
+	$v = oay_verify_get( $t->ID ); $ver = (bool) get_user_meta( $t->ID, 'oay_verified', true );
+	$pub = get_posts( array( 'post_type' => 'lands', 'author' => $t->ID, 'post_status' => 'publish', 'numberposts' => 50, 'meta_key' => '_oay_from_app' ) );
+	$p = array( 'id' => $t->ID, 'name' => $t->display_name, 'company' => (string) get_user_meta( $t->ID, 'oay_company', true ), 'verified' => $ver,
+		'avatar' => (string) get_user_meta( $t->ID, 'oay_avatar', true ), 'city' => $ver && $v ? (string) ( $v['city'] ?? '' ) : '', 'joined' => strtotime( $t->user_registered ) * 1000,
+		'online' => oay_is_online( $t->ID ), 'last' => oay_seen_ms( $t->ID ), 'ads' => count( $pub ), 'admin' => oay_acc_is_admin( $t ),
+		'items' => array_map( 'oay_acc_card', $pub ) );
+	if ( $adm ) {   // the office sees everything
+		$p['full'] = oay_acc_adm_userrow( $t ) + array( 'verifyPhone' => $v ? (string) ( $v['phone'] ?? '' ) : '' );
+	}
+	oay_acc_ok( array( 'profile' => $p ) );
 }

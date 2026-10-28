@@ -7,7 +7,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { cardModel, buildLandPdf } from './card.js';
 import { paintPlanLoc } from './planloc.js';
 import { session, refreshMe, ownerLands, loadOwnerLands, api as accApi } from './owner.js';
-import { initChat, refreshUnread, renderChatsTab, chatPage, initChatPage, askAbout, myChatPage, initMyChat, groupPage, initGroup } from './chat.js';
+import { initChat, refreshUnread, renderChatsTab, chatPage, initChatPage, askAbout, myChatPage, initMyChat, groupPage, initGroup, profPage, initProf } from './chat.js';
 import { initNotifs, notifsPage } from './notifs.js';
 import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser } from './owner-ui.js';
@@ -646,7 +646,8 @@ function pushPage(kind, id) {
   else if (kind === 'saved') { html = savedPage(); }
   else if (kind === 'legal') { html = legalPage(id); }
   else if (kind === 'verify') { html = verifyPage(); }
-  else if (kind === 'chat') { html = chatPage(); }
+  else if (kind === 'chat') { html = chatPage(id); }
+  else if (kind === 'uprof') { html = profPage(); }
   else if (kind === 'mychat') { html = myChatPage(); }
   else if (kind === 'group') { html = groupPage(); }
   else if (kind === 'aad') { html = admAdPage(id); if (!html) return; }
@@ -654,9 +655,11 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = d.lands.find((x) => x.id === id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
-  pg.innerHTML = `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${TITLE[kind] || 'تفاصيل الأرض'}</span>${kind === 'land' || kind === 'project' ? `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>` : ''}</header><div class="scroller">${html}</div>`;
+  const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
+  if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
+  pg.innerHTML = own ? `${html}` : `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${TITLE[kind] || 'تفاصيل الأرض'}</span>${kind === 'land' || kind === 'project' ? `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>` : ''}</header><div class="scroller">${html}</div>`;
   document.body.appendChild(pg);
   if (kind === 'account') initAccount(pg, id);
   if (kind === 'addland') initAddLand(pg);
@@ -666,6 +669,7 @@ function pushPage(kind, id) {
   if (kind === 'chat') initChatPage(pg, id);
   if (kind === 'mychat') initMyChat(pg);
   if (kind === 'group') initGroup(pg);
+  if (kind === 'uprof') initProf(pg, id);
   if (kind === 'notifs') initNotifs(pg);
   if (kind === 'aad') initAdmAd(pg, id);
   if (kind === 'auser') initAdmUser(pg, id);
@@ -678,6 +682,7 @@ function pushPage(kind, id) {
 }
 function popPage() {
   const pg = stack.pop(); if (!pg) return false;
+  if (native) { const top = stack[stack.length - 1]; SystemBars.setStyle({ style: top && top.querySelector(':scope > .wahead') ? SystemBarsStyle.Light : SystemBarsStyle.Dark }).catch(() => {}); }
   pg.classList.remove('in'); pg.classList.add('out');
   setTimeout(() => pg.remove(), 260);
   return true;
@@ -708,7 +713,7 @@ function resetFilters() { Object.assign(F, { q: '', project: '', status: 'av', c
 
 /* ================= events ================= */
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('button, a, [data-land], [data-oland], [data-aad], [data-auser], [data-chat], [data-group], [data-mychat], [data-project], [data-plan], [data-web]');
+  const t = e.target.closest('button, a, [data-land], [data-oland], [data-aad], [data-auser], [data-chat], [data-group], [data-mychat], [data-prof], [data-project], [data-plan], [data-web]');
   if (!t) return;
   const ds = t.dataset;
   if (ds.fav) { e.stopPropagation(); const on = favs.toggle(ds.fav); document.querySelectorAll(`[data-fav="${CSS.escape(ds.fav)}"]`).forEach((b) => b.classList.toggle('on', on)); toast(on ? 'أضيفت إلى المفضلة' : 'أزيلت من المفضلة'); if (current === 'favs' && !stack.length) renderFavs(); return; }
@@ -731,6 +736,7 @@ document.addEventListener('click', (e) => {
   if (ds.olands !== undefined) { pushPage('olands'); return; }
   if (ds.admin !== undefined) { pushPage('admin'); return; }
   if (ds.profile !== undefined) { pushPage('profile'); return; }
+  if (ds.prof !== undefined) { if (session.token()) pushPage('uprof', ds.prof); return; }
   if (ds.chat) { pushPage('chat', ds.chat); return; }
   if (ds.group !== undefined) { if (session.token()) pushPage('group'); else pushPage('account'); return; }
   if (ds.mychat !== undefined) { pushPage('mychat'); return; }
@@ -775,7 +781,7 @@ document.addEventListener('click', (e) => {
   if (ds.project) return pushPage('project', ds.project);
 });
 function closeTop() { if (stack.length) history.back(); }
-function closeAll() { const n = stack.length; if (n) { stack.splice(0).forEach((p) => p.remove()); history.go(-n); } }
+function closeAll() { const n = stack.length; if (n) { stack.splice(0).forEach((p) => p.remove()); if (native) SystemBars.setStyle({ style: SystemBarsStyle.Dark }).catch(() => {}); history.go(-n); } }
 
 let qT;
 $('#q').addEventListener('input', (e) => { clearTimeout(qT); qT = setTimeout(() => { F.q = e.target.value; renderLands(); }, 180); });
