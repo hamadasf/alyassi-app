@@ -6,7 +6,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { cardModel, buildLandPdf } from './card.js';
 import { paintPlanLoc } from './planloc.js';
 import { session, refreshMe, ownerLands, loadOwnerLands, api as accApi } from './owner.js';
-import { initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, notifsPage, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
+import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, notifsPage, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser } from './owner-ui.js';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
@@ -623,12 +623,13 @@ function pushPage(kind, id) {
   else if (kind === 'contactpg') { html = contactPage(); }
   else if (kind === 'saved') { html = savedPage(); }
   else if (kind === 'legal') { html = legalPage(id); }
+  else if (kind === 'verify') { html = verifyPage(); }
   else if (kind === 'aad') { html = admAdPage(id); if (!html) return; }
   else if (kind === 'auser') { html = admUserPage(); }
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = d.lands.find((x) => x.id === id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   pg.innerHTML = `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${TITLE[kind] || 'تفاصيل الأرض'}</span>${kind === 'land' || kind === 'project' ? `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>` : ''}</header><div class="scroller">${html}</div>`;
   document.body.appendChild(pg);
@@ -636,6 +637,7 @@ function pushPage(kind, id) {
   if (kind === 'addland') initAddLand(pg);
   if (kind === 'admin') initAdmin(pg);
   if (kind === 'editprofile') initEditProfile(pg);
+  if (kind === 'verify') initVerify(pg);
   if (kind === 'notifs') { const st = push.state(); pg.querySelector('#nstate').textContent = st === 'on' ? '✓ الإشعارات مفعّلة على هذا الجهاز' : st === 'denied' ? 'الإشعارات مرفوضة من إعدادات الجهاز — فعّلها من الإعدادات' : st === 'unsupported' ? 'هذا الجهاز لا يدعم الإشعارات' : ''; }
   if (kind === 'aad') initAdmAd(pg, id);
   if (kind === 'auser') initAdmUser(pg, id);
@@ -701,6 +703,7 @@ document.addEventListener('click', (e) => {
   if (ds.olands !== undefined) { pushPage('olands'); return; }
   if (ds.admin !== undefined) { pushPage('admin'); return; }
   if (ds.profile !== undefined) { pushPage('profile'); return; }
+  if (ds.verify !== undefined) { if (session.token()) pushPage('verify'); else pushPage('account'); return; }
   if (ds.editprofile !== undefined) { pushPage('editprofile'); return; }
   if (ds.settings !== undefined) { pushPage('settings'); return; }
   if (ds.notifs !== undefined) { pushPage('notifs'); return; }

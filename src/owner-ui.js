@@ -16,7 +16,8 @@ export function accountPage() {
       <div class="acc-card"><div class="acc-av">${esc((u.name || u.email || '?').trim().charAt(0))}</div>
         <div><b>${esc(u.name || '')}</b><span>${esc(u.email || '')}</span>${u.phone ? `<span dir="ltr">${esc(u.phone)}</span>` : ''}</div></div>
       ${u.admin ? `<button class="btn primary block share-big" data-admin>🛡️ لوحة الإدارة</button>` : ''}
-      <div class="pts"><b>${u.points || 0}</b><span>نقطة في رصيدك · تمييز الإعلان بـ 70 نقطة يجعله يظهر أولاً في الصفحة الرئيسية</span></div>
+      <div class="pts"><b>${u.admin ? '∞' : u.points || 0}</b><span>${u.admin ? 'نقاط غير محدودة للإدارة · تمييز الإعلان يجعله يظهر أولاً في الصفحة الرئيسية' : u.verified ? 'نقطة في رصيدك · تمييز الإعلان بـ 70 نقطة يجعله يظهر أولاً في الصفحة الرئيسية' : 'تمييز الإعلانات متاح للمكاتب الموثّقة — وثّق حسابك واحصل على 500 نقطة'}</span></div>
+      ${!u.admin && !u.verified ? `<button class="btn ghost block" data-verify>${I.verified} توثيق حساب المكتب العقاري</button>` : ''}
       <button class="btn gold block share-big" data-addland>${I.plus || '＋'} أضف أرضاً للبيع</button>
       <h2 class="h2">طلباتي</h2>
       <div id="myList"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>
@@ -55,15 +56,16 @@ export async function initAccount(pg, next) {
         <div><b>${esc(x.title)}</b><span>${x.area ? money(x.area) + ' قدم²' : ''}${x.price ? ' · ' + money(x.price) + ' د.إ' : ''}</span>
           <span class="pills"><i class="pill ${REVIEW[x.review][1]}">${REVIEW[x.review][0]}</i>${x.featured ? '<i class="pill star">⭐ مميز</i>' : ''}${x.onPlan ? '<i class="pill plan">على المخطط</i>' : ''}</span>
           ${x.note ? `<small>السبب: ${esc(x.note)}</small>` : ''}
-          ${!x.featured && x.review !== 'rejected' ? `<button class="btn ghost feat" data-feat="${x.id}">⭐ تمييز الإعلان (70 نقطة)</button>` : ''}</div>
+          ${!x.featured && x.review !== 'rejected' ? `<button class="btn ghost feat" data-feat="${x.id}">⭐ تمييز الإعلان${(session.user() || {}).admin ? '' : ' (70 نقطة)'}</button>` : ''}</div>
         ${x.review === 'approved' ? `<button class="back" data-oland="${x.id}" aria-label="عرض">‹</button>` : ''}</div>`).join('')
         : '<p class="muted">لم تضف أي أرض بعد.</p>';
     } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
     box.onclick = async (e) => {
       const b = e.target.closest('[data-feat]'); if (!b) return;
       const u = session.user() || {};
-      if ((u.points || 0) < 70) { toast(`رصيدك ${u.points || 0} نقطة — تمييز الإعلان يحتاج 70 نقطة. تواصل مع الإدارة لإضافة نقاط`); return; }
-      if (!confirm('تمييز هذا الإعلان مقابل 70 نقطة؟')) return;
+      if (!u.admin && !u.verified) { toast('تمييز الإعلانات متاح للمكاتب الموثّقة'); H.pushPage('verify'); return; }
+      if (!u.admin && (u.points || 0) < 70) { toast(`رصيدك ${u.points || 0} نقطة — تمييز الإعلان يحتاج 70 نقطة. تواصل مع الإدارة لإضافة نقاط`); return; }
+      if (!confirm(u.admin ? 'تمييز هذا الإعلان؟' : 'تمييز هذا الإعلان مقابل 70 نقطة؟')) return;
       b.disabled = true;
       try { await api('feature', { id: b.dataset.feat }); await refreshMe(); toast('تم تمييز الإعلان ⭐'); H.closeTop(); setTimeout(() => H.pushPage('account'), 280); }
       catch (ex) { toast(ex.message); b.disabled = false; }
@@ -232,23 +234,32 @@ function admCard(x) {
 }
 export function adminPage() {
   return `<div class="pad acc">
-    <div class="seg four"><button data-atab="pending">الطلبات <em id="cPending"></em></button><button data-atab="publish">المعروضة</button><button data-atab="draft">المرفوضة</button><button data-atab="users">المستخدمون</button></div>
+    <div class="seg four"><button data-atab="pending">الطلبات <em id="cPending"></em></button><button data-atab="publish">المعروضة</button><button data-atab="draft">المرفوضة</button><button data-atab="verify">التوثيق <em id="cVerify"></em></button><button data-atab="users">المستخدمون</button></div>
     <div id="admSearch" hidden><input class="srch" id="admQ" placeholder="ابحث بالاسم أو البريد…"></div>
     <div id="admList"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>
   </div>`;
 }
 export function initAdmin(pg) {
-  const { esc, money } = H;
+  const { esc, money, I } = H;
   const list = pg.querySelector('#admList'), q = pg.querySelector('#admQ');
   const load = async () => {
     pg.querySelectorAll('[data-atab]').forEach((b) => b.classList.toggle('on', b.dataset.atab === ADM.tab));
     pg.querySelector('#admSearch').hidden = ADM.tab !== 'users';
     list.innerHTML = '<div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div>';
     try {
-      if (ADM.tab === 'users') {
+      if (ADM.tab === 'verify') {
+        const j = await api('adm_verifs', { status: 'pending' });
+        const c = pg.querySelector('#cVerify'); if (c) c.textContent = j.pending ? `(${j.pending})` : '';
+        list.innerHTML = j.items.length ? j.items.map((u) => `<div class="vreq" data-uid="${u.id}">
+            <b>${esc(u.verify.company)}</b><span>${esc(u.verify.city)} · ${esc(u.verify.name)}</span>
+            <span><a href="tel:${esc(u.verify.phone)}" dir="ltr">${esc(u.verify.phone)}</a> · ${esc(u.email)}</span>
+            <span class="muted">${new Date(u.verify.t).toLocaleDateString('ar-AE')}</span>
+            <div class="admact"><button class="btn wa" data-vok="${u.id}">✓ توثيق (+500 نقطة)</button><button class="btn ghost" data-vno="${u.id}">✕ رفض</button></div></div>`).join('')
+          : '<p class="muted">لا توجد طلبات توثيق.</p>';
+      } else if (ADM.tab === 'users') {
         const j = await api('adm_users', { q: q.value.trim() });
         list.innerHTML = j.items.length ? j.items.map((u) => `<div class="mine adm" data-auser="${u.id}"><div class="acc-av">${esc((u.name || u.email || '?').charAt(0))}</div>
-          <div><b>${esc(u.name || '—')}${u.banned ? ' <i class="pill sold">موقوف</i>' : ''}${u.admin ? ' <i class="pill plan">مدير</i>' : ''}</b><span>${esc(u.email)}</span><span>${u.ads} إعلان · ${u.points} نقطة${u.google ? ' · جوجل' : ''}</span></div><i class="chev">‹</i></div>`).join('')
+          <div><b>${esc(u.verified && u.company ? u.company : u.name || '—')} ${u.verified ? I.verified : ''}${u.banned ? ' <i class="pill sold">موقوف</i>' : ''}${u.admin ? ' <i class="pill plan">مدير</i>' : ''}</b><span>${esc(u.email)}</span><span>${u.ads} إعلان · ${u.points} نقطة${u.google ? ' · جوجل' : ''}</span></div><i class="chev">‹</i></div>`).join('')
           : '<p class="muted">لا يوجد مستخدمون.</p>';
       } else {
         const j = await api('adm_ads', { status: ADM.tab });
@@ -258,6 +269,15 @@ export function initAdmin(pg) {
     } catch (e) { list.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
   };
   pg.querySelectorAll('[data-atab]').forEach((b) => { b.onclick = () => { ADM.tab = b.dataset.atab; load(); }; });
+  list.addEventListener('click', async (e) => {
+    const ok = e.target.closest('[data-vok]'), no = e.target.closest('[data-vno]'); if (!ok && !no) return;
+    e.stopPropagation();
+    const id = (ok || no).dataset.vok || (ok || no).dataset.vno;
+    let note = '';
+    if (no) { note = prompt('سبب الرفض (اختياري):', ''); if (note === null) return; }
+    try { await api('adm_verify', { id, approve: ok ? '1' : '0', note }); H.toast(ok ? 'تم توثيق الحساب وإضافة 500 نقطة ✓' : 'تم رفض الطلب'); load(); }
+    catch (ex) { H.toast(ex.message); }
+  });
   let qt = 0; q.oninput = () => { clearTimeout(qt); qt = setTimeout(load, 350); };
   pg.addEventListener('oay:refresh', load);
   load();
@@ -313,10 +333,13 @@ export async function initAdmUser(pg, id) {
   const draw = (j) => {
     const u = j.user;
     box.innerHTML = `<div class="acc-card"><div class="acc-av">${esc((u.name || u.email || '?').charAt(0))}</div>
-        <div><b>${esc(u.name || '—')}</b><span>${esc(u.email)}</span>${u.phone ? `<span dir="ltr">${esc(u.phone)}</span>` : ''}
+        <div><b>${esc(u.name || '—')} ${u.verified ? H.I.verified : ''}</b>${u.verified && u.company ? `<span><b>${esc(u.company)}</b></span>` : ''}<span>${esc(u.email)}</span>${u.phone ? `<span dir="ltr">${esc(u.phone)}</span>` : ''}
         <span>عضو منذ ${new Date(u.joined).toLocaleDateString('ar-AE')}${u.google ? ' · دخول بجوجل' : ''}</span>
         <span class="pills">${u.banned ? '<i class="pill sold">موقوف</i>' : '<i class="pill av">نشط</i>'}${u.admin ? '<i class="pill plan">مدير</i>' : ''}</span></div></div>
-      <div class="pts"><b>${u.points}</b><span>نقطة · تمييز إعلان = 70 نقطة</span></div>
+      ${u.verify ? `<div class="vreq"><b>طلب التوثيق: ${u.verify.status === 'approved' ? 'موثّق ✓' : u.verify.status === 'pending' ? 'قيد المراجعة' : 'مرفوض'}</b>
+        <span>${esc(u.verify.company)} · ${esc(u.verify.city)} · ${esc(u.verify.name)} · <a href="tel:${esc(u.verify.phone)}" dir="ltr">${esc(u.verify.phone)}</a></span>
+        ${u.verify.status === 'pending' ? `<div class="admact"><button class="btn wa" data-vok2="1">✓ توثيق (+500 نقطة)</button><button class="btn ghost" data-vno2="1">✕ رفض</button></div>` : u.verify.status === 'approved' ? `<button class="btn ghost danger" data-vno2="1">إلغاء التوثيق</button>` : ''}</div>` : ''}
+      <div class="pts"><b>${u.admin ? '∞' : u.points}</b><span>نقطة · تمييز إعلان = 70 نقطة</span></div>
       <div class="admact">
         <button class="btn gold" data-pts="70">＋ 70 نقطة (تمييز إعلان)</button>
         <button class="btn ghost" data-pts="custom">± نقاط بعدد آخر</button>
@@ -327,6 +350,12 @@ export async function initAdmUser(pg, id) {
   };
   const load = async () => { try { draw(await api('adm_user', { id })); } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; } };
   box.onclick = async (e) => {
+    const vk = e.target.closest('[data-vok2]'), vn = e.target.closest('[data-vno2]');
+    if (vk || vn) {
+      let note = ''; if (vn) { note = prompt('السبب (اختياري):', ''); if (note === null) return; }
+      try { await api('adm_verify', { id, approve: vk ? '1' : '0', note }); toast(vk ? 'تم توثيق الحساب وإضافة 500 نقطة ✓' : 'تم'); load(); } catch (ex) { toast(ex.message); }
+      return;
+    }
     const p = e.target.closest('[data-pts]'), b = e.target.closest('[data-ban]'); if (!p && !b) return;
     try {
       if (p) {
@@ -353,6 +382,7 @@ export function oLandCard(x) {
     <div class="body">
       <div class="row between"><h3>${esc(x.title)}</h3>${x.price ? `<div class="price">${money(x.price)} <small>د.إ</small></div>` : ''}</div>
       ${x.project || x.location ? `<div class="meta">${I.pin}<span>${esc(x.project || x.location)}</span></div>` : ''}
+      ${x.seller ? `<div class="seller">${I.verified}<span>${esc(x.seller)}</span></div>` : ''}
       <div class="specs">${x.area ? `<span>${I.area}${money(x.area)} قدم²</span>` : ''}${x.type ? `<span>${I.tag}${esc(x.type)}</span>` : ''}</div>
     </div></article>`;
 }
@@ -368,6 +398,7 @@ export function oLandPage(x) {
   return `<div class="ogal">${x.photos.length ? x.photos.map((s) => `<img src="${esc(s)}" alt="" loading="lazy" data-web="${esc(s)}">`).join('') : '<div class="noimg"></div>'}</div>
     <div class="pad">
       <h1>${esc(x.title)}</h1>
+      ${x.seller ? `<div class="seller big">${I.verified}<span>${esc(x.seller)} · مكتب عقاري موثّق</span></div>` : ''}
       ${x.price ? `<div class="pricebox"><div class="price big">${money(x.price)} <small>د.إ</small></div></div>` : ''}
       <div class="inst">${rows.map((r) => `<div class="r"><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}</div>
       ${x.description ? `<p class="odesc">${esc(x.description)}</p>` : ''}

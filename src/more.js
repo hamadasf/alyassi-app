@@ -8,13 +8,15 @@ const VER = typeof __VERSION__ !== 'undefined' ? __VERSION__ : '';
 const avatar = (u, cls = 'acc-av') => u && u.avatar
   ? `<span class="${cls} img"><img src="${H.esc(u.avatar)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()"></span>`
   : `<span class="${cls}">${H.esc(u ? (u.name || u.email || '?').trim().charAt(0) : '👤')}</span>`;
+const vb = (u) => (u && u.verified ? H.I.verified : '');
+const CITIES = ['الشارقة', 'دبي', 'أبوظبي', 'عجمان', 'رأس الخيمة', 'أم القيوين', 'الفجيرة', 'العين'];
 const row = (icon, label, attrs, extra = '') => `<button class="mrow" ${attrs}><span class="mi">${icon}</span><b>${label}</b>${extra}<i class="chev">‹</i></button>`;
 
 /* ================= the tab ================= */
 export function renderMore(el) {
   const { I, esc } = H; const u = session.user();
   el.innerHTML = `
-    ${u ? `<button class="mprof" data-profile>${avatar(u, 'mav')}<div><b>${esc(u.name || 'حسابي')}</b><span>${esc(u.email || '')}</span></div><i class="chev">‹</i></button>`
+    ${u ? `<button class="mprof" data-profile>${avatar(u, 'mav')}<div><b>${esc(u.verified && u.company ? u.company : u.name || 'حسابي')} ${vb(u)}</b><span>${esc(u.email || '')}</span></div><i class="chev">‹</i></button>`
       : `<button class="mprof" data-account>${avatar(null, 'mav')}<div><b>تسجيل الدخول / حساب جديد</b><span>بالبريد الإلكتروني أو حساب جوجل</span></div><i class="chev">‹</i></button>`}
     <h3 class="msec">نشاطي</h3>
     <div class="mbox">
@@ -26,6 +28,7 @@ export function renderMore(el) {
     </div>
     <h3 class="msec">الحساب والإعدادات</h3>
     <div class="mbox">
+      ${row(I.verified, 'توثيق حسابك', u ? 'data-verify' : 'data-account', u ? (u.verified ? '<small class="okv">موثّق</small>' : u.verify && u.verify.status === 'pending' ? '<small>قيد المراجعة</small>' : '') : '')}
       ${row(I.bell, 'خيارات الإشعارات', 'data-notifs')}
       ${u ? row(I.gear, 'إعدادات', 'data-settings') : ''}
     </div>
@@ -42,9 +45,10 @@ export function renderMore(el) {
 /* ================= profile ================= */
 export function profilePage() {
   const { esc } = H; const u = session.user() || {};
-  return `<div class="pprof">${avatar(u, 'bav')}<h2>${esc(u.name || '')}</h2>
-      <span class="role">${u.admin ? '🛡️ مدير' : '🏠 عضو'}</span>
-      <div class="pinfo"><div><b>${u.points || 0}</b><span>نقطة</span></div><div><b dir="ltr">${esc(u.phone || '—')}</b><span>الجوال</span></div></div>
+  return `<div class="pprof">${avatar(u, 'bav')}<h2>${esc(u.verified && u.company ? u.company : u.name || '')} ${vb(u)}</h2>
+      ${u.verified && u.company ? `<p class="muted">${esc(u.name || '')}</p>` : ''}
+      <span class="role">${u.admin ? '🛡️ مدير' : u.verified ? '🏢 مكتب عقاري موثّق' : '🏠 عضو'}</span>
+      <div class="pinfo"><div><b>${u.admin ? '∞' : u.points || 0}</b><span>نقطة</span></div><div><b dir="ltr">${esc(u.phone || '—')}</b><span>الجوال</span></div></div>
       <p class="muted">${esc(u.email || '')}${u.google ? ' · دخول بحساب جوجل' : ''}</p></div>
     <div class="pad"><button class="btn primary block share-big" data-editprofile>تعديل الملف</button></div>`;
 }
@@ -161,3 +165,45 @@ const LEGAL = {
 };
 export function legalPage(k) { const L = LEGAL[k] || LEGAL.privacy; return `<div class="pad legal"><h2>${L[0]}</h2>${L[1]}</div>`; }
 export const legalTitle = (k) => (LEGAL[k] || LEGAL.privacy)[0];
+
+/* ================= account verification (real-estate offices) ================= */
+export function verifyPage() {
+  const { esc, I } = H; const u = session.user() || {}; const v = u.verify || {};
+  if (u.verified) {
+    return `<div class="pad vpage"><div class="vhero ok">${I.verified}</div><h2>حسابك موثّق</h2>
+      <p class="muted">${esc(u.company || '')}</p><p class="vtxt">تظهر علامة التوثيق على حسابك وإعلاناتك، ويمكنك تمييز إعلاناتك بالنقاط من «عقاراتي».</p>
+      <div class="pts"><b>${u.points || 0}</b><span>نقطة في رصيدك · تمييز الإعلان بـ 70 نقطة</span></div></div>`;
+  }
+  if (v.status === 'pending') {
+    return `<div class="pad vpage"><div class="vhero">${I.verified}</div><h2>طلبك قيد المراجعة</h2>
+      <p class="vtxt">شكراً لكم، سيتواصل معكم أحد موظفينا في أقرب وقت.</p>
+      <div class="inst"><div class="r"><span>المكتب / الشركة</span><b>${esc(v.company)}</b></div><div class="r"><span>المدينة</span><b>${esc(v.city)}</b></div><div class="r"><span>الهاتف</span><b dir="ltr">${esc(v.phone)}</b></div></div></div>`;
+  }
+  const ph = (u.phone || '').replace(/\D/g, '').replace(/^(00971|971|0)/, '').slice(0, 9);
+  return `<div class="pad vpage"><div class="vhero">${I.verified}</div><h2>وثّق حسابك</h2>
+    <p class="muted">خدمة مخصصة للمكاتب والشركات العقارية<br>يرجى إدخال بياناتك أدناه</p>
+    ${v.status === 'rejected' ? `<p class="ferr">لم تتم الموافقة على الطلب السابق${v.note ? ': ' + esc(v.note) : ''}</p>` : ''}
+    <form class="accf vcard" id="vForm" novalidate>
+      <label>اسم المكتب / الشركة العقارية<input name="company" maxlength="120" value="${esc(v.company || '')}"></label>
+      <label>المدينة<select name="city"><option value="">اختر المدينة</option>${CITIES.map((c) => `<option ${v.city === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+      <label>الاسم<input name="name" maxlength="80" value="${esc(v.name || u.name || '')}"></label>
+      <label>رقم الهاتف<div class="phone"><span dir="ltr">🇦🇪 +971</span><input name="phone" dir="ltr" inputmode="numeric" maxlength="9" placeholder="5XXXXXXXX" value="${esc(ph)}"></div><small class="cnt" id="pcnt">${ph.length}/9</small></label>
+      <p class="ferr" id="vErr" hidden></p>
+    </form>
+    <p class="vnote">هذه الخدمة مجانية للمكاتب العقارية المرخّصة. بعد النقر على «إرسال الطلب» سيتصل بك أحد موظفينا لطلب نسخة من الرخصة التجارية. عند الموافقة تظهر علامة التوثيق على حسابك وتحصل على 500 نقطة لتمييز إعلاناتك.</p>
+    <button class="btn primary block share-big" id="vGo">إرسال الطلب</button></div>`;
+}
+export function initVerify(pg) {
+  const form = pg.querySelector('#vForm'); if (!form) return;
+  const err = pg.querySelector('#vErr'), go = pg.querySelector('#vGo'), cnt = pg.querySelector('#pcnt');
+  form.phone.addEventListener('input', () => { form.phone.value = form.phone.value.replace(/\D/g, '').slice(0, 9); cnt.textContent = form.phone.value.length + '/9'; });
+  go.onclick = async () => {
+    err.hidden = true; go.disabled = true;
+    try {
+      const j = await api('verify_request', Object.fromEntries(new FormData(form)));
+      session.set(session.token(), j.user);
+      H.closeTop(); setTimeout(() => H.pushPage('verify'), 280);
+      H.toast('شكراً لكم، سيتواصل معكم أحد موظفينا في أقرب وقت');
+    } catch (ex) { err.textContent = ex.message; err.hidden = false; go.disabled = false; }
+  };
+}

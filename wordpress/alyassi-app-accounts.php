@@ -8,6 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 const OAY_ACC_ORIGINS = array( 'https://hamadasf.github.io', 'https://localhost', 'http://localhost', 'capacitor://localhost' );
 const OAY_ACC_SCHEME  = 'com.omaralyassi.realestate';
 const OAY_FEATURE_COST = 70;   // points to feature a land
+const OAY_VERIFY_BONUS = 500;  // points given when an office's account is verified
 
 /* ---------------- helpers ---------------- */
 function oay_acc_cors() {
@@ -63,7 +64,9 @@ function oay_acc_is_admin( $u ) { return $u && user_can( $u, 'manage_options' );
 function oay_acc_userdata( $u ) {
 	return array( 'id' => $u->ID, 'name' => $u->display_name, 'email' => $u->user_email, 'phone' => (string) get_user_meta( $u->ID, 'oay_phone', true ),
 		'google' => (bool) get_user_meta( $u->ID, 'oay_google_sub', true ), 'points' => (int) get_user_meta( $u->ID, 'oay_points', true ),
-		'admin' => oay_acc_is_admin( $u ), 'banned' => (bool) get_user_meta( $u->ID, 'oay_banned', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ) );
+		'admin' => oay_acc_is_admin( $u ), 'banned' => (bool) get_user_meta( $u->ID, 'oay_banned', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ),
+		'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ),
+		'verify' => oay_verify_get( $u->ID ) );
 }
 function oay_acc_need_admin() { $u = oay_acc_need_user(); if ( ! oay_acc_is_admin( $u ) ) { oay_acc_err( 'غير مسموح', 403 ); } return $u; }
 function oay_acc_new_user( $email, $name, $pass ) {
@@ -77,7 +80,7 @@ function oay_acc_new_user( $email, $name, $pass ) {
 
 /* ---------------- account API ---------------- */
 $oay_acc_actions = array( 'register', 'login', 'google', 'me', 'profile', 'logout', 'meta', 'upload', 'submit', 'mine', 'public', 'delete', 'plotcheck', 'feature',
-	'forgot', 'delete_account', 'avatar',
+	'forgot', 'delete_account', 'avatar', 'verify_request', 'adm_verifs', 'adm_verify',
 	'adm_ads', 'adm_review', 'adm_save', 'adm_delete', 'adm_feature', 'adm_users', 'adm_user', 'adm_points', 'adm_ban' );
 foreach ( $oay_acc_actions as $a ) {
 	add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a );
@@ -179,6 +182,51 @@ function oay_acc_avatar() {
 	$old = get_user_meta( $u->ID, 'oay_avatar_file', true ); if ( $old && file_exists( $old ) ) { @unlink( $old ); }
 	update_user_meta( $u->ID, 'oay_avatar', $up['url'] ); update_user_meta( $u->ID, 'oay_avatar_file', $up['file'] ); update_user_meta( $u->ID, 'oay_avatar_own', 1 );
 	oay_acc_ok( array( 'user' => oay_acc_userdata( get_userdata( $u->ID ) ) ) );
+}
+
+/* ---------------- account verification (real-estate offices) ---------------- */
+function oay_verify_get( $uid ) {
+	$v = get_user_meta( $uid, 'oay_verify', true );
+	return is_array( $v ) ? $v : null;
+}
+const OAY_CITIES = array( 'الشارقة', 'دبي', 'أبوظبي', 'عجمان', 'رأس الخيمة', 'أم القيوين', 'الفجيرة', 'العين' );
+function oay_acc_verify_request() {
+	$u = oay_acc_need_user();
+	if ( get_user_meta( $u->ID, 'oay_verified', true ) ) { oay_acc_err( 'حسابك موثّق بالفعل' ); }
+	$company = sanitize_text_field( oay_acc_arg( 'company', 120 ) ); $city = sanitize_text_field( oay_acc_arg( 'city', 40 ) );
+	$name = sanitize_text_field( oay_acc_arg( 'name', 80 ) ); $phone = preg_replace( '/\D/', '', oay_acc_arg( 'phone', 20 ) );
+	if ( mb_strlen( $company ) < 2 ) { oay_acc_err( 'اكتب اسم المكتب أو الشركة العقارية' ); }
+	if ( ! in_array( $city, OAY_CITIES, true ) ) { oay_acc_err( 'اختر المدينة' ); }
+	if ( mb_strlen( $name ) < 2 ) { oay_acc_err( 'اكتب الاسم' ); }
+	if ( ! preg_match( '/^5\d{8}$/', $phone ) ) { oay_acc_err( 'رقم الهاتف 9 أرقام ويبدأ بـ 5' ); }
+	$v = array( 'status' => 'pending', 'company' => $company, 'city' => $city, 'name' => $name, 'phone' => '+971' . $phone, 't' => time() * 1000, 'note' => '' );
+	update_user_meta( $u->ID, 'oay_verify', $v ); update_user_meta( $u->ID, 'oay_verify_status', 'pending' );
+	wp_mail( get_option( 'admin_email' ), 'طلب توثيق حساب: ' . $company,
+		"وصل طلب توثيق حساب مكتب عقاري من التطبيق.\n\nالمكتب / الشركة: $company\nالمدينة: $city\nالاسم: $name\nالهاتف: +971$phone\nالحساب: {$u->user_email}\n\nراجع الطلب من لوحة الإدارة في التطبيق (تبويب «التوثيق»)." );
+	oay_acc_ok( array( 'user' => oay_acc_userdata( get_userdata( $u->ID ) ) ) );
+}
+function oay_acc_adm_verifs() {
+	oay_acc_need_admin();
+	$st = oay_acc_arg( 'status', 20 ); $st = in_array( $st, array( 'pending', 'approved', 'rejected' ), true ) ? $st : 'pending';
+	$users = get_users( array( 'meta_key' => 'oay_verify_status', 'meta_value' => $st, 'number' => 200 ) );
+	$cnt = count( get_users( array( 'meta_key' => 'oay_verify_status', 'meta_value' => 'pending', 'fields' => 'ID', 'number' => 500 ) ) );
+	oay_acc_ok( array( 'items' => array_map( 'oay_acc_adm_userrow', $users ), 'pending' => $cnt ) );
+}
+function oay_acc_adm_verify() {
+	oay_acc_need_admin(); $u = oay_acc_adm_target(); $v = oay_verify_get( $u->ID );
+	if ( ! $v ) { oay_acc_err( 'لا يوجد طلب توثيق لهذا الحساب' ); }
+	if ( '1' === oay_acc_arg( 'approve', 2 ) ) {
+		$first = ! get_user_meta( $u->ID, 'oay_verify_bonus', true );
+		$v['status'] = 'approved'; $v['note'] = '';
+		update_user_meta( $u->ID, 'oay_verified', 1 ); update_user_meta( $u->ID, 'oay_company', $v['company'] );
+		if ( $first ) { update_user_meta( $u->ID, 'oay_points', (int) get_user_meta( $u->ID, 'oay_points', true ) + OAY_VERIFY_BONUS ); update_user_meta( $u->ID, 'oay_verify_bonus', 1 ); }
+		wp_mail( $u->user_email, 'تم توثيق حسابك ✓', "مرحباً،\n\nتم توثيق حساب «{$v['company']}» في تطبيق عمر الياسي للعقارات" . ( $first ? ' وأُضيفت ' . OAY_VERIFY_BONUS . ' نقطة إلى رصيدك لتمييز إعلاناتك' : '' ) . ".\n\nعمر الياسي للعقارات" );
+	} else {
+		$v['status'] = 'rejected'; $v['note'] = sanitize_text_field( oay_acc_arg( 'note', 200 ) );
+		delete_user_meta( $u->ID, 'oay_verified' );
+	}
+	update_user_meta( $u->ID, 'oay_verify', $v ); update_user_meta( $u->ID, 'oay_verify_status', $v['status'] );
+	oay_acc_ok( array( 'user' => oay_acc_adm_userrow( get_userdata( $u->ID ) ) ) );
 }
 
 /* ---------------- land submissions ---------------- */
@@ -333,6 +381,7 @@ function oay_acc_card( $p, $mine = false ) {
 		'photos' => array_values( array_filter( array_map( function ( $a ) { return wp_get_attachment_image_url( $a, 'large' ); }, $pics ) ) ),
 		'url' => get_permalink( $p ), 'featured' => (bool) get_post_meta( $p->ID, '_oay_featured', true ),
 		'plan' => (string) get_post_meta( $p->ID, '_oay_plan_slug', true ), 'onPlan' => (int) get_post_meta( $p->ID, '_oay_plan_added', true ) === 1,
+		'seller' => get_user_meta( $p->post_author, 'oay_verified', true ) ? (string) get_user_meta( $p->post_author, 'oay_company', true ) : '',
 	);
 	if ( 'admin' === $mine ) {
 		$o = get_userdata( $p->post_author );
@@ -369,6 +418,8 @@ function oay_acc_feature() {
 	$u = oay_acc_need_user(); $p = get_post( absint( oay_acc_arg( 'id', 12 ) ) );
 	if ( ! $p || 'lands' !== $p->post_type || (int) $p->post_author !== $u->ID ) { oay_acc_err( 'غير موجود', 404 ); }
 	if ( get_post_meta( $p->ID, '_oay_featured', true ) ) { oay_acc_err( 'الإعلان مميز بالفعل' ); }
+	if ( oay_acc_is_admin( $u ) ) { update_post_meta( $p->ID, '_oay_featured', 1 ); oay_acc_ok( array( 'points' => -1 ) ); }   // admins: unlimited
+	if ( ! get_user_meta( $u->ID, 'oay_verified', true ) ) { oay_acc_err( 'تمييز الإعلانات متاح للحسابات الموثّقة — وثّق حسابك من «المزيد ← توثيق حسابك»' ); }
 	$pts = (int) get_user_meta( $u->ID, 'oay_points', true );
 	if ( $pts < OAY_FEATURE_COST ) { oay_acc_err( 'رصيدك ' . $pts . ' نقطة — تمييز الإعلان يحتاج ' . OAY_FEATURE_COST . ' نقطة' ); }
 	update_user_meta( $u->ID, 'oay_points', $pts - OAY_FEATURE_COST ); update_post_meta( $p->ID, '_oay_featured', 1 );

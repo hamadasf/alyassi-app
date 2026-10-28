@@ -407,3 +407,24 @@ img { -webkit-user-drag: none; }
 .savef { margin-top: 10px; }
 .legal { line-height: 1.95; color: #334155; font-size: 15px; } .legal h2 { font-size: 21px; color: var(--navy); margin-bottom: 10px; }
 .legal h3 { font-size: 16px; color: var(--navy); margin: 16px 0 6px; } .legal ul { padding-inline-start: 20px; } .legal li { margin-bottom: 4px; }
+
+/* ---- verification ---- */
+.vbadge { width: 18px; height: 18px; vertical-align: -3px; display: inline-block; }
+.mrow .mi .vbadge { width: 24px; height: 24px; }
+.okv { color: #1d6fe8 !important; font-weight: 800; }
+.vpage { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.vhero { width: 96px; height: 96px; border-radius: 50%; background: #e3edfb; display: grid; place-items: center; margin-top: 8px; }
+.vhero .vbadge { width: 52px; height: 52px; } .vhero.ok { background: #dff0ff; }
+.vpage h2 { font-size: 22px; font-weight: 800; color: var(--navy); } .vtxt { color: #334155; line-height: 1.8; }
+.vpage .inst, .vpage .pts, .vpage .vcard { width: 100%; text-align: right; }
+.vcard { background: #fff; border-radius: 20px; padding: 16px; box-shadow: 0 2px 12px rgba(15, 23, 42, .05); }
+.phone { display: flex; align-items: center; border: 1.5px solid #dfe3ea; border-radius: 12px; overflow: hidden; direction: ltr; }
+.phone span { padding: 0 12px; font-weight: 700; color: var(--navy); white-space: nowrap; }
+.phone input { border: 0 !important; border-radius: 0 !important; }
+.cnt { align-self: flex-start; color: #94a3b8; font-weight: 500; }
+.vnote { font-size: 13px; color: #64748b; line-height: 1.8; }
+.vreq { background: #fff; border-radius: 16px; padding: 14px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 5px; box-shadow: 0 2px 10px rgba(15, 23, 42, .05); }
+.vreq b { color: var(--navy); font-size: 15.5px; } .vreq span { font-size: 13.5px; color: #475569; } .vreq .admact { margin-top: 6px; }
+.seller { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; color: #1d6fe8; margin-top: 4px; }
+.seller.big { font-size: 14.5px; margin: 4px 0 10px; } .seller .vbadge { width: 17px; height: 17px; }
+.seg.four { flex-wrap: wrap; } .seg.four button { flex: 1 1 18%; }
