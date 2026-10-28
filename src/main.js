@@ -5,7 +5,8 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { cardModel, buildLandPdf } from './card.js';
 import { paintPlanLoc } from './planloc.js';
-import { session, refreshMe, ownerLands, loadOwnerLands } from './owner.js';
+import { session, refreshMe, ownerLands, loadOwnerLands, api as accApi } from './owner.js';
+import { initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, notifsPage, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser } from './owner-ui.js';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
@@ -532,28 +533,7 @@ function renderFavs() {
   renderList($('#favs .list'), items, landCard, `${I.heart}<p>لم تضف أي أرض للمفضلة بعد</p><button class="btn ghost" data-go="lands">تصفح الأراضي</button>`);
 }
 
-function renderContact() {
-  const me = session.user();
-  $('#contact .content').innerHTML = `
-    <button class="accrow" data-account><span class="acc-av">${esc(me ? (me.name || me.email || '?').charAt(0) : '👤')}</span><div><b>${me ? esc(me.name || 'حسابي') : 'تسجيل الدخول / حساب جديد'}</b><span>${me ? 'طلباتي وإضافة أرض للبيع' : 'بالبريد الإلكتروني أو حساب جوجل'}</span></div><i>‹</i></button>
-    <section class="about"><img src="${EMBLEM}" alt=""><h2>عمر الياسي للعقارات</h2><p>نساعدك في اختيار الأرض المناسبة للتطوير أو الاستثمار في الشارقة، بخيارات تنافسية وخطط سداد مرنة.</p></section>
-    <div class="clist">
-      <a class="citem" href="tel:${CONTACT.phone}">${I.phone}<div><b>اتصل بنا</b><span dir="ltr">${CONTACT.phoneLabel}</span></div></a>
-      <a class="citem" href="${waLink('مرحباً، أرغب بالاستفسار عن الأراضي المتاحة')}" data-ext>${I.wa}<div><b>واتساب</b><span dir="ltr">${CONTACT.whatsappLabel}</span></div></a>
-      <a class="citem" href="tel:${CONTACT.office}">${I.office}<div><b>هاتف المكتب</b><span dir="ltr">${CONTACT.officeLabel}</span></div></a>
-      <a class="citem" href="mailto:${CONTACT.email}">${I.mail}<div><b>البريد الإلكتروني</b><span>${CONTACT.email}</span></div></a>
-      <div class="citem">${I.pin}<div><b>العنوان</b><span>${CONTACT.address}</span></div></div>
-    </div>
-    <div class="social">
-      <a href="${CONTACT.instagram}" data-ext>${I.ig} إنستغرام</a>
-      <a href="${CONTACT.facebook}" data-ext>${I.fb} فيسبوك</a>
-    </div>
-    <div class="clist">
-      <button class="citem" data-web="${SITE}/about-us/">${I.info}<div><b>من نحن</b><span>تعرّف على عمر الياسي</span></div></button>
-      <button class="citem" data-web="${SITE}">${I.globe}<div><b>الموقع الإلكتروني</b><span>omaralyassirealestate.com</span></div></button>
-    </div>
-    <p class="ver">الإصدار 1.0</p>`;
-}
+function renderContact() { renderMore($('#contact .content')); }
 
 /* ---- detail pages (pushed on top) ---- */
 function projectPage(p) {
@@ -636,18 +616,27 @@ function pushPage(kind, id) {
   else if (kind === 'addland') { html = addLandPage(); }
   else if (kind === 'olands') { html = oLandsPage(); }
   else if (kind === 'admin') { html = adminPage(); }
+  else if (kind === 'profile') { html = profilePage(); }
+  else if (kind === 'editprofile') { html = editProfilePage(); }
+  else if (kind === 'settings') { html = settingsPage(); }
+  else if (kind === 'notifs') { html = notifsPage(); }
+  else if (kind === 'contactpg') { html = contactPage(); }
+  else if (kind === 'saved') { html = savedPage(); }
+  else if (kind === 'legal') { html = legalPage(id); }
   else if (kind === 'aad') { html = admAdPage(id); if (!html) return; }
   else if (kind === 'auser') { html = admUserPage(); }
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = d.lands.find((x) => x.id === id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   pg.innerHTML = `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${TITLE[kind] || 'تفاصيل الأرض'}</span>${kind === 'land' || kind === 'project' ? `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>` : ''}</header><div class="scroller">${html}</div>`;
   document.body.appendChild(pg);
   if (kind === 'account') initAccount(pg, id);
   if (kind === 'addland') initAddLand(pg);
   if (kind === 'admin') initAdmin(pg);
+  if (kind === 'editprofile') initEditProfile(pg);
+  if (kind === 'notifs') { const st = push.state(); pg.querySelector('#nstate').textContent = st === 'on' ? '✓ الإشعارات مفعّلة على هذا الجهاز' : st === 'denied' ? 'الإشعارات مرفوضة من إعدادات الجهاز — فعّلها من الإعدادات' : st === 'unsupported' ? 'هذا الجهاز لا يدعم الإشعارات' : ''; }
   if (kind === 'aad') initAdmAd(pg, id);
   if (kind === 'auser') initAdmUser(pg, id);
   if (l && l.poly) { const cv = pg.querySelector('.planloc-cv'), proj = d.projects.find((x) => x.slug === l.project); if (cv && proj) requestAnimationFrame(() => paintPlanLoc(cv, l, proj.lands, proj.map).then(() => cv.classList.add('on')).catch(() => { const im = document.createElement('img'); im.src = l.img; im.alt = ''; cv.replaceWith(im); pg.querySelector('.planloc-cap')?.remove(); })); }
@@ -711,6 +700,17 @@ document.addEventListener('click', (e) => {
   if (ds.addland !== undefined) { if (session.token()) pushPage('addland'); else { toast('سجّل الدخول أولاً لإضافة أرضك'); pushPage('account', 'add'); } return; }
   if (ds.olands !== undefined) { pushPage('olands'); return; }
   if (ds.admin !== undefined) { pushPage('admin'); return; }
+  if (ds.profile !== undefined) { pushPage('profile'); return; }
+  if (ds.editprofile !== undefined) { pushPage('editprofile'); return; }
+  if (ds.settings !== undefined) { pushPage('settings'); return; }
+  if (ds.notifs !== undefined) { pushPage('notifs'); return; }
+  if (ds.contactpg !== undefined) { pushPage('contactpg'); return; }
+  if (ds.saved !== undefined) { pushPage('saved'); return; }
+  if (ds.legal) { pushPage('legal', ds.legal); return; }
+  if (ds.logout !== undefined) { doLogout(); return; }
+  if (ds.delacc !== undefined) { deleteAccount(); return; }
+  if (ds.runsaved !== undefined) { const x = saved.all()[+ds.runsaved]; if (x) { closeAll(); resetFilters(); Object.assign(F, x.f); $('#q').value = F.q || ''; renderLands(); showTab('lands'); } return; }
+  if (ds.delsaved !== undefined) { const a = saved.all(); a.splice(+ds.delsaved, 1); saved.put(a); const pg = stack[stack.length - 1]; if (pg) pg.querySelector('.scroller').innerHTML = savedPage(); renderContact(); return; }
   if (ds.aad) { pushPage('aad', ds.aad); return; }
   if (ds.auser) { pushPage('auser', ds.auser); return; }
   if (ds.oland) { pushPage('oland', ds.oland); return; }
@@ -741,6 +741,18 @@ $('#q').addEventListener('input', (e) => { clearTimeout(qT); qT = setTimeout(() 
 $('#filterBtn').addEventListener('click', openSheet);
 $('#scrim').addEventListener('click', closeSheet);
 $('#applyF').addEventListener('click', applySheet);
+$('#saveF').addEventListener('click', () => {
+  applySheet();
+  const d = DATA(); const parts = [];
+  if (F.q) parts.push(`«${F.q}»`);
+  if (F.project) { const p = d.projects.find((x) => x.slug === F.project); parts.push(p ? p.name : F.project); }
+  if (F.cat) parts.push(F.cat);
+  if (F.minA || F.maxA) parts.push(`مساحة ${F.minA || 0}–${F.maxA || '∞'} قدم²`);
+  if (F.minP || F.maxP) parts.push(`سعر ${F.minP || 0}–${F.maxP || '∞'}`);
+  if (F.status !== 'av') parts.push({ res: 'محجوزة', sold: 'مباعة', '': 'كل الحالات' }[F.status] || '');
+  const a = saved.all(); a.unshift({ name: parts.filter(Boolean).join(' · ') || 'كل الأراضي المتاحة', f: { ...F }, t: Date.now() }); saved.put(a.slice(0, 20));
+  toast('تم حفظ البحث 🔖 — تجده في «المزيد ← بحث محفوظ»'); renderContact();
+});
 $('#resetF').addEventListener('click', () => { resetFilters(); closeSheet(); });
 
 /* pull to refresh on every tab */
@@ -777,6 +789,7 @@ function refresh(force) {
 }
 
 initOwnerUI({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), waLink, CONTACT });
+initMore({ esc, toast, I, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), closeAll: () => closeAll(), waLink, CONTACT, EMBLEM, SITE });
 session.subs.add(() => { renderContact(); });
 
 async function boot() {

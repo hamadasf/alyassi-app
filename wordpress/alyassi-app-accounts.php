@@ -63,7 +63,7 @@ function oay_acc_is_admin( $u ) { return $u && user_can( $u, 'manage_options' );
 function oay_acc_userdata( $u ) {
 	return array( 'id' => $u->ID, 'name' => $u->display_name, 'email' => $u->user_email, 'phone' => (string) get_user_meta( $u->ID, 'oay_phone', true ),
 		'google' => (bool) get_user_meta( $u->ID, 'oay_google_sub', true ), 'points' => (int) get_user_meta( $u->ID, 'oay_points', true ),
-		'admin' => oay_acc_is_admin( $u ), 'banned' => (bool) get_user_meta( $u->ID, 'oay_banned', true ) );
+		'admin' => oay_acc_is_admin( $u ), 'banned' => (bool) get_user_meta( $u->ID, 'oay_banned', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ) );
 }
 function oay_acc_need_admin() { $u = oay_acc_need_user(); if ( ! oay_acc_is_admin( $u ) ) { oay_acc_err( 'غير مسموح', 403 ); } return $u; }
 function oay_acc_new_user( $email, $name, $pass ) {
@@ -77,6 +77,7 @@ function oay_acc_new_user( $email, $name, $pass ) {
 
 /* ---------------- account API ---------------- */
 $oay_acc_actions = array( 'register', 'login', 'google', 'me', 'profile', 'logout', 'meta', 'upload', 'submit', 'mine', 'public', 'delete', 'plotcheck', 'feature',
+	'forgot', 'delete_account', 'avatar',
 	'adm_ads', 'adm_review', 'adm_save', 'adm_delete', 'adm_feature', 'adm_users', 'adm_user', 'adm_points', 'adm_ban' );
 foreach ( $oay_acc_actions as $a ) {
 	add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a );
@@ -122,6 +123,7 @@ function oay_acc_google_user( $credential ) {
 	if ( $u && user_can( $u, 'edit_posts' ) && ! user_can( $u, 'manage_options' ) ) { /* staff accounts keep their own login */ }
 	if ( ! $u ) { $uid = oay_acc_new_user( $g['email'], isset( $g['name'] ) ? sanitize_text_field( $g['name'] ) : current( explode( '@', $g['email'] ) ), wp_generate_password( 24 ) ); $u = get_userdata( $uid ); }
 	update_user_meta( $u->ID, 'oay_google_sub', sanitize_text_field( $g['sub'] ) );
+	if ( ! empty( $g['picture'] ) && ! get_user_meta( $u->ID, 'oay_avatar_own', true ) && preg_match( '#^https://[a-z0-9.-]+\.googleusercontent\.com/#', $g['picture'] ) ) { update_user_meta( $u->ID, 'oay_avatar', esc_url_raw( $g['picture'] ) ); }
 	return $u;
 }
 function oay_acc_google() {
@@ -146,6 +148,37 @@ function oay_acc_logout() {
 		update_user_meta( $u->ID, 'oay_app_tokens', array_values( array_filter( (array) get_user_meta( $u->ID, 'oay_app_tokens', true ), function ( $e ) use ( $h ) { return ! ( is_array( $e ) && $e['h'] === $h ); } ) ) );
 	}
 	oay_acc_ok();
+}
+
+/** «نسيت كلمة المرور»: WordPress emails a reset link. The answer is the same whether or not the email exists. */
+function oay_acc_forgot() {
+	oay_acc_limit( 'forgot', 5 );
+	$email = sanitize_email( oay_acc_arg( 'email', 120 ) );
+	if ( ! is_email( $email ) ) { oay_acc_err( 'البريد الإلكتروني غير صحيح' ); }
+	if ( get_user_by( 'email', $email ) && function_exists( 'retrieve_password' ) ) { retrieve_password( $email ); }
+	oay_acc_ok( array( 'message' => 'إذا كان البريد مسجّلاً ستصلك رسالة لتعيين كلمة مرور جديدة' ) );
+}
+/** The user deletes their own account (their listings are removed with it). */
+function oay_acc_delete_account() {
+	$u = oay_acc_need_user();
+	if ( oay_acc_is_admin( $u ) || user_can( $u, 'edit_others_posts' ) ) { oay_acc_err( 'لا يمكن حذف حساب إداري من التطبيق' ); }
+	foreach ( get_posts( array( 'post_type' => 'lands', 'author' => $u->ID, 'post_status' => array( 'publish', 'pending', 'draft' ), 'numberposts' => -1 ) ) as $p ) { wp_trash_post( $p->ID ); }
+	require_once ABSPATH . 'wp-admin/includes/user.php';
+	wp_delete_user( $u->ID );
+	oay_acc_ok();
+}
+/** Profile photo (sent resized from the phone). */
+function oay_acc_avatar() {
+	$u = oay_acc_need_user();
+	$b64 = oay_acc_in(); $b64 = isset( $b64['data'] ) ? (string) $b64['data'] : '';
+	if ( ! preg_match( '/^data:image\/(jpeg|png|webp);base64,/', $b64, $m ) ) { oay_acc_err( 'صورة غير صالحة' ); }
+	$bin = base64_decode( substr( $b64, strpos( $b64, ',' ) + 1 ), true );
+	if ( ! $bin || strlen( $bin ) > 3 * MB_IN_BYTES ) { oay_acc_err( 'حجم الصورة كبير' ); }
+	$up = wp_upload_bits( 'avatar-' . $u->ID . '-' . wp_generate_password( 6, false, false ) . '.jpg', null, $bin );
+	if ( ! empty( $up['error'] ) || ! @getimagesize( $up['file'] ) ) { if ( ! empty( $up['file'] ) ) { @unlink( $up['file'] ); } oay_acc_err( 'تعذّر رفع الصورة' ); }
+	$old = get_user_meta( $u->ID, 'oay_avatar_file', true ); if ( $old && file_exists( $old ) ) { @unlink( $old ); }
+	update_user_meta( $u->ID, 'oay_avatar', $up['url'] ); update_user_meta( $u->ID, 'oay_avatar_file', $up['file'] ); update_user_meta( $u->ID, 'oay_avatar_own', 1 );
+	oay_acc_ok( array( 'user' => oay_acc_userdata( get_userdata( $u->ID ) ) ) );
 }
 
 /* ---------------- land submissions ---------------- */

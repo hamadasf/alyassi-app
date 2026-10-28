@@ -8,7 +8,7 @@ mkdirSync('web', { recursive: true });
 cpSync('www', 'web', { recursive: true });
 await build({
   entryPoints: ['src/main.js'], bundle: true, minify: true, format: 'iife', target: ['es2020', 'safari14'],
-  outfile: 'web/app.js', legalComments: 'none', define: { __SNAPSHOT__: '"./data.json"' },
+  outfile: 'web/app.js', legalComments: 'none', define: { __SNAPSHOT__: '"./data.json"', __VERSION__: JSON.stringify(process.env.APP_VERSION || 'ويب ' + new Date().toISOString().slice(0, 10)) },
 });
 const V = Date.now().toString(36);
 let html = readFileSync('web/index.html', 'utf8');

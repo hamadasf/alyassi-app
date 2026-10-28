@@ -46,6 +46,8 @@ jobs:
           python3 scripts/make_resources.py brand/logo.png brand/emblem.png
 
       - name: Build web app
+        env:
+          APP_VERSION: 1.0.${{ github.run_number }}
         run: npm run build
 
       - name: Create Android project

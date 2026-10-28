@@ -34,6 +34,7 @@ export function accountPage() {
       <label>كلمة المرور<input name="password" type="password" dir="ltr" autocomplete="current-password" maxlength="200"></label>
       <p class="ferr" id="accErr" hidden></p>
       <button class="btn primary block" type="submit" id="accGo">دخول</button>
+      <button class="linkbtn" type="button" id="forgot" data-only="login">نسيت كلمة المرور؟</button>
     </form>
   </div>`;
 }
@@ -80,6 +81,11 @@ export async function initAccount(pg, next) {
     go.textContent = m === 'login' ? 'دخول' : 'إنشاء الحساب'; err.hidden = true;
   };
   pg.querySelectorAll('[data-accmode]').forEach((b) => { b.onclick = () => setMode(b.dataset.accmode); });
+  pg.querySelector('#forgot').onclick = async () => {
+    const email = form.email.value.trim() || prompt('اكتب بريدك الإلكتروني المسجّل:', '') || '';
+    if (!email) return;
+    try { const j = await api('forgot', { email }); H.toast(j.message); } catch (ex) { err.textContent = ex.message; err.hidden = false; }
+  };
   setMode('login');
   form.onsubmit = async (e) => {
     e.preventDefault(); err.hidden = true; go.disabled = true; go.textContent = '…';
