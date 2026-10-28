@@ -16,7 +16,7 @@ const row = (icon, label, attrs, extra = '') => `<button class="mrow" ${attrs}><
 export function renderMore(el) {
   const { I, esc } = H; const u = session.user();
   el.innerHTML = `
-    ${u ? `<button class="mprof" data-profile>${avatar(u, 'mav')}<div><b>${esc(u.verified && u.company ? u.company : u.name || 'حسابي')} ${vb(u)}</b><span>${esc(u.email || '')}</span></div><i class="chev">‹</i></button>`
+    ${u ? `<button class="mprof" data-profile>${avatar(u, 'mav')}<div><b><span class="notr">${esc(u.verified && u.company ? u.company : u.name || '')}</span>${u.verified && u.company || u.name ? '' : 'حسابي'} ${vb(u)}</b><span>${esc(u.email || '')}</span></div><i class="chev">‹</i></button>`
       : `<button class="mprof" data-account>${avatar(null, 'mav')}<div><b>تسجيل الدخول / حساب جديد</b><span>بالبريد الإلكتروني أو حساب جوجل</span></div><i class="chev">‹</i></button>`}
     <h3 class="msec">نشاطي</h3>
     <div class="mbox">
@@ -30,6 +30,7 @@ export function renderMore(el) {
     <div class="mbox">
       ${row(I.verified, 'توثيق حسابك', u ? 'data-verify' : 'data-account', u ? (u.verified ? '<small class="okv">موثّق</small>' : u.verify && u.verify.status === 'pending' ? '<small>قيد المراجعة</small>' : '') : '')}
       ${row(I.bell, 'خيارات الإشعارات', 'data-notifs')}
+      <button class="mrow" data-lang><span class="mi">${I.globe}</span><b class="notr">${H.isEn() ? 'العربية' : 'English'}</b><small class="notr">${H.isEn() ? 'التغيير إلى العربية' : 'Switch to English'}</small><i class="chev">‹</i></button>
       ${u ? row(I.gear, 'إعدادات', 'data-settings') : ''}
     </div>
     <h3 class="msec">الدعم</h3>
@@ -45,7 +46,7 @@ export function renderMore(el) {
 /* ================= profile ================= */
 export function profilePage() {
   const { esc } = H; const u = session.user() || {};
-  return `<div class="pprof">${avatar(u, 'bav')}<h2>${esc(u.verified && u.company ? u.company : u.name || '')} ${vb(u)}</h2>
+  return `<div class="pprof">${avatar(u, 'bav')}<h2><span class="notr">${esc(u.verified && u.company ? u.company : u.name || '')}</span> ${vb(u)}</h2>
       ${u.verified && u.company ? `<p class="muted">${esc(u.name || '')}</p>` : ''}
       <span class="role">${u.admin ? '🛡️ مدير' : u.verified ? '🏢 مكتب عقاري موثّق' : '🏠 عضو'}</span>
       <div class="pinfo"><div><b>${u.admin ? '∞' : u.points || 0}</b><span>نقطة</span></div><div><b dir="ltr">${esc(u.phone || '—')}</b><span>الجوال</span></div></div>
@@ -146,6 +147,7 @@ const LEGAL = {
 <ul><li>عند إنشاء حساب: الاسم، البريد الإلكتروني، رقم الجوال، وكلمة مرور محفوظة بشكل مشفّر. عند الدخول بحساب جوجل: الاسم والبريد وصورة الحساب التي يشاركها جوجل.</li>
 <li>عند إضافة أرض: تفاصيل الإعلان والصور التي ترفعها ورقم التواصل.</li>
 <li>عند تفعيل الإشعارات: معرّف جهاز لإرسال الإشعارات (عبر خدمة OneSignal).</li>
+<li>رسائل المحادثة التي ترسلها للشركة.</li>
 <li>المفضلة وعمليات البحث المحفوظة تُحفظ على جهازك فقط.</li></ul>
 <h3>كيف نستخدمها</h3>
 <ul><li>لإدارة حسابك ومراجعة إعلاناتك وعرضها بعد الموافقة.</li><li>للتواصل معك بخصوص أرضك أو استفسارك.</li><li>لإرسال إشعارات الأسعار والعروض إذا فعّلتها.</li></ul>
@@ -163,8 +165,33 @@ const LEGAL = {
 <h3>المعلومات</h3><p>نسعى لدقة الأسعار والحالات المعروضة، لكنها قابلة للتغيير، والمرجع النهائي هو التأكيد من الشركة قبل أي حجز أو دفع.</p>
 <h3>التواصل</h3><p>الهاتف: 06 744 2027 · واتساب: 056 808 0655</p>`],
 };
-export function legalPage(k) { const L = LEGAL[k] || LEGAL.privacy; return `<div class="pad legal"><h2>${L[0]}</h2>${L[1]}</div>`; }
-export const legalTitle = (k) => (LEGAL[k] || LEGAL.privacy)[0];
+const LEGAL_EN = {
+  privacy: ['Privacy policy', `<div class="notr" dir="ltr">
+<p>The Omar Al Yassi Real Estate app (Sharjah, United Arab Emirates) respects your privacy. This policy explains what data we collect and how we use it.</p>
+<h3>Data we collect</h3>
+<ul><li>When you create an account: name, email, mobile number and a password stored encrypted. With Google sign-in: the name, email and account photo Google shares.</li>
+<li>When you add a land: the listing details, the photos you upload and your contact number.</li>
+<li>When you turn on notifications: a device identifier used to send them (through OneSignal).</li>
+<li>Chat messages you send to the office.</li>
+<li>Favourites and saved searches are stored on your device only.</li></ul>
+<h3>How we use it</h3>
+<ul><li>To manage your account and review, approve and show your listings.</li><li>To contact you about your land or your enquiry.</li><li>To send price and offer alerts if you turn them on.</li></ul>
+<p>We do not sell your data or share it with anyone for marketing. Your mobile number is not shown to other users; contact about listings goes through the company.</p>
+<h3>Deleting your data</h3><p>You can delete your account and all your listings at any time from «More → Settings → Delete account», or by emailing us.</p>
+<h3>Contact</h3><p>For any privacy question: omaralyassi.realestate@gmail.com</p></div>`],
+  terms: ['Terms of use', `<div class="notr" dir="ltr">
+<p>By using the Omar Al Yassi Real Estate app you agree to the following terms.</p>
+<h3>Account</h3><ul><li>You must enter correct details and keep your password confidential.</li><li>The office may suspend any account that breaks these terms.</li></ul>
+<h3>Listings</h3><ul><li>You must own the land or be authorised to offer it, and its details, prices and photos must be correct.</li>
+<li>The office reviews every listing before it is shown, and may edit, reject or delete it without giving reasons.</li>
+<li>If you give a plot number in one of our projects, the land may be shown on that project's interactive plan after approval.</li>
+<li>Enquiries about listings by other offices go through our office, which puts the client in touch with the advertiser.</li>
+<li>Points are granted by the office to feature listings and cannot be exchanged for cash.</li></ul>
+<h3>Information</h3><p>We aim to keep prices and statuses accurate, but they can change; the final reference is the company's confirmation before any booking or payment.</p>
+<h3>Contact</h3><p>Phone: 06 744 2027 · WhatsApp: 056 808 0655</p></div>`],
+};
+export function legalPage(k) { const L = (H.isEn() ? LEGAL_EN : LEGAL)[k] || LEGAL.privacy; return `<div class="pad legal"><h2>${L[0]}</h2>${L[1]}</div>`; }
+export const legalTitle = (k) => ((H && H.isEn() ? LEGAL_EN : LEGAL)[k] || LEGAL.privacy)[0];
 
 /* ================= account verification (real-estate offices) ================= */
 export function verifyPage() {

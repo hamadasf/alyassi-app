@@ -1,3 +1,4 @@
+import { tr, startI18n, isEn, setLang } from './i18n.js';
 import { Capacitor, CapacitorHttp, SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { SplashScreen } from '@capacitor/splash-screen';
@@ -89,7 +90,7 @@ function updateBell() {
 function changesPage() {
   const items = getChanges();
   if (!items.length) return `<div class="pad changes">${notifCard()}</div><div class="empty">${I.bell}<p>لا توجد تحديثات حالياً</p><p class="sub">ستظهر هنا أي تغييرات في الأسعار أو حالة الأراضي</p></div>`;
-  const fmtDay = (t) => new Date(t).toLocaleDateString('ar-AE', { weekday: 'long', day: 'numeric', month: 'long' });
+  const fmtDay = (t) => new Date(t).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE', { weekday: 'long', day: 'numeric', month: 'long' });
   let html = '', last = '';
   const s = seen.get();
   for (const c of items) {
@@ -99,7 +100,7 @@ function changesPage() {
     html += `<div class="citm${c.t > s ? ' unseen' : ''}" ${has ? `data-land="${esc(c.id)}"` : ''}>
       <div class="ck ${c.kind}">${c.kind === 'price' ? I.tag : c.kind === 'new' || c.kind === 'offer' ? I.star : I.info}</div>
       <div class="cb"><b>قطعة ${esc(c.n)} · ${esc(c.projectName)}</b><span>${changeLine(c)}</span></div>
-      <time>${new Date(c.t).toLocaleTimeString('ar-AE', { hour: 'numeric', minute: '2-digit' })}</time></div>`;
+      <time>${new Date(c.t).toLocaleTimeString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE', { hour: 'numeric', minute: '2-digit' })}</time></div>`;
   }
   return `<div class="pad changes">${notifCard()}${html}</div>`;
 }
@@ -377,7 +378,7 @@ async function shareText(title, text) {
 }
 
 function toast(msg) {
-  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  const t = $('#toast'); t.textContent = tr(msg); t.classList.add('show');
   clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
@@ -729,6 +730,7 @@ document.addEventListener('click', (e) => {
   if (ds.contactpg !== undefined) { pushPage('contactpg'); return; }
   if (ds.saved !== undefined) { pushPage('saved'); return; }
   if (ds.legal) { pushPage('legal', ds.legal); return; }
+  if (ds.lang !== undefined) { setLang(isEn() ? 'ar' : 'en'); return; }
   if (ds.logout !== undefined) { doLogout(); return; }
   if (ds.delacc !== undefined) { deleteAccount(); return; }
   if (ds.runsaved !== undefined) { const x = saved.all()[+ds.runsaved]; if (x) { closeAll(); resetFilters(); Object.assign(F, x.f); $('#q').value = F.q || ''; renderLands(); showTab('lands'); } return; }
@@ -812,10 +814,11 @@ function refresh(force) {
 
 initOwnerUI({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), waLink, CONTACT });
 initChat({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id) });
-initMore({ esc, toast, I, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), closeAll: () => closeAll(), waLink, CONTACT, EMBLEM, SITE });
+initMore({ isEn, setLang, esc, toast, I, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), closeAll: () => closeAll(), waLink, CONTACT, EMBLEM, SITE });
 session.subs.add(() => { renderContact(); refreshUnread(); push.link(); if (current === 'chats') renderChatsTab($('#chats .content')); });
 
 async function boot() {
+  startI18n();
   document.querySelectorAll('[data-i]').forEach((el) => { el.innerHTML = I[el.dataset.i] + el.innerHTML; });
   if (loadFromCache()) renderAll(); else { renderHome(); renderLands(); renderProjects(); renderContact(); }
   showTab('home');

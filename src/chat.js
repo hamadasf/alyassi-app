@@ -17,11 +17,11 @@ export async function refreshUnread() {
 
 /* ---------- message rendering ---------- */
 const linkify = (t) => H.esc(t).replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" data-ext dir="ltr">${u.replace(/^https?:\/\//, '')}</a>`).replace(/\n/g, '<br>');
-const tm = (t) => new Date(t).toLocaleTimeString('ar-AE', { hour: 'numeric', minute: '2-digit' });
-const dy = (t) => new Date(t).toLocaleDateString('ar-AE', { weekday: 'long', day: 'numeric', month: 'long' });
+const tm = (t) => new Date(t).toLocaleTimeString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE', { hour: 'numeric', minute: '2-digit' });
+const dy = (t) => new Date(t).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE', { weekday: 'long', day: 'numeric', month: 'long' });
 function refCard(r, admin) {
   const { esc, money } = H;
-  return `<div class="cref" ${r.live ? `data-oland="${r.id}"` : ''}>${r.photo ? `<img src="${esc(r.photo)}" alt="">` : ''}<div><b>${esc(r.title)}</b>
+  return `<div class="cref" ${r.live ? `data-oland="${r.id}"` : ''}>${r.photo ? `<img src="${esc(r.photo)}" alt="">` : ''}<div><b class="notr">${esc(r.title)}</b>
     <span>${r.price ? money(r.price) + ' د.إ' : ''}${r.area ? ' · ' + money(r.area) + ' قدم²' : ''}</span>${r.seller ? `<span class="sl">${H.I.verified} ${esc(r.seller)}</span>` : ''}
     ${admin && r.owner ? `<span class="muted">المعلن: ${esc(r.owner)}${r.ownerPhone ? ' · ' + esc(r.ownerPhone) : ''}</span>` : ''}</div></div>
     ${admin && r.ownerPhone ? `<button class="btn wa fwd" data-fwd="${r.id}">📲 إرسال رقم المعلن للعميل</button>` : ''}`;
@@ -32,7 +32,7 @@ function msgsHTML(items, admin) {
   for (const m of items) {
     const d = dy(m.t); if (d !== last) { h += `<div class="cday">${H.esc(d)}</div>`; last = d; }
     const mine = admin ? m.from === 'admin' : m.from === 'user';
-    h += `<div class="cmsg ${mine ? 'me' : 'them'}">${m.ref ? refCard(m.ref, admin) : ''}${m.text ? `<p>${linkify(m.text)}</p>` : ''}<time>${tm(m.t)}</time></div>`;
+    h += `<div class="cmsg ${mine ? 'me' : 'them'}">${m.ref ? refCard(m.ref, admin) : ''}${m.text ? `<p class="notr">${linkify(m.text)}</p>` : ''}<time>${tm(m.t)}</time></div>`;
   }
   return h;
 }
@@ -53,7 +53,7 @@ function bindChat(root, { admin, uid }) {
   };
   const showChip = () => {
     chip.hidden = !pendingRef;
-    if (pendingRef) chip.innerHTML = `<span>بخصوص: <b>${H.esc(pendingRef.title)}</b></span><button type="button" aria-label="إزالة">✕</button>`;
+    if (pendingRef) chip.innerHTML = `<span>بخصوص: <b class="notr">${H.esc(pendingRef.title)}</b></span><button type="button" aria-label="إزالة">✕</button>`;
   };
   chip.onclick = (e) => { if (e.target.closest('button')) { pendingRef = null; showChip(); } };
   const load = async (keep) => {
@@ -106,7 +106,7 @@ async function loadInbox(box) {
     const j = await api('adm_chats');
     box.innerHTML = j.items.length ? j.items.map((c) => `<button class="cthread${c.unread ? ' new' : ''}" data-chat="${c.user.id}">
         ${c.user.avatar ? `<span class="acc-av img"><img src="${esc(c.user.avatar)}" alt="" referrerpolicy="no-referrer"></span>` : `<span class="acc-av">${esc((c.user.company || c.user.name || '?').charAt(0))}</span>`}
-        <div><b>${esc(c.user.verified && c.user.company ? c.user.company : c.user.name)} ${c.user.verified ? H.I.verified : ''}</b><span>${c.lastFrom === 'admin' ? 'أنت: ' : ''}${esc(c.lastText)}</span></div>
+        <div><b class="notr">${esc(c.user.verified && c.user.company ? c.user.company : c.user.name)} ${c.user.verified ? H.I.verified : ''}</b><span>${c.lastFrom === 'admin' ? 'أنت: ' : ''}<span class="notr">${esc(c.lastText)}</span></span></div>
         <div class="cmeta"><time>${c.last ? tm(c.last) : ''}</time>${c.unread ? `<i>${c.unread}</i>` : ''}</div></button>`).join('')
       : `<div class="cempty">${H.I.chat}<p>لا توجد محادثات بعد</p></div>`;
   } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }

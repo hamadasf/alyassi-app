@@ -53,7 +53,7 @@ export async function initAccount(pg, next) {
       const j = await api('mine');
       box.innerHTML = j.items.length ? j.items.map((x) => `<div class="mine">
         ${x.photos[0] ? `<img src="${esc(x.photos[0])}" alt="" loading="lazy">` : '<div class="noimg"></div>'}
-        <div><b>${esc(x.title)}</b><span>${x.area ? money(x.area) + ' قدم²' : ''}${x.price ? ' · ' + money(x.price) + ' د.إ' : ''}</span>
+        <div><b class="notr">${esc(x.title)}</b><span>${x.area ? money(x.area) + ' قدم²' : ''}${x.price ? ' · ' + money(x.price) + ' د.إ' : ''}</span>
           <span class="pills"><i class="pill ${REVIEW[x.review][1]}">${REVIEW[x.review][0]}</i>${x.featured ? '<i class="pill star">⭐ مميز</i>' : ''}${x.onPlan ? '<i class="pill plan">على المخطط</i>' : ''}</span>
           ${x.note ? `<small>السبب: ${esc(x.note)}</small>` : ''}
           ${!x.featured && x.review !== 'rejected' ? `<button class="btn ghost feat" data-feat="${x.id}">⭐ تمييز الإعلان${(session.user() || {}).admin ? '' : ' (70 نقطة)'}</button>` : ''}</div>
@@ -227,8 +227,8 @@ function admCard(x) {
   const { esc, money } = H; admCache.set(String(x.id), x);
   return `<div class="mine adm" data-aad="${x.id}">
     ${x.photos[0] ? `<img src="${esc(x.photos[0])}" alt="" loading="lazy">` : '<div class="noimg"></div>'}
-    <div><b>${esc(x.title)}</b><span>${x.area ? money(x.area) + ' قدم²' : ''}${x.price ? ' · ' + money(x.price) + ' د.إ' : ''}</span>
-      <span>${x.owner ? esc(x.owner.name) : ''}${x.project ? ' · ' + esc(x.project) : ''}${x.number ? ' · قطعة ' + esc(x.number) : ''}</span>
+    <div><b class="notr">${esc(x.title)}</b><span>${x.area ? money(x.area) + ' قدم²' : ''}${x.price ? ' · ' + money(x.price) + ' د.إ' : ''}</span>
+      <span class="notr">${x.owner ? esc(x.owner.name) : ''}${x.project ? ' · ' + esc(x.project) : ''}${x.number ? ' · قطعة ' + esc(x.number) : ''}</span>
       <span class="pills"><i class="pill ${REVIEW[x.review][1]}">${REVIEW[x.review][0]}</i>${x.featured ? '<i class="pill star">⭐ مميز</i>' : ''}${x.onPlan ? '<i class="pill plan">على المخطط</i>' : ''}</span></div>
     <i class="chev">‹</i></div>`;
 }
@@ -253,7 +253,7 @@ export function initAdmin(pg) {
         list.innerHTML = j.items.length ? j.items.map((u) => `<div class="vreq" data-uid="${u.id}">
             <b>${esc(u.verify.company)}</b><span>${esc(u.verify.city)} · ${esc(u.verify.name)}</span>
             <span><a href="tel:${esc(u.verify.phone)}" dir="ltr">${esc(u.verify.phone)}</a> · ${esc(u.email)}</span>
-            <span class="muted">${new Date(u.verify.t).toLocaleDateString('ar-AE')}</span>
+            <span class="muted">${new Date(u.verify.t).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE')}</span>
             <div class="admact"><button class="btn wa" data-vok="${u.id}">✓ توثيق (+500 نقطة)</button><button class="btn ghost" data-vno="${u.id}">✕ رفض</button></div></div>`).join('')
           : '<p class="muted">لا توجد طلبات توثيق.</p>';
       } else if (ADM.tab === 'users') {
@@ -286,7 +286,7 @@ export function admAdPage(id) {
   const x = admCache.get(String(id)); if (!x) return '';
   const { esc, money } = H;
   const rows = [['صاحب الإعلان', x.owner ? `${x.owner.name} · ${x.owner.email}` : ''], ['جواله', x.ownerPhone], ['المشروع', x.project], ['رقم الأرض', x.number],
-    ['المخطط التفاعلي', x.planMsg || (x.plan ? 'سيُضاف عند الموافقة' : '')], ['التاريخ', new Date(x.date).toLocaleDateString('ar-AE')]].filter((r) => r[1]);
+    ['المخطط التفاعلي', x.planMsg || (x.plan ? 'سيُضاف عند الموافقة' : '')], ['التاريخ', new Date(x.date).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE')]].filter((r) => r[1]);
   return `<div class="ogal">${x.photos.length ? x.photos.map((s) => `<img src="${esc(s)}" alt="" loading="lazy" data-web="${esc(s)}">`).join('') : '<div class="noimg"></div>'}</div>
     <div class="pad acc">
       <span class="pills"><i class="pill ${REVIEW[x.review][1]}">${REVIEW[x.review][0]}</i>${x.featured ? '<i class="pill star">⭐ مميز</i>' : ''}${x.onPlan ? '<i class="pill plan">على المخطط</i>' : ''}</span>
@@ -334,7 +334,7 @@ export async function initAdmUser(pg, id) {
     const u = j.user;
     box.innerHTML = `<div class="acc-card"><div class="acc-av">${esc((u.name || u.email || '?').charAt(0))}</div>
         <div><b>${esc(u.name || '—')} ${u.verified ? H.I.verified : ''}</b>${u.verified && u.company ? `<span><b>${esc(u.company)}</b></span>` : ''}<span>${esc(u.email)}</span>${u.phone ? `<span dir="ltr">${esc(u.phone)}</span>` : ''}
-        <span>عضو منذ ${new Date(u.joined).toLocaleDateString('ar-AE')}${u.google ? ' · دخول بجوجل' : ''}</span>
+        <span>عضو منذ ${new Date(u.joined).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE')}${u.google ? ' · دخول بجوجل' : ''}</span>
         <span class="pills">${u.banned ? '<i class="pill sold">موقوف</i>' : '<i class="pill av">نشط</i>'}${u.admin ? '<i class="pill plan">مدير</i>' : ''}</span></div></div>
       ${u.verify ? `<div class="vreq"><b>طلب التوثيق: ${u.verify.status === 'approved' ? 'موثّق ✓' : u.verify.status === 'pending' ? 'قيد المراجعة' : 'مرفوض'}</b>
         <span>${esc(u.verify.company)} · ${esc(u.verify.city)} · ${esc(u.verify.name)} · <a href="tel:${esc(u.verify.phone)}" dir="ltr">${esc(u.verify.phone)}</a></span>
@@ -380,9 +380,9 @@ export function oLandCard(x) {
     <div class="ph">${x.photos[0] ? `<img loading="lazy" decoding="async" src="${esc(x.photos[0])}" alt="" onerror="this.style.opacity=0">` : ''}
       <span class="badge av">للبيع</span>${x.featured ? `<span class="badge star">⭐ مميز</span>` : ''}</div>
     <div class="body">
-      <div class="row between"><h3>${esc(x.title)}</h3>${x.price ? `<div class="price">${money(x.price)} <small>د.إ</small></div>` : ''}</div>
+      <div class="row between"><h3 class="notr">${esc(x.title)}</h3>${x.price ? `<div class="price">${money(x.price)} <small>د.إ</small></div>` : ''}</div>
       ${x.project || x.location ? `<div class="meta">${I.pin}<span>${esc(x.project || x.location)}</span></div>` : ''}
-      ${x.seller ? `<div class="seller">${I.verified}<span>${esc(x.seller)}</span></div>` : ''}
+      ${x.seller ? `<div class="seller">${I.verified}<span class="notr">${esc(x.seller)}</span></div>` : ''}
       <div class="specs">${x.area ? `<span>${I.area}${money(x.area)} قدم²</span>` : ''}${x.type ? `<span>${I.tag}${esc(x.type)}</span>` : ''}</div>
     </div></article>`;
 }
@@ -397,11 +397,11 @@ export function oLandPage(x) {
     ['الدفعة المقدمة', x.down ? money(x.down) + ' د.إ' : ''], ['عدد الأقساط', x.installments || ''], ['الموقع', x.location]].filter((r) => r[1]);
   return `<div class="ogal">${x.photos.length ? x.photos.map((s) => `<img src="${esc(s)}" alt="" loading="lazy" data-web="${esc(s)}">`).join('') : '<div class="noimg"></div>'}</div>
     <div class="pad">
-      <h1>${esc(x.title)}</h1>
+      <h1 class="notr">${esc(x.title)}</h1>
       ${x.seller ? `<div class="seller big">${I.verified}<span>${esc(x.seller)} · مكتب عقاري موثّق</span></div>` : ''}
       ${x.price ? `<div class="pricebox"><div class="price big">${money(x.price)} <small>د.إ</small></div></div>` : ''}
       <div class="inst">${rows.map((r) => `<div class="r"><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}</div>
-      ${x.description ? `<p class="odesc">${esc(x.description)}</p>` : ''}
+      ${x.description ? `<p class="odesc notr">${esc(x.description)}</p>` : ''}
       ${x.maps ? `<a class="btn ghost block" href="${esc(x.maps)}" data-ext>${I.pin} الموقع على الخريطة</a>` : ''}
     </div>
     ${x.byAdmin ? `<div class="bar">
