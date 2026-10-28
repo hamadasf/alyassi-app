@@ -80,7 +80,7 @@ function oay_acc_new_user( $email, $name, $pass ) {
 
 /* ---------------- account API ---------------- */
 $oay_acc_actions = array( 'register', 'login', 'google', 'me', 'profile', 'logout', 'meta', 'upload', 'submit', 'mine', 'public', 'delete', 'plotcheck', 'feature',
-	'forgot', 'delete_account', 'avatar', 'verify_request', 'adm_verifs', 'adm_verify', 'chat_get', 'chat_send', 'chat_unread', 'adm_chats', 'adm_chat', 'adm_chat_send',
+	'forgot', 'delete_account', 'avatar', 'verify_request', 'adm_verifs', 'adm_verify', 'chat_get', 'chat_send', 'chat_unread', 'adm_chats', 'adm_chat', 'adm_chat_send', 'notif_get', 'notif_save', 'group_get', 'group_send', 'group_delete',
 	'adm_ads', 'adm_review', 'adm_save', 'adm_delete', 'adm_feature', 'adm_users', 'adm_user', 'adm_points', 'adm_ban' );
 foreach ( $oay_acc_actions as $a ) {
 	add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a );
@@ -203,6 +203,7 @@ function oay_acc_verify_request() {
 	update_user_meta( $u->ID, 'oay_verify', $v ); update_user_meta( $u->ID, 'oay_verify_status', 'pending' );
 	wp_mail( get_option( 'admin_email' ), 'طلب توثيق حساب: ' . $company,
 		"وصل طلب توثيق حساب مكتب عقاري من التطبيق.\n\nالمكتب / الشركة: $company\nالمدينة: $city\nالاسم: $name\nالهاتف: +971$phone\nالحساب: {$u->user_email}\n\nراجع الطلب من لوحة الإدارة في التطبيق (تبويب «التوثيق»)." );
+	oay_push_to( oay_notif_filter( oay_admin_ids(), 'reqs' ), 'طلب توثيق حساب', $company, array( 'open' => 'admin' ) );
 	oay_acc_ok( array( 'user' => oay_acc_userdata( get_userdata( $u->ID ) ) ) );
 }
 function oay_acc_adm_verifs() {
@@ -226,6 +227,7 @@ function oay_acc_adm_verify() {
 		delete_user_meta( $u->ID, 'oay_verified' );
 	}
 	update_user_meta( $u->ID, 'oay_verify', $v ); update_user_meta( $u->ID, 'oay_verify_status', $v['status'] );
+	oay_push_to( oay_notif_filter( array( $u->ID ), 'reqs' ), 'approved' === $v['status'] ? 'تم توثيق حسابك ✓' : 'بخصوص طلب التوثيق', 'approved' === $v['status'] ? 'أصبح حساب «' . $v['company'] . '» موثّقاً' : 'لم تتم الموافقة على طلب التوثيق', array( 'open' => 'account' ) );
 	oay_acc_ok( array( 'user' => oay_acc_adm_userrow( get_userdata( $u->ID ) ) ) );
 }
 
@@ -277,6 +279,7 @@ function oay_acc_submit() {
 	$link = admin_url( 'admin.php?page=oay-requests' );
 	wp_mail( get_option( 'admin_email' ), 'طلب عرض أرض جديد من التطبيق: ' . $title,
 		"وصل طلب جديد لعرض أرض من التطبيق وينتظر موافقتك.\n\nالعنوان: $title\nالمساحة: $area قدم²\nالسعر: $price درهم\nصاحب الطلب: {$u->display_name} ({$u->user_email}) " . get_post_meta( $pid, '_oay_owner_phone', true ) . "\n\nللمراجعة والموافقة:\n$link" );
+	oay_push_to( oay_notif_filter( oay_admin_ids(), 'reqs' ), 'طلب عرض أرض جديد', $title, array( 'open' => 'admin' ) );
 	oay_acc_ok( array( 'id' => $pid ) );
 }
 /** Writes the form fields of a land (from the owner's submission or the admin's edit). */
@@ -364,6 +367,7 @@ function oay_acc_review( $pid, $approve, $note = '' ) {
 		wp_update_post( array( 'ID' => $pid, 'post_status' => 'draft' ) ); update_post_meta( $pid, '_oay_reject_note', $note );
 		if ( $owner ) { wp_mail( $owner->user_email, 'بخصوص طلب عرض أرضك', "مرحباً {$owner->display_name}،\n\nلم تتم الموافقة على إعلانك «{$p->post_title}»" . ( $note ? ":\n$note" : '.' ) . "\n\nعمر الياسي للعقارات" ); }
 	}
+	if ( $owner ) { oay_push_to( oay_notif_filter( array( $owner->ID ), 'reqs' ), $approve ? 'تمت الموافقة على إعلانك ✓' : 'بخصوص إعلانك', '«' . $p->post_title . '»' . ( $approve ? ' أصبح معروضاً في التطبيق' : ' لم تتم الموافقة عليه' ), array( 'open' => 'account' ) ); }
 	return (string) get_post_meta( $pid, '_oay_plan_msg', true );
 }
 
@@ -578,7 +582,7 @@ add_action( 'init', function () {
 	register_post_type( 'oay_chat', array( 'public' => false, 'show_ui' => false, 'supports' => array( 'title', 'author', 'comments' ), 'label' => 'محادثات التطبيق' ) );
 } );
 function oay_chat_thread( $uid, $create = true ) {
-	$q = get_posts( array( 'post_type' => 'oay_chat', 'author' => $uid, 'post_status' => 'private', 'numberposts' => 1, 'fields' => 'ids' ) );
+	$q = get_posts( array( 'post_type' => 'oay_chat', 'author' => $uid, 'post_status' => 'private', 'numberposts' => 1, 'fields' => 'ids', 'meta_query' => array( array( 'key' => 'oay_group', 'compare' => 'NOT EXISTS' ) ) ) );
 	if ( $q ) { return (int) $q[0]; }
 	if ( ! $create ) { return 0; }
 	$id = wp_insert_post( array( 'post_type' => 'oay_chat', 'post_status' => 'private', 'post_title' => 'chat-' . $uid, 'post_author' => $uid, 'comment_status' => 'closed' ) );
@@ -638,17 +642,19 @@ function oay_acc_chat_send() {
 	$u = oay_acc_need_user(); oay_acc_limit( 'chat_' . $u->ID, 60 );
 	$tid = oay_chat_thread( $u->ID ); if ( ! $tid ) { oay_acc_err( 'تعذّر الإرسال' ); }
 	$lid = absint( oay_acc_arg( 'listing', 12 ) ); if ( $lid && 'lands' !== get_post_type( $lid ) ) { $lid = 0; }
+	$first = 0 === oay_chat_unread_count( $tid, 'admin' );
 	oay_chat_add( $tid, $u->ID, 'user', oay_acc_arg( 'text', 2000 ), $lid );
 	$who = get_user_meta( $u->ID, 'oay_company', true ) ?: $u->display_name;
-	oay_push_to( oay_admin_ids(), 'رسالة جديدة · ' . $who, mb_substr( oay_acc_arg( 'text', 2000 ) ?: 'استفسار عن إعلان', 0, 120 ), array( 'user' => $u->ID ) );
+	oay_push_to( oay_notif_filter( oay_admin_ids(), $first ? 'chat_first' : 'chat_all' ), 'رسالة جديدة · ' . $who, mb_substr( oay_acc_arg( 'text', 2000 ) ?: 'استفسار عن إعلان', 0, 120 ), array( 'user' => $u->ID ) );
 	oay_acc_ok( array( 'items' => oay_chat_msgs( $tid, false ) ) );
 }
 function oay_acc_chat_unread() { $u = oay_acc_need_user(); $tid = oay_chat_thread( $u->ID, false );
-	if ( oay_acc_is_admin( $u ) ) { $n = 0; foreach ( get_posts( array( 'post_type' => 'oay_chat', 'post_status' => 'private', 'numberposts' => 200, 'fields' => 'ids' ) ) as $t ) { $n += oay_chat_unread_count( $t, 'admin' ); } oay_acc_ok( array( 'n' => $n ) ); }
-	oay_acc_ok( array( 'n' => oay_chat_unread_count( $tid, 'user' ) ) ); }
+	if ( oay_acc_is_admin( $u ) ) { $n = 0; foreach ( get_posts( array( 'post_type' => 'oay_chat', 'post_status' => 'private', 'numberposts' => 200, 'fields' => 'ids', 'meta_key' => 'oay_last' ) ) as $t ) { $n += oay_chat_unread_count( $t, 'admin' ); } oay_acc_ok( array( 'n' => $n, 'group' => oay_group_summary( $u->ID ) ) ); }
+	oay_acc_ok( array( 'n' => oay_chat_unread_count( $tid, 'user' ), 'group' => oay_group_summary( $u->ID ), 'private' => array( 'unread' => oay_chat_unread_count( $tid, 'user' ), 'last' => $tid ? (int) get_post_meta( $tid, 'oay_last', true ) : 0, 'lastText' => $tid ? (string) get_post_meta( $tid, 'oay_last_text', true ) : '' ) ) ); }
 function oay_acc_adm_chats() {
 	oay_acc_need_admin();
 	$q = get_posts( array( 'post_type' => 'oay_chat', 'post_status' => 'private', 'numberposts' => 200, 'meta_key' => 'oay_last', 'orderby' => 'meta_value_num', 'order' => 'DESC' ) );
+	$q = array_values( array_filter( $q, function ( $t ) { return ! get_post_meta( $t->ID, 'oay_group', true ); } ) );
 	oay_acc_ok( array( 'items' => array_values( array_filter( array_map( function ( $t ) {
 		$u = get_userdata( $t->post_author ); if ( ! $u ) { return null; }
 		return array( 'user' => array( 'id' => $u->ID, 'name' => $u->display_name, 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ), 'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ) ),
@@ -663,11 +669,89 @@ function oay_acc_adm_chat() {
 function oay_acc_adm_chat_send() {
 	$me = oay_acc_need_admin(); $u = oay_acc_adm_target(); $tid = oay_chat_thread( $u->ID );
 	$lid = absint( oay_acc_arg( 'listing', 12 ) ); if ( $lid && 'lands' !== get_post_type( $lid ) ) { $lid = 0; }
+	$first = 0 === oay_chat_unread_count( $tid, 'user' );
 	oay_chat_add( $tid, $me->ID, 'admin', oay_acc_arg( 'text', 2000 ), $lid );
-	oay_push_to( array( $u->ID ), 'عمر الياسي للعقارات', mb_substr( oay_acc_arg( 'text', 2000 ) ?: 'رسالة جديدة', 0, 120 ) );
+	oay_push_to( oay_notif_filter( array( $u->ID ), $first ? 'chat_first' : 'chat_all' ), 'عمر الياسي للعقارات', mb_substr( oay_acc_arg( 'text', 2000 ) ?: 'رسالة جديدة', 0, 120 ) );
 	oay_acc_ok( array( 'items' => oay_chat_msgs( $tid, true ) ) );
 }
 // keep chat messages out of the site's normal comments screens and counts
 add_action( 'pre_get_comments', function ( $q ) {
 	if ( 'oay_msg' !== ( $q->query_vars['type'] ?? '' ) ) { $q->query_vars['type__not_in'] = array_merge( (array) ( $q->query_vars['type__not_in'] ?? array() ), array( 'oay_msg' ) ); }
 } );
+
+/* ================= notification preferences ================= */
+function oay_notif_prefs( $uid ) {
+	$d = array( 'chat_first' => true, 'chat_all' => true, 'group' => false, 'reqs' => true );
+	$p = get_user_meta( $uid, 'oay_notif', true );
+	return is_array( $p ) ? array_merge( $d, array_intersect_key( array_map( 'boolval', $p ), $d ) ) : $d;
+}
+/** Keeps only the people who want this kind of notification. */
+function oay_notif_filter( $uids, $kind ) { return array_values( array_filter( (array) $uids, function ( $u ) use ( $kind ) { return ! empty( oay_notif_prefs( (int) $u )[ $kind ] ); } ) ); }
+function oay_acc_notif_get() { $u = oay_acc_need_user(); oay_acc_ok( array( 'prefs' => oay_notif_prefs( $u->ID ) ) ); }
+function oay_acc_notif_save() {
+	$u = oay_acc_need_user(); $in = oay_acc_in(); $p = oay_notif_prefs( $u->ID );
+	foreach ( array_keys( $p ) as $k ) { if ( isset( $in[ $k ] ) ) { $p[ $k ] = (bool) $in[ $k ]; } }
+	update_user_meta( $u->ID, 'oay_notif', $p );
+	update_user_meta( $u->ID, 'oay_notif_group', $p['group'] ? 1 : 0 );
+	oay_acc_ok( array( 'prefs' => $p ) );
+}
+
+/* ================= public group: signed-in users only ================= */
+function oay_group_id() {
+	$id = (int) get_option( 'oay_group_thread', 0 );
+	if ( $id && get_post( $id ) ) { return $id; }
+	$id = wp_insert_post( array( 'post_type' => 'oay_chat', 'post_status' => 'private', 'post_title' => 'group', 'post_author' => 1, 'comment_status' => 'closed' ) );
+	update_post_meta( $id, 'oay_group', 1 ); update_option( 'oay_group_thread', $id, false );
+	return (int) $id;
+}
+/** Phone numbers and links in members' posts are hidden — contact goes through the office. */
+function oay_group_clean( $t ) {
+	$t = preg_replace( '/(?:\+|00)?\d[\d\s\-().]{7,}\d/u', '📞 [الرقم عبر الإدارة]', $t );
+	$t = preg_replace( '#(?:https?://|www\.|wa\.me/)\S+#iu', '🔗 [رابط محذوف]', $t );
+	return $t;
+}
+function oay_group_msgs( $after = 0, $me = 0 ) {
+	$args = array( 'post_id' => oay_group_id(), 'type' => 'oay_gmsg', 'number' => 100, 'orderby' => 'comment_ID', 'order' => 'DESC', 'status' => 'approve' );
+	if ( $after ) { $args['comment__in'] = null; }
+	$cs = array_reverse( get_comments( $args ) );
+	if ( $after ) { $cs = array_values( array_filter( $cs, function ( $c ) use ( $after ) { return (int) $c->comment_ID > $after; } ) ); }
+	return array_map( function ( $c ) use ( $me ) {
+		$u = get_userdata( $c->user_id ); $uid = (int) $c->user_id;
+		return array( 'id' => (int) $c->comment_ID, 't' => strtotime( $c->comment_date_gmt . ' UTC' ) * 1000, 'text' => $c->comment_content, 'mine' => $uid === $me,
+			'user' => array( 'id' => $uid, 'name' => $u ? ( get_user_meta( $uid, 'oay_verified', true ) && get_user_meta( $uid, 'oay_company', true ) ? get_user_meta( $uid, 'oay_company', true ) : $u->display_name ) : 'عضو',
+				'avatar' => (string) get_user_meta( $uid, 'oay_avatar', true ), 'verified' => (bool) get_user_meta( $uid, 'oay_verified', true ), 'admin' => $u && user_can( $u, 'manage_options' ) ) );
+	}, $cs );
+}
+function oay_acc_group_get() {
+	$u = oay_acc_need_user();
+	$items = oay_group_msgs( absint( oay_acc_arg( 'after', 12 ) ), $u->ID );
+	$last = $items ? end( $items )['id'] : 0; if ( $last ) { update_user_meta( $u->ID, 'oay_group_read', max( $last, (int) get_user_meta( $u->ID, 'oay_group_read', true ) ) ); }
+	oay_acc_ok( array( 'items' => $items, 'admin' => oay_acc_is_admin( $u ) ) );
+}
+function oay_acc_group_send() {
+	$u = oay_acc_need_user(); oay_acc_limit( 'group_' . $u->ID, 30 );
+	$text = trim( mb_substr( sanitize_textarea_field( oay_acc_arg( 'text', 3000 ) ), 0, 3000 ) );
+	if ( '' === $text ) { oay_acc_err( 'اكتب رسالة' ); }
+	if ( ! oay_acc_is_admin( $u ) ) { $text = oay_group_clean( $text ); }
+	$cid = wp_insert_comment( array( 'comment_post_ID' => oay_group_id(), 'comment_content' => $text, 'user_id' => $u->ID, 'comment_type' => 'oay_gmsg', 'comment_approved' => 1 ) );
+	update_user_meta( $u->ID, 'oay_group_read', $cid );
+	update_option( 'oay_group_last', array( 't' => (int) round( microtime( true ) * 1000 ), 'text' => mb_substr( $text, 0, 120 ), 'id' => $cid ), false );
+	$who = get_user_meta( $u->ID, 'oay_company', true ) ?: $u->display_name;
+	$fans = get_users( array( 'meta_key' => 'oay_notif_group', 'meta_value' => '1', 'fields' => 'ID', 'number' => 1900, 'exclude' => array( $u->ID ) ) );
+	if ( $fans ) { oay_push_to( $fans, 'المجموعة العامة · ' . $who, mb_substr( $text, 0, 120 ), array( 'open' => 'group' ) ); }
+	oay_acc_ok( array( 'items' => oay_group_msgs( absint( oay_acc_arg( 'after', 12 ) ), $u->ID ) ) );
+}
+function oay_acc_group_delete() {
+	$u = oay_acc_need_user(); $c = get_comment( absint( oay_acc_arg( 'id', 12 ) ) );
+	if ( ! $c || 'oay_gmsg' !== $c->comment_type ) { oay_acc_err( 'غير موجود', 404 ); }
+	if ( (int) $c->user_id !== $u->ID && ! oay_acc_is_admin( $u ) ) { oay_acc_err( 'غير مسموح', 403 ); }
+	wp_delete_comment( $c->comment_ID, true ); oay_acc_ok();
+}
+/** For the chats list: the group's last message and how many are unread for this user. */
+function oay_group_summary( $uid ) {
+	$last = get_option( 'oay_group_last', array() ); $read = (int) get_user_meta( $uid, 'oay_group_read', true ); $n = 0;
+	if ( $last && ! empty( $last['id'] ) && $last['id'] > $read ) {
+		$n = count( array_filter( get_comments( array( 'post_id' => oay_group_id(), 'type' => 'oay_gmsg', 'number' => 100, 'orderby' => 'comment_ID', 'order' => 'DESC', 'fields' => 'ids' ) ), function ( $id ) use ( $read ) { return (int) $id > $read; } ) );
+	}
+	return array( 'last' => (int) ( $last['t'] ?? 0 ), 'lastText' => (string) ( $last['text'] ?? '' ), 'unread' => $n );
+}

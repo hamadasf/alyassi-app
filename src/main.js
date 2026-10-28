@@ -7,8 +7,9 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { cardModel, buildLandPdf } from './card.js';
 import { paintPlanLoc } from './planloc.js';
 import { session, refreshMe, ownerLands, loadOwnerLands, api as accApi } from './owner.js';
-import { initChat, refreshUnread, renderChatsTab, chatPage, initChatPage, askAbout } from './chat.js';
-import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, notifsPage, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
+import { initChat, refreshUnread, renderChatsTab, chatPage, initChatPage, askAbout, myChatPage, initMyChat, groupPage, initGroup } from './chat.js';
+import { initNotifs, notifsPage } from './notifs.js';
+import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser } from './owner-ui.js';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
@@ -121,6 +122,7 @@ const push = {
         OS.Notifications.addEventListener('click', (ev) => { setTimeout(() => openFromPush(ev), 400); });
         OS.Notifications.addEventListener('permissionChange', (granted) => { push.nativeOn = !!granted; push.render(); });
         push.nativeOn = await OS.Notifications.getPermissionAsync();
+        try { if (localStorage.getItem('oay:optout')) push.nativeOn = false; } catch { /* ignore */ }
         push.render(); push.link();
         // ask once on first launch so clients are subscribed without hunting for the button
         let asked = false; try { asked = !!localStorage.getItem('oay:askedPush'); } catch { /* ignore */ }
@@ -169,7 +171,14 @@ const push = {
     if (Notification.permission === 'denied') return 'denied';
     return push.on() ? 'on' : 'off';
   },
+  async disable() {
+    try { localStorage.setItem('oay:optout', '1'); } catch { /* ignore */ }
+    if (!push.os) return;
+    try { if (native) { push.os.User.pushSubscription.optOut(); push.nativeOn = false; } else await push.os.User.PushSubscription.optOut(); } catch { /* ignore */ }
+    push.render();
+  },
   async enable() {
+    try { localStorage.removeItem('oay:optout'); } catch { /* ignore */ }
     const st = push.state();
     if (st === 'install') { toast('أضف التطبيق إلى الشاشة الرئيسية أولاً ثم فعّل الإشعارات'); return; }
     if (!push.os) { toast('لحظة… جارِ التحضير'); return; }
@@ -205,7 +214,9 @@ function openFromPush(ev) {
   const n = (ev && (ev.notification || ev.result && ev.result.notification)) || {};
   const data = n.additionalData || n.data || {};
   if (data.open === 'land' && data.id) { refresh(false); openLandId(String(data.id)); return; }
-  if (data.open === 'chat') { closeAll(); showTab('chats'); if (data.user && (session.user() || {}).admin) setTimeout(() => pushPage('chat', String(data.user)), 300); return; }
+  if (data.open === 'chat') { closeAll(); showTab('chats'); setTimeout(() => (data.user && (session.user() || {}).admin ? pushPage('chat', String(data.user)) : pushPage('mychat')), 300); return; }
+  if (data.open === 'group') { closeAll(); showTab('chats'); setTimeout(() => pushPage('group'), 300); return; }
+  if (data.open === 'account' || data.open === 'admin') { closeAll(); showTab('contact'); setTimeout(() => pushPage(data.open), 300); return; }
   refresh(false).then(() => document.querySelector('[data-changes]')?.click());
 }
 const notifCard = () => `<div class="notif-card" hidden>${I.bell}<div><b>فعّل إشعارات الأسعار</b><p></p></div><button class="btn gold" data-notify>تفعيل</button></div>`;
@@ -636,12 +647,14 @@ function pushPage(kind, id) {
   else if (kind === 'legal') { html = legalPage(id); }
   else if (kind === 'verify') { html = verifyPage(); }
   else if (kind === 'chat') { html = chatPage(); }
+  else if (kind === 'mychat') { html = myChatPage(); }
+  else if (kind === 'group') { html = groupPage(); }
   else if (kind === 'aad') { html = admAdPage(id); if (!html) return; }
   else if (kind === 'auser') { html = admUserPage(); }
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = d.lands.find((x) => x.id === id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   pg.innerHTML = `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${TITLE[kind] || 'تفاصيل الأرض'}</span>${kind === 'land' || kind === 'project' ? `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>` : ''}</header><div class="scroller">${html}</div>`;
   document.body.appendChild(pg);
@@ -651,7 +664,9 @@ function pushPage(kind, id) {
   if (kind === 'editprofile') initEditProfile(pg);
   if (kind === 'verify') initVerify(pg);
   if (kind === 'chat') initChatPage(pg, id);
-  if (kind === 'notifs') { const st = push.state(); pg.querySelector('#nstate').textContent = st === 'on' ? '✓ الإشعارات مفعّلة على هذا الجهاز' : st === 'denied' ? 'الإشعارات مرفوضة من إعدادات الجهاز — فعّلها من الإعدادات' : st === 'unsupported' ? 'هذا الجهاز لا يدعم الإشعارات' : ''; }
+  if (kind === 'mychat') initMyChat(pg);
+  if (kind === 'group') initGroup(pg);
+  if (kind === 'notifs') initNotifs(pg);
   if (kind === 'aad') initAdmAd(pg, id);
   if (kind === 'auser') initAdmUser(pg, id);
   if (l && l.poly) { const cv = pg.querySelector('.planloc-cv'), proj = d.projects.find((x) => x.slug === l.project); if (cv && proj) requestAnimationFrame(() => paintPlanLoc(cv, l, proj.lands, proj.map).then(() => cv.classList.add('on')).catch(() => { const im = document.createElement('img'); im.src = l.img; im.alt = ''; cv.replaceWith(im); pg.querySelector('.planloc-cap')?.remove(); })); }
@@ -693,7 +708,7 @@ function resetFilters() { Object.assign(F, { q: '', project: '', status: 'av', c
 
 /* ================= events ================= */
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('button, a, [data-land], [data-oland], [data-aad], [data-auser], [data-chat], [data-project], [data-plan], [data-web]');
+  const t = e.target.closest('button, a, [data-land], [data-oland], [data-aad], [data-auser], [data-chat], [data-group], [data-mychat], [data-project], [data-plan], [data-web]');
   if (!t) return;
   const ds = t.dataset;
   if (ds.fav) { e.stopPropagation(); const on = favs.toggle(ds.fav); document.querySelectorAll(`[data-fav="${CSS.escape(ds.fav)}"]`).forEach((b) => b.classList.toggle('on', on)); toast(on ? 'أضيفت إلى المفضلة' : 'أزيلت من المفضلة'); if (current === 'favs' && !stack.length) renderFavs(); return; }
@@ -717,11 +732,13 @@ document.addEventListener('click', (e) => {
   if (ds.admin !== undefined) { pushPage('admin'); return; }
   if (ds.profile !== undefined) { pushPage('profile'); return; }
   if (ds.chat) { pushPage('chat', ds.chat); return; }
+  if (ds.group !== undefined) { if (session.token()) pushPage('group'); else pushPage('account'); return; }
+  if (ds.mychat !== undefined) { pushPage('mychat'); return; }
   if (ds.askad) {
     const o = ownerLands().find((x) => String(x.id) === ds.askad);
     if (!session.token()) { toast('سجّل الدخول لمراسلة الإدارة بخصوص الإعلان'); pushPage('account'); return; }
     if (o) askAbout({ id: o.id, title: o.title });
-    closeAll(); showTab('chats'); return;
+    closeAll(); showTab('chats'); setTimeout(() => pushPage('mychat'), 50); return;
   }
   if (ds.verify !== undefined) { if (session.token()) pushPage('verify'); else pushPage('account'); return; }
   if (ds.editprofile !== undefined) { pushPage('editprofile'); return; }
@@ -814,6 +831,7 @@ function refresh(force) {
 
 initOwnerUI({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), waLink, CONTACT });
 initChat({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id) });
+window.__oayPush = push;   // the notification settings page talks to the push service
 initMore({ isEn, setLang, esc, toast, I, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), closeAll: () => closeAll(), waLink, CONTACT, EMBLEM, SITE });
 session.subs.add(() => { renderContact(); refreshUnread(); push.link(); if (current === 'chats') renderChatsTab($('#chats .content')); });
 

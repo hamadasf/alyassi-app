@@ -90,7 +90,7 @@ function oay_send( $ch ) {
 		'blocking' => false,
 		'headers'  => array( 'Content-Type' => 'application/json', 'Authorization' => 'Key ' . $key ),
 		'body'     => wp_json_encode( array(
-			'app_id' => OAY_APP_ID, 'target_channel' => 'push', 'included_segments' => array( 'Total Subscriptions' ),
+			'app_id' => OAY_APP_ID, 'target_channel' => 'push', 'filters' => oay_tag_filter( 'prices' ),
 			'headings' => array( 'en' => $title, 'ar' => $title ), 'contents' => array( 'en' => $body, 'ar' => $body ),
 			'web_url' => OAY_APP_URL . '#updates', 'data' => array( 'open' => 'updates', 'id' => $ch[0]['id'] ), 'ttl' => 86400,
 		) ),
@@ -156,7 +156,7 @@ function oay_send_offer( $o ) {
 		'timeout' => 10,
 		'headers' => array( 'Content-Type' => 'application/json', 'Authorization' => 'Key ' . $key ),
 		'body'    => wp_json_encode( array(
-			'app_id' => OAY_APP_ID, 'target_channel' => 'push', 'included_segments' => array( 'Total Subscriptions' ),
+			'app_id' => OAY_APP_ID, 'target_channel' => 'push', 'filters' => oay_tag_filter( 'offers' ),
 			'headings' => array( 'en' => $title, 'ar' => $title ), 'contents' => array( 'en' => $body, 'ar' => $body ),
 			'web_url' => OAY_APP_URL . '#land=' . rawurlencode( $o['id'] ), 'data' => array( 'open' => 'land', 'id' => $o['id'] ),
 			'ttl' => 86400, 'priority' => 10,
@@ -275,3 +275,8 @@ function oay_ajax_img() {
 }
 add_action( 'wp_ajax_oay_img', 'oay_ajax_img' );
 add_action( 'wp_ajax_nopriv_oay_img', 'oay_ajax_img' );
+
+/** Broadcast audience: everyone, except phones whose owner turned this kind off in the app (tag = 0). */
+function oay_tag_filter( $tag ) {
+	return array( array( 'field' => 'tag', 'key' => $tag, 'relation' => '=', 'value' => '1' ), array( 'operator' => 'OR' ), array( 'field' => 'tag', 'key' => $tag, 'relation' => 'not_exists' ) );
+}

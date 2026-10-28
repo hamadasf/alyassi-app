@@ -104,12 +104,6 @@ export async function deleteAccount() {
 export async function doLogout() { await logout(); H.toast('تم تسجيل الخروج'); H.closeAll(); }
 
 /* ================= notifications ================= */
-export function notifsPage() {
-  return `<div class="pad acc"><div class="notif-card" style="display:flex">${H.I.bell}<div><b>إشعارات الأسعار والعروض</b><p></p></div><button class="btn gold" data-notify>تفعيل</button></div>
-    <div class="mbox"><div class="mrow static"><span class="mi">${H.I.bell}</span><b>تصلك إشعارات عند:</b></div>
-      <div class="mrow static sub">• تغيّر سعر أو حالة أي أرض</div><div class="mrow static sub">• نزول أرض جديدة على المخططات</div><div class="mrow static sub">• العروض لفترة محدودة</div></div>
-    <p class="muted" id="nstate"></p></div>`;
-}
 
 /* ================= contact us (the old tab) ================= */
 export function contactPage() {

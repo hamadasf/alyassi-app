@@ -105,7 +105,7 @@ const EN = {
   'تمييز الإعلانات متاح للمكاتب الموثّقة — وثّق حسابك واحصل على 500 نقطة': 'Featuring is for verified offices — verify your account and get 500 points',
   'نقطة في رصيدك · تمييز الإعلان بـ 70 نقطة': 'points in your balance · featuring a listing costs 70 points', 'سجّل الدخول أولاً لإضافة أرضك': 'Sign in first to add your land',
   // add land form
-  'أضف أرضك للبيع': 'Add your land for sale', 'تُراجع الإدارة طلبك، وتظهر الأرض في التطبيق بعد الموافقة. إذا اخترت المشروع ورقم القطعة تظهر أيضاً على المخطط التفاعلي.': 'The office reviews your request and the land appears in the app after approval. If you choose the project and plot number it also appears on the interactive plan.',
+  'تُراجع الإدارة طلبك، وتظهر الأرض في التطبيق بعد الموافقة. إذا اخترت المشروع ورقم القطعة تظهر أيضاً على المخطط التفاعلي.': 'The office reviews your request and the land appears in the app after approval. If you choose the project and plot number it also appears on the interactive plan.',
   'عنوان الإعلان *': 'Listing title *', 'مثال: أرض سكنية زاوية في الرحمانية': 'e.g. Residential corner plot in Al Rahmaniya', '— خارج مخططات المشاريع —': '— Not in our project plans —',
   'المنطقة / المشروع (تصنيف)': 'Area / project (category)', '— اختر —': '— Choose —', 'رقم الأرض': 'Land number', 'نوع الأرض': 'Land type', 'المساحة (قدم²) *': 'Area (ft²) *',
   'السعر (درهم) *': 'Price (AED) *', 'الدفعة المقدمة': 'Down payment', 'عدد الأقساط': 'Number of instalments', 'نوع التصريح': 'Permit type', 'مثال: أرضي + اثنين': 'e.g. Ground + 2',
@@ -145,6 +145,19 @@ const EN = {
   'نرد عليك في أقرب وقت': 'We reply as soon as possible', 'اكتب رسالة…': 'Write a message…', 'اكتب رسالتك وسيرد عليك فريق عمر الياسي للعقارات': 'Write your message and the Omar Al Yassi Real Estate team will reply',
   'لا توجد رسائل بعد': 'No messages yet', 'لا توجد محادثات بعد': 'No chats yet', 'سجّل الدخول لمراسلة فريق عمر الياسي للعقارات والاستفسار عن أي إعلان': 'Sign in to message the Omar Al Yassi Real Estate team about any listing',
   'بخصوص:': 'About:', 'أنت:': 'You:', 'إرسال رقم المعلن للعميل': "Send the advertiser's number to the client", 'المعلن:': 'Advertiser:', 'إرسال': 'Send',
+  // notification settings & group
+  'تفعيل الإشعارات': 'Turn on notifications', 'تلقي التنبيهات على جهازك': 'Receive alerts on your device', 'الإشعارات متوقفة على هذا الجهاز': 'Notifications are off on this device',
+  'مرفوضة من إعدادات الجهاز — فعّلها من الإعدادات': 'Blocked in the device settings — allow them there', 'على الآيفون: أضف التطبيق للشاشة الرئيسية أولاً': 'On iPhone: add the app to your Home Screen first',
+  'أعلمني عند تغيّر سعر أو حالة أي أرض، أو نزول أرض جديدة': "Notify me when a land's price or status changes, or a new land is listed", 'أعلمني بالعروض لفترة محدودة': 'Notify me about limited-time offers',
+  'الرسائل الخاصة': 'Private messages', 'أعلمني عند استلام رسالة خاصة جديدة': 'Notify me when I get a new private message', 'أخبرني عندما أتلقى كل رسالة خاصة': 'Tell me about every private message',
+  'المجموعة العامة': 'Public group', 'أعلمني بكل رسالة جديدة في المجموعة العامة': 'Notify me about every new message in the public group',
+  'أعلمني عند وصول طلب عرض أرض أو طلب توثيق جديد': 'Notify me about new land or verification requests', 'أعلمني عند الموافقة على إعلاناتي أو رفضها، وعند توثيق حسابي': 'Notify me when my listings are approved or rejected, and when my account is verified',
+  'سجّل الدخول لاختيار إشعارات الرسائل والطلبات': 'Sign in to choose message and request notifications', 'تم حفظ إعدادات الإشعارات ✓': 'Notification settings saved ✓',
+  'سجّل الدخول لدخول المجموعة العامة ومراسلة فريق عمر الياسي للعقارات': 'Sign in to join the public group and message the Omar Al Yassi Real Estate team',
+  'رسائل الأعضاء — لكل المسجّلين': "Members' messages — for everyone signed in", 'راسل الإدارة واستفسر عن أي إعلان': 'Message the office about any listing', 'رسائل خاصة': 'Private messages',
+  'ابدأ محادثة …': 'Start a conversation …', 'أرقام الهواتف والروابط تُخفى تلقائياً — التواصل بين الأعضاء يتم عن طريق الإدارة': 'Phone numbers and links are hidden automatically — members get in touch through the office',
+  'كن أول من يكتب في المجموعة': 'Be the first to write in the group', 'الإدارة': 'Office', 'رد على الخاص': 'Reply privately', 'نسخ': 'Copy', 'قراءة المزيد': 'Read more',
+  'تم النسخ': 'Copied', 'تعذّر النسخ': "Couldn't copy", 'حذف هذه الرسالة من المجموعة؟': 'Delete this message from the group?',
   // server messages
   'محاولات كثيرة — حاول بعد قليل': 'Too many attempts — try again shortly', 'انتهت الجلسة — سجّل الدخول مرة أخرى': 'Session ended — please sign in again',
   'اكتب الاسم': 'Enter your name', 'البريد الإلكتروني غير صحيح': 'Invalid email address', 'كلمة المرور 8 أحرف على الأقل': 'Password must be at least 8 characters',
