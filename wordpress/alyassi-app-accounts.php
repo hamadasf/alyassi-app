@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 const OAY_ACC_ORIGINS = array( 'https://hamadasf.github.io', 'https://localhost', 'http://localhost', 'capacitor://localhost' );
 const OAY_ACC_SCHEME  = 'com.omaralyassi.realestate';
+const OAY_FEATURE_COST = 70;   // points to feature a land
 
 /* ---------------- helpers ---------------- */
 function oay_acc_cors() {
@@ -49,6 +50,7 @@ function oay_acc_user_from_token( $token ) {
 	if ( ! preg_match( '/^(\d+)\.([a-f0-9]{48})$/', (string) $token, $m ) ) { return null; }
 	$list = (array) get_user_meta( (int) $m[1], 'oay_app_tokens', true );
 	$h    = hash( 'sha256', $m[2] );
+	if ( get_user_meta( (int) $m[1], 'oay_banned', true ) ) { return null; }
 	foreach ( $list as $e ) { if ( is_array( $e ) && isset( $e['h'] ) && hash_equals( $e['h'], $h ) ) { return get_userdata( (int) $m[1] ); } }
 	return null;
 }
@@ -57,9 +59,13 @@ function oay_acc_need_user() {
 	if ( ! $u ) { oay_acc_err( 'انتهت الجلسة — سجّل الدخول مرة أخرى', 401 ); }
 	return $u;
 }
+function oay_acc_is_admin( $u ) { return $u && user_can( $u, 'manage_options' ); }
 function oay_acc_userdata( $u ) {
-	return array( 'id' => $u->ID, 'name' => $u->display_name, 'email' => $u->user_email, 'phone' => (string) get_user_meta( $u->ID, 'oay_phone', true ), 'google' => (bool) get_user_meta( $u->ID, 'oay_google_sub', true ) );
+	return array( 'id' => $u->ID, 'name' => $u->display_name, 'email' => $u->user_email, 'phone' => (string) get_user_meta( $u->ID, 'oay_phone', true ),
+		'google' => (bool) get_user_meta( $u->ID, 'oay_google_sub', true ), 'points' => (int) get_user_meta( $u->ID, 'oay_points', true ),
+		'admin' => oay_acc_is_admin( $u ), 'banned' => (bool) get_user_meta( $u->ID, 'oay_banned', true ) );
 }
+function oay_acc_need_admin() { $u = oay_acc_need_user(); if ( ! oay_acc_is_admin( $u ) ) { oay_acc_err( 'غير مسموح', 403 ); } return $u; }
 function oay_acc_new_user( $email, $name, $pass ) {
 	$login = sanitize_user( current( explode( '@', $email ) ), true );
 	if ( '' === $login || username_exists( $login ) ) { $login = 'u' . wp_generate_password( 8, false, false ); }
@@ -70,7 +76,8 @@ function oay_acc_new_user( $email, $name, $pass ) {
 }
 
 /* ---------------- account API ---------------- */
-$oay_acc_actions = array( 'register', 'login', 'google', 'me', 'profile', 'logout', 'meta', 'upload', 'submit', 'mine', 'public', 'delete' );
+$oay_acc_actions = array( 'register', 'login', 'google', 'me', 'profile', 'logout', 'meta', 'upload', 'submit', 'mine', 'public', 'delete', 'plotcheck', 'feature',
+	'adm_ads', 'adm_review', 'adm_save', 'adm_delete', 'adm_feature', 'adm_users', 'adm_user', 'adm_points', 'adm_ban' );
 foreach ( $oay_acc_actions as $a ) {
 	add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a );
 	add_action( 'wp_ajax_nopriv_oay_acc_' . $a, 'oay_acc_' . $a );
@@ -98,6 +105,7 @@ function oay_acc_login() {
 	$email = sanitize_email( oay_acc_arg( 'email', 120 ) );
 	$u     = $email ? get_user_by( 'email', $email ) : null;
 	if ( ! $u || ! wp_check_password( oay_acc_arg( 'password', 200 ), $u->user_pass, $u->ID ) ) { oay_acc_err( 'البريد أو كلمة المرور غير صحيحة', 401 ); }
+	if ( get_user_meta( $u->ID, 'oay_banned', true ) ) { oay_acc_err( 'هذا الحساب موقوف — تواصل مع الإدارة', 403 ); }
 	oay_acc_ok( array( 'token' => oay_acc_issue_token( $u->ID ), 'user' => oay_acc_userdata( $u ) ) );
 }
 /** Google: the app sends the ID token from Google's sign-in button; it is checked with Google before use. */
@@ -120,6 +128,7 @@ function oay_acc_google() {
 	oay_acc_limit( 'google', 20 );
 	$u = oay_acc_google_user( oay_acc_arg( 'credential', 4000 ) );
 	if ( is_wp_error( $u ) ) { oay_acc_err( $u->get_error_message() ); }
+	if ( get_user_meta( $u->ID, 'oay_banned', true ) ) { oay_acc_err( 'هذا الحساب موقوف — تواصل مع الإدارة', 403 ); }
 	oay_acc_ok( array( 'token' => oay_acc_issue_token( $u->ID ), 'user' => oay_acc_userdata( $u ) ) );
 }
 function oay_acc_me() { $u = oay_acc_need_user(); oay_acc_ok( array( 'user' => oay_acc_userdata( $u ) ) ); }
@@ -142,7 +151,8 @@ function oay_acc_logout() {
 /* ---------------- land submissions ---------------- */
 function oay_acc_meta() {
 	$terms = function ( $tax ) { $t = get_terms( array( 'taxonomy' => $tax, 'hide_empty' => false ) ); return is_array( $t ) ? array_map( function ( $x ) { return array( 'id' => $x->term_id, 'name' => $x->name ); }, $t ) : array(); };
-	oay_acc_ok( array( 'projects' => $terms( 'projects' ), 'types' => $terms( 'land_type' ), 'google' => trim( (string) get_option( 'oay_google_client_id', '' ) ) ) );
+	$plans = array(); if ( function_exists( 'dnp_projects' ) ) { foreach ( dnp_projects() as $slug => $pp ) { $plans[] = array( 'slug' => $slug, 'name' => $pp['name'] ); } }
+	oay_acc_ok( array( 'projects' => $terms( 'projects' ), 'types' => $terms( 'land_type' ), 'plans' => $plans, 'cost' => OAY_FEATURE_COST, 'google' => trim( (string) get_option( 'oay_google_client_id', '' ) ) ) );
 }
 /** One photo per request (JPEG/PNG/WebP as base64), resized on the phone before sending. */
 function oay_acc_upload() {
@@ -181,29 +191,101 @@ function oay_acc_submit() {
 	$pics = array_slice( array_unique( $pics ), 0, 10 );
 	$pid  = wp_insert_post( array( 'post_type' => 'lands', 'post_status' => 'pending', 'post_title' => $title, 'post_content' => $desc, 'post_author' => $u->ID ), true );
 	if ( is_wp_error( $pid ) ) { oay_acc_err( 'تعذّر حفظ الإعلان' ); }
-	$meta = array(
-		'_oay_area' => $area, '_oay_price' => $price, '_oay_status' => 'available',
-		'_oay_down_payment' => oay_acc_num( 'down_payment' ), '_oay_installments' => oay_acc_num( 'installments' ),
-		'_oay_land_number' => sanitize_text_field( oay_acc_arg( 'land_number', 30 ) ), '_oay_permit' => sanitize_text_field( oay_acc_arg( 'permit', 60 ) ),
-		'_oay_location' => sanitize_text_field( oay_acc_arg( 'location', 160 ) ),
-		'_oay_owner_phone' => preg_replace( '/[^\d+]/', '', oay_acc_arg( 'phone', 20 ) ), '_oay_from_app' => 1,
-	);
-	$maps = esc_url_raw( oay_acc_arg( 'maps_url', 400 ) );
-	if ( $maps && preg_match( '#^https://#', $maps ) ) { $meta['_oay_maps_url'] = $maps; }
-	foreach ( $meta as $k => $v ) { update_post_meta( $pid, $k, $v ); }
-	if ( absint( oay_acc_arg( 'project', 10 ) ) ) { wp_set_object_terms( $pid, absint( oay_acc_arg( 'project', 10 ) ), 'projects', false ); }
-	if ( absint( oay_acc_arg( 'land_type', 10 ) ) ) { wp_set_object_terms( $pid, absint( oay_acc_arg( 'land_type', 10 ) ), 'land_type', false ); }
-	if ( $pics ) {
-		set_post_thumbnail( $pid, $pics[0] );
-		update_post_meta( $pid, 'land_gallery_images', $pics );
-		foreach ( $pics as $aid ) { wp_update_post( array( 'ID' => $aid, 'post_parent' => $pid ) ); }
-	}
+	oay_acc_save_fields( $pid, $pics, true );
 	// tell the office
 	$link = admin_url( 'admin.php?page=oay-requests' );
 	wp_mail( get_option( 'admin_email' ), 'طلب عرض أرض جديد من التطبيق: ' . $title,
-		"وصل طلب جديد لعرض أرض من التطبيق وينتظر موافقتك.\n\nالعنوان: $title\nالمساحة: $area قدم²\nالسعر: $price درهم\nصاحب الطلب: {$u->display_name} ({$u->user_email}) " . $meta['_oay_owner_phone'] . "\n\nللمراجعة والموافقة:\n$link" );
+		"وصل طلب جديد لعرض أرض من التطبيق وينتظر موافقتك.\n\nالعنوان: $title\nالمساحة: $area قدم²\nالسعر: $price درهم\nصاحب الطلب: {$u->display_name} ({$u->user_email}) " . get_post_meta( $pid, '_oay_owner_phone', true ) . "\n\nللمراجعة والموافقة:\n$link" );
 	oay_acc_ok( array( 'id' => $pid ) );
 }
+/** Writes the form fields of a land (from the owner's submission or the admin's edit). */
+function oay_acc_save_fields( $pid, $pics = null, $new = false ) {
+	$in = oay_acc_in();
+	$has = function ( $k ) use ( $in ) { return array_key_exists( $k, $in ); };
+	$map = array( 'area' => '_oay_area', 'price' => '_oay_price', 'down_payment' => '_oay_down_payment', 'installments' => '_oay_installments' );
+	foreach ( $map as $k => $mk ) { if ( $new || $has( $k ) ) { update_post_meta( $pid, $mk, oay_acc_num( $k ) ); } }
+	$txt = array( 'land_number' => array( '_oay_land_number', 30 ), 'permit' => array( '_oay_permit', 60 ), 'location' => array( '_oay_location', 160 ) );
+	foreach ( $txt as $k => $d ) { if ( $new || $has( $k ) ) { update_post_meta( $pid, $d[0], sanitize_text_field( oay_acc_arg( $k, $d[1] ) ) ); } }
+	if ( $new || $has( 'phone' ) ) { update_post_meta( $pid, '_oay_owner_phone', preg_replace( '/[^\d+]/', '', oay_acc_arg( 'phone', 20 ) ) ); }
+	if ( $new ) { update_post_meta( $pid, '_oay_status', 'available' ); update_post_meta( $pid, '_oay_from_app', 1 ); }
+	if ( $new || $has( 'maps_url' ) ) { $maps = esc_url_raw( oay_acc_arg( 'maps_url', 400 ) ); update_post_meta( $pid, '_oay_maps_url', $maps && preg_match( '#^https://#', $maps ) ? $maps : '' ); }
+	if ( $new || $has( 'plan' ) ) {
+		$plan = sanitize_key( oay_acc_arg( 'plan', 60 ) ); $proj = $plan && function_exists( 'dnp_projects' ) ? ( dnp_projects()[ $plan ] ?? null ) : null;
+		update_post_meta( $pid, '_oay_plan_slug', $proj ? $plan : '' );
+		if ( $proj && ! empty( $proj['terms'] ) ) { $t = get_term_by( 'slug', $proj['terms'][0], 'projects' ); if ( $t ) { wp_set_object_terms( $pid, $t->term_id, 'projects', false ); } }
+	}
+	if ( absint( oay_acc_arg( 'project', 10 ) ) ) { wp_set_object_terms( $pid, absint( oay_acc_arg( 'project', 10 ) ), 'projects', false ); }
+	if ( absint( oay_acc_arg( 'land_type', 10 ) ) ) { wp_set_object_terms( $pid, absint( oay_acc_arg( 'land_type', 10 ) ), 'land_type', false ); }
+	if ( is_array( $pics ) && $pics ) {
+		set_post_thumbnail( $pid, $pics[0] ); update_post_meta( $pid, 'land_gallery_images', $pics );
+		foreach ( $pics as $aid ) { wp_update_post( array( 'ID' => $aid, 'post_parent' => $pid ) ); }
+	}
+}
+
+/* ---------------- the interactive plan: an approved land with a plot number appears on its project's plan ---------------- */
+function oay_plan_plot( $slug, $n ) {
+	if ( ! $slug || '' === (string) $n || ! function_exists( 'dnp_projects' ) ) { return null; }
+	$proj = dnp_projects()[ $slug ] ?? null; if ( ! $proj ) { return null; }
+	static $cache = array();
+	if ( ! isset( $cache[ $slug ] ) ) { $j = json_decode( (string) @file_get_contents( WP_PLUGIN_DIR . '/alyassi-dabdaba-plan/assets/p/' . $slug . '/plan.json' ), true ); $cache[ $slug ] = array(); foreach ( (array) ( $j['plots'] ?? array() ) as $q ) { if ( empty( $q['am'] ) && isset( $q['n'] ) ) { $cache[ $slug ][ (string) $q['n'] ] = $q; } } }
+	$q = $cache[ $slug ][ (string) $n ] ?? null; if ( ! $q ) { return null; }
+	$st = get_option( $proj['opt'] ); $cur = is_array( $st ) && isset( $st['plots'][ (string) $n ] ) ? $st['plots'][ (string) $n ] : null;
+	return array( 'proj' => $proj, 'plot' => $q, 'listed' => $cur && ! empty( $cur['s'] ), 'cur' => $cur );
+}
+function oay_plan_write( $proj, $fn ) {
+	$st = get_option( $proj['opt'] ); if ( ! is_array( $st ) ) { return false; }
+	$st['plots'] = isset( $st['plots'] ) && is_array( $st['plots'] ) ? $st['plots'] : array();
+	if ( false === $fn( $st ) ) { return false; }
+	$st['updated'] = wp_date( 'Y-m-d' );
+	update_option( $proj['opt'], $st, false );   // the app's notification for new plots listens to this
+	update_option( $proj['rev'], (int) get_option( $proj['rev'] ) + 1, false );
+	if ( function_exists( 'dnp_after_save' ) ) { dnp_after_save( $proj ); }
+	return true;
+}
+function oay_plan_add( $pid ) {
+	$slug = get_post_meta( $pid, '_oay_plan_slug', true ); $n = trim( (string) get_post_meta( $pid, '_oay_land_number', true ) );
+	if ( ! $slug || '' === $n ) { delete_post_meta( $pid, '_oay_plan_msg' ); return; }
+	$i = oay_plan_plot( $slug, $n );
+	if ( ! $i ) { update_post_meta( $pid, '_oay_plan_msg', 'رقم القطعة غير موجود في مخطط المشروع' ); return; }
+	if ( $i['listed'] && (int) get_post_meta( $pid, '_oay_plan_added', true ) !== 1 ) { update_post_meta( $pid, '_oay_plan_msg', 'القطعة معروضة مسبقاً على المخطط — لم تُغيَّر' ); return; }
+	$total = (int) get_post_meta( $pid, '_oay_price', true ); $ft = (float) ( $i['plot']['ft'] ?? 0 );
+	oay_plan_write( $i['proj'], function ( &$st ) use ( $n, $total, $ft ) {
+		$e = array( 's' => 'av' ); if ( $total ) { $e['total'] = $total; if ( $ft ) { $e['ppf'] = (int) round( $total / $ft ); } }
+		$st['plots'][ (string) $n ] = $e;
+	} );
+	update_post_meta( $pid, '_oay_plan_added', 1 ); update_post_meta( $pid, '_oay_plan_msg', 'أُضيفت على المخطط التفاعلي كمتاحة' );
+}
+function oay_plan_remove( $pid ) {
+	if ( (int) get_post_meta( $pid, '_oay_plan_added', true ) !== 1 ) { return; }
+	$slug = get_post_meta( $pid, '_oay_plan_slug', true ); $n = (string) get_post_meta( $pid, '_oay_land_number', true );
+	$i = oay_plan_plot( $slug, $n );
+	if ( $i && $i['listed'] ) { oay_plan_write( $i['proj'], function ( &$st ) use ( $n ) { unset( $st['plots'][ $n ] ); } ); }
+	delete_post_meta( $pid, '_oay_plan_added' ); update_post_meta( $pid, '_oay_plan_msg', 'أُزيلت من المخطط التفاعلي' );
+}
+add_action( 'transition_post_status', function ( $new, $old, $post ) {
+	if ( 'lands' !== $post->post_type || ! get_post_meta( $post->ID, '_oay_from_app', true ) || $new === $old ) { return; }
+	if ( 'publish' === $new ) { oay_plan_add( $post->ID ); }
+	elseif ( 'publish' === $old ) { oay_plan_remove( $post->ID ); }
+}, 10, 3 );
+function oay_acc_plotcheck() {
+	$i = oay_plan_plot( sanitize_key( oay_acc_arg( 'plan', 60 ) ), trim( oay_acc_arg( 'n', 30 ) ) );
+	oay_acc_ok( array( 'exists' => (bool) $i, 'listed' => $i ? $i['listed'] : false, 'ft' => $i ? (float) ( $i['plot']['ft'] ?? 0 ) : 0 ) );
+}
+
+/* ---------------- approve / reject (from the app or the dashboard) ---------------- */
+function oay_acc_review( $pid, $approve, $note = '' ) {
+	$p = get_post( $pid ); if ( ! $p || 'lands' !== $p->post_type ) { return 'غير موجود'; }
+	$owner = get_userdata( $p->post_author );
+	if ( $approve ) {
+		wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish' ) ); delete_post_meta( $pid, '_oay_reject_note' );
+		if ( $owner ) { wp_mail( $owner->user_email, 'تمت الموافقة على عرض أرضك', "مرحباً {$owner->display_name}،\n\nتمت الموافقة على إعلانك «{$p->post_title}» وأصبح معروضاً في تطبيق عمر الياسي للعقارات.\n\nعمر الياسي للعقارات" ); }
+	} else {
+		wp_update_post( array( 'ID' => $pid, 'post_status' => 'draft' ) ); update_post_meta( $pid, '_oay_reject_note', $note );
+		if ( $owner ) { wp_mail( $owner->user_email, 'بخصوص طلب عرض أرضك', "مرحباً {$owner->display_name}،\n\nلم تتم الموافقة على إعلانك «{$p->post_title}»" . ( $note ? ":\n$note" : '.' ) . "\n\nعمر الياسي للعقارات" ); }
+	}
+	return (string) get_post_meta( $pid, '_oay_plan_msg', true );
+}
+
 function oay_acc_card( $p, $mine = false ) {
 	$pics = array_values( array_filter( array_map( 'absint', (array) get_post_meta( $p->ID, 'land_gallery_images', true ) ) ) );
 	$th   = get_post_thumbnail_id( $p->ID ); if ( $th && ! in_array( $th, $pics, true ) ) { array_unshift( $pics, $th ); }
@@ -216,8 +298,17 @@ function oay_acc_card( $p, $mine = false ) {
 		'maps' => (string) get_post_meta( $p->ID, '_oay_maps_url', true ), 'project' => $tt( 'projects' ), 'type' => $tt( 'land_type' ),
 		'status' => (string) get_post_meta( $p->ID, '_oay_status', true ), 'date' => get_post_time( 'U', true, $p ) * 1000,
 		'photos' => array_values( array_filter( array_map( function ( $a ) { return wp_get_attachment_image_url( $a, 'large' ); }, $pics ) ) ),
-		'url' => get_permalink( $p ),
+		'url' => get_permalink( $p ), 'featured' => (bool) get_post_meta( $p->ID, '_oay_featured', true ),
+		'plan' => (string) get_post_meta( $p->ID, '_oay_plan_slug', true ), 'onPlan' => (int) get_post_meta( $p->ID, '_oay_plan_added', true ) === 1,
 	);
+	if ( 'admin' === $mine ) {
+		$o = get_userdata( $p->post_author );
+		$c += array( 'review' => 'publish' === $p->post_status ? 'approved' : ( 'pending' === $p->post_status ? 'pending' : 'rejected' ), 'note' => (string) get_post_meta( $p->ID, '_oay_reject_note', true ),
+			'planMsg' => (string) get_post_meta( $p->ID, '_oay_plan_msg', true ), 'ownerPhone' => (string) get_post_meta( $p->ID, '_oay_owner_phone', true ), 'permit' => (string) get_post_meta( $p->ID, '_oay_permit', true ),
+			'owner' => $o ? array( 'id' => $o->ID, 'name' => $o->display_name, 'email' => $o->user_email ) : null,
+			'projectId' => ( $t = get_the_terms( $p->ID, 'projects' ) ) && ! is_wp_error( $t ) ? $t[0]->term_id : 0, 'typeId' => ( $t = get_the_terms( $p->ID, 'land_type' ) ) && ! is_wp_error( $t ) ? $t[0]->term_id : 0 );
+		return $c;
+	}
 	if ( $mine ) { $c['review'] = 'publish' === $p->post_status ? 'approved' : ( 'pending' === $p->post_status ? 'pending' : 'rejected' ); $c['note'] = (string) get_post_meta( $p->ID, '_oay_reject_note', true ); }
 	return $c;
 }
@@ -233,8 +324,87 @@ function oay_acc_delete() {
 }
 /** Approved lands from owners, for the app. */
 function oay_acc_public() {
-	$q = get_posts( array( 'post_type' => 'lands', 'post_status' => 'publish', 'numberposts' => 100, 'meta_key' => '_oay_from_app' ) );
-	oay_acc_ok( array( 'items' => array_map( 'oay_acc_card', $q ) ) );
+	$q = get_posts( array( 'post_type' => 'lands', 'post_status' => 'publish', 'numberposts' => 200, 'meta_key' => '_oay_from_app', 'orderby' => 'date', 'order' => 'DESC' ) );
+	$q = array_values( array_filter( $q, function ( $p ) { return ! get_user_meta( $p->post_author, 'oay_banned', true ); } ) );
+	$items = array_map( 'oay_acc_card', $q );
+	usort( $items, function ( $a, $b ) { return ( $b['featured'] <=> $a['featured'] ) ?: ( $b['date'] <=> $a['date'] ); } );   // featured first, then newest
+	oay_acc_ok( array( 'items' => $items ) );
+}
+
+/* ---------------- points: an owner spends points to feature a land ---------------- */
+function oay_acc_feature() {
+	$u = oay_acc_need_user(); $p = get_post( absint( oay_acc_arg( 'id', 12 ) ) );
+	if ( ! $p || 'lands' !== $p->post_type || (int) $p->post_author !== $u->ID ) { oay_acc_err( 'غير موجود', 404 ); }
+	if ( get_post_meta( $p->ID, '_oay_featured', true ) ) { oay_acc_err( 'الإعلان مميز بالفعل' ); }
+	$pts = (int) get_user_meta( $u->ID, 'oay_points', true );
+	if ( $pts < OAY_FEATURE_COST ) { oay_acc_err( 'رصيدك ' . $pts . ' نقطة — تمييز الإعلان يحتاج ' . OAY_FEATURE_COST . ' نقطة' ); }
+	update_user_meta( $u->ID, 'oay_points', $pts - OAY_FEATURE_COST ); update_post_meta( $p->ID, '_oay_featured', 1 );
+	oay_acc_ok( array( 'points' => $pts - OAY_FEATURE_COST ) );
+}
+
+/* ---------------- admin (from the app, signed in with an administrator account) ---------------- */
+function oay_acc_adm_ads() {
+	oay_acc_need_admin();
+	$st = oay_acc_arg( 'status', 20 ); $st = in_array( $st, array( 'pending', 'publish', 'draft' ), true ) ? $st : array( 'pending', 'publish', 'draft' );
+	$args = array( 'post_type' => 'lands', 'post_status' => $st, 'numberposts' => 200, 'meta_key' => '_oay_from_app' );
+	if ( absint( oay_acc_arg( 'user', 12 ) ) ) { $args['author'] = absint( oay_acc_arg( 'user', 12 ) ); }
+	$items = array_map( function ( $p ) { return oay_acc_card( $p, 'admin' ); }, get_posts( $args ) );
+	$c = function ( $s ) { return (int) ( new WP_Query( array( 'post_type' => 'lands', 'post_status' => $s, 'meta_key' => '_oay_from_app', 'fields' => 'ids', 'posts_per_page' => 1 ) ) )->found_posts; };
+	oay_acc_ok( array( 'items' => $items, 'counts' => array( 'pending' => $c( 'pending' ), 'publish' => $c( 'publish' ), 'draft' => $c( 'draft' ) ) ) );
+}
+function oay_acc_adm_post() { $p = get_post( absint( oay_acc_arg( 'id', 12 ) ) ); if ( ! $p || 'lands' !== $p->post_type ) { oay_acc_err( 'غير موجود', 404 ); } return $p; }
+function oay_acc_adm_review() {
+	oay_acc_need_admin(); $p = oay_acc_adm_post();
+	$msg = oay_acc_review( $p->ID, '1' === oay_acc_arg( 'approve', 2 ), sanitize_text_field( oay_acc_arg( 'note', 200 ) ) );
+	oay_acc_ok( array( 'item' => oay_acc_card( get_post( $p->ID ), 'admin' ), 'planMsg' => $msg ) );
+}
+function oay_acc_adm_save() {
+	oay_acc_need_admin(); $p = oay_acc_adm_post();
+	$t = sanitize_text_field( oay_acc_arg( 'title', 120 ) );
+	wp_update_post( array( 'ID' => $p->ID, 'post_title' => $t ? $t : $p->post_title, 'post_content' => sanitize_textarea_field( oay_acc_arg( 'description', 3000 ) ) ) );
+	$wasOnPlan = (int) get_post_meta( $p->ID, '_oay_plan_added', true ) === 1;
+	if ( $wasOnPlan ) { oay_plan_remove( $p->ID ); }
+	oay_acc_save_fields( $p->ID );
+	if ( 'publish' === get_post_status( $p->ID ) ) { oay_plan_add( $p->ID ); }   // keeps the plan in step with the edited plot / price
+	oay_acc_ok( array( 'item' => oay_acc_card( get_post( $p->ID ), 'admin' ) ) );
+}
+function oay_acc_adm_delete() { oay_acc_need_admin(); $p = oay_acc_adm_post(); wp_trash_post( $p->ID ); oay_acc_ok(); }
+function oay_acc_adm_feature() {
+	oay_acc_need_admin(); $p = oay_acc_adm_post();
+	if ( '1' === oay_acc_arg( 'on', 2 ) ) { update_post_meta( $p->ID, '_oay_featured', 1 ); } else { delete_post_meta( $p->ID, '_oay_featured' ); }
+	oay_acc_ok( array( 'item' => oay_acc_card( get_post( $p->ID ), 'admin' ) ) );
+}
+function oay_acc_adm_userrow( $u ) {
+	$n = (int) ( new WP_Query( array( 'post_type' => 'lands', 'author' => $u->ID, 'post_status' => array( 'publish', 'pending', 'draft' ), 'meta_key' => '_oay_from_app', 'fields' => 'ids', 'posts_per_page' => 1 ) ) )->found_posts;
+	return oay_acc_userdata( $u ) + array( 'joined' => strtotime( $u->user_registered ) * 1000, 'ads' => $n );
+}
+function oay_acc_adm_users() {
+	oay_acc_need_admin(); $q = sanitize_text_field( oay_acc_arg( 'q', 80 ) );
+	$args = array( 'number' => 200, 'orderby' => 'registered', 'order' => 'DESC', 'meta_key' => 'oay_app_user' );
+	if ( $q ) { unset( $args['meta_key'] ); $args['search'] = '*' . $q . '*'; $args['search_columns'] = array( 'user_email', 'display_name', 'user_login' ); }
+	oay_acc_ok( array( 'items' => array_map( 'oay_acc_adm_userrow', get_users( $args ) ) ) );
+}
+function oay_acc_adm_target() { $u = get_userdata( absint( oay_acc_arg( 'id', 12 ) ) ); if ( ! $u ) { oay_acc_err( 'غير موجود', 404 ); } return $u; }
+function oay_acc_adm_user() {
+	oay_acc_need_admin(); $u = oay_acc_adm_target();
+	$ads = get_posts( array( 'post_type' => 'lands', 'author' => $u->ID, 'post_status' => array( 'publish', 'pending', 'draft' ), 'numberposts' => 100, 'meta_key' => '_oay_from_app' ) );
+	oay_acc_ok( array( 'user' => oay_acc_adm_userrow( $u ), 'ads' => array_map( function ( $p ) { return oay_acc_card( $p, 'admin' ); }, $ads ) ) );
+}
+function oay_acc_adm_points() {
+	oay_acc_need_admin(); $u = oay_acc_adm_target();
+	$v = max( 0, (int) get_user_meta( $u->ID, 'oay_points', true ) + (int) oay_acc_arg( 'delta', 8 ) );
+	update_user_meta( $u->ID, 'oay_points', $v ); oay_acc_ok( array( 'user' => oay_acc_adm_userrow( $u ) ) );
+}
+function oay_acc_adm_ban() {
+	$me = oay_acc_need_admin(); $u = oay_acc_adm_target();
+	if ( $u->ID === $me->ID || oay_acc_is_admin( $u ) ) { oay_acc_err( 'لا يمكن إيقاف حساب إداري' ); }
+	if ( '1' === oay_acc_arg( 'on', 2 ) ) {
+		update_user_meta( $u->ID, 'oay_banned', 1 ); delete_user_meta( $u->ID, 'oay_app_tokens' );
+		foreach ( get_posts( array( 'post_type' => 'lands', 'author' => $u->ID, 'post_status' => 'publish', 'numberposts' => -1, 'meta_key' => '_oay_from_app' ) ) as $p ) {
+			wp_update_post( array( 'ID' => $p->ID, 'post_status' => 'draft' ) ); update_post_meta( $p->ID, '_oay_reject_note', 'الحساب موقوف' );
+		}
+	} else { delete_user_meta( $u->ID, 'oay_banned' ); }
+	oay_acc_ok( array( 'user' => oay_acc_adm_userrow( get_userdata( $u->ID ) ) ) );
 }
 
 /* ---------------- Google sign-in page for the Android app (Google does not allow sign-in inside an app's web view,
@@ -245,6 +415,7 @@ add_action( 'init', function () {
 	if ( isset( $_POST['credential'] ) ) {
 		$u = oay_acc_google_user( wp_unslash( $_POST['credential'] ) );
 		if ( is_wp_error( $u ) ) { wp_die( esc_html( $u->get_error_message() ) ); }
+		if ( get_user_meta( $u->ID, 'oay_banned', true ) ) { wp_die( 'هذا الحساب موقوف — تواصل مع الإدارة' ); }
 		$tok  = oay_acc_issue_token( $u->ID );
 		$back = OAY_ACC_SCHEME . '://auth?token=' . rawurlencode( $tok );
 		$intent = 'intent://auth?token=' . rawurlencode( $tok ) . '#Intent;scheme=' . OAY_ACC_SCHEME . ';package=' . OAY_ACC_SCHEME . ';end';
@@ -276,17 +447,9 @@ add_action( 'admin_post_oay_review', function () {
 	$pid = absint( isset( $_POST['pid'] ) ? $_POST['pid'] : 0 );
 	if ( ! current_user_can( 'edit_post', $pid ) || ! check_admin_referer( 'oay_review_' . $pid ) ) { wp_die( 'غير مسموح' ); }
 	$p = get_post( $pid ); if ( ! $p || 'lands' !== $p->post_type ) { wp_die( 'غير موجود' ); }
-	$owner = get_userdata( $p->post_author );
-	if ( isset( $_POST['approve'] ) ) {
-		wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish' ) ); delete_post_meta( $pid, '_oay_reject_note' );
-		if ( $owner ) { wp_mail( $owner->user_email, 'تمت الموافقة على عرض أرضك', "مرحباً {$owner->display_name}،\n\nتمت الموافقة على إعلانك «{$p->post_title}» وأصبح معروضاً في تطبيق عمر الياسي للعقارات.\n\nعمر الياسي للعقارات" ); }
-		$msg = 'approved';
-	} else {
-		$note = sanitize_text_field( wp_unslash( isset( $_POST['note'] ) ? $_POST['note'] : '' ) );
-		wp_update_post( array( 'ID' => $pid, 'post_status' => 'draft' ) ); update_post_meta( $pid, '_oay_reject_note', $note );
-		if ( $owner ) { wp_mail( $owner->user_email, 'بخصوص طلب عرض أرضك', "مرحباً {$owner->display_name}،\n\nلم تتم الموافقة على إعلانك «{$p->post_title}»" . ( $note ? ":\n$note" : '.' ) . "\n\nعمر الياسي للعقارات" ); }
-		$msg = 'rejected';
-	}
+	$approve = isset( $_POST['approve'] );
+	oay_acc_review( $pid, $approve, sanitize_text_field( wp_unslash( isset( $_POST['note'] ) ? $_POST['note'] : '' ) ) );
+	$msg = $approve ? 'approved' : 'rejected';
 	wp_safe_redirect( admin_url( 'admin.php?page=oay-requests&done=' . $msg ) ); exit;
 } );
 function oay_acc_requests_page() {
@@ -309,6 +472,7 @@ function oay_acc_requests_page() {
 		echo '<table class="widefat striped" style="max-width:560px">'; foreach ( $rows as $k => $v ) { if ( '' !== (string) $v ) { echo '<tr><th style="width:130px">' . esc_html( $k ) . '</th><td>' . esc_html( $v ) . '</td></tr>'; } } echo '</table>';
 		if ( $c['description'] ) { echo '<p style="white-space:pre-wrap">' . esc_html( $c['description'] ) . '</p>'; }
 		if ( $c['maps'] ) { echo '<p><a href="' . esc_url( $c['maps'] ) . '" target="_blank">الموقع على الخريطة ↗</a></p>'; }
+		$pm = get_post_meta( $p->ID, '_oay_plan_msg', true ); if ( $c['plan'] ) { echo '<p>المخطط التفاعلي: <b>' . esc_html( $c['plan'] ) . '</b> · قطعة ' . esc_html( $c['number'] ) . ( $pm ? ' — ' . esc_html( $pm ) : '' ) . '</p>'; }
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px"><input type="hidden" name="action" value="oay_review"><input type="hidden" name="pid" value="' . $p->ID . '">' . wp_nonce_field( 'oay_review_' . $p->ID, '_wpnonce', true, false );
 		if ( 'publish' !== $tab ) { echo '<button class="button button-primary" name="approve" value="1">✓ موافقة وعرض</button>'; }
 		if ( 'draft' !== $tab ) { echo '<input name="note" placeholder="سبب الرفض (اختياري)" style="min-width:220px"><button class="button" name="reject" value="1">✕ رفض' . ( 'publish' === $tab ? ' / إخفاء' : '' ) . '</button>'; }
