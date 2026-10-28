@@ -404,8 +404,8 @@ export function oLandPage(x) {
       ${x.description ? `<p class="odesc">${esc(x.description)}</p>` : ''}
       ${x.maps ? `<a class="btn ghost block" href="${esc(x.maps)}" data-ext>${I.pin} الموقع على الخريطة</a>` : ''}
     </div>
-    <div class="bar">
+    ${x.byAdmin ? `<div class="bar">
       <a class="btn call" href="tel:${CONTACT.phone}">${I.phone} اتصال</a>
       <a class="btn wa" href="${esc(waLink(msg))}" data-ext>${I.wa} واتساب</a>
-    </div>`;
+    </div>` : `<div class="bar"><button class="btn primary block" data-askad="${x.id}">${I.chat} تواصل مع الإدارة بخصوص الإعلان</button></div>`}`;
 }
