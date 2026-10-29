@@ -218,6 +218,8 @@ const EN = {
   "تم تعديل الخبر ✓": "News updated ✓",
   "الخبر غير موجود": "News not found",
   'تم نسخ الخبر ✓': 'News copied ✓',
+  '🔔 نشر مع إشعار للهواتف': '🔔 Publish with a phone alert', 'نشر بدون تنبيه': 'Publish without an alert', 'نُشر الخبر — تعذّر إرسال الإشعار': "Published — the alert couldn't be sent",
+  'تم نشر الخبر وإرسال إشعار للهواتف ✓': 'Published and sent to phones ✓', 'تم نشر الخبر بدون تنبيه ✓': 'Published without an alert ✓', 'أعلمني بالأخبار العقارية الجديدة': 'Notify me about new real estate news',
   // server messages
   'محاولات كثيرة — حاول بعد قليل': 'Too many attempts — try again shortly', 'انتهت الجلسة — سجّل الدخول مرة أخرى': 'Session ended — please sign in again',
   'اكتب الاسم': 'Enter your name', 'البريد الإلكتروني غير صحيح': 'Invalid email address', 'كلمة المرور 8 أحرف على الأقل': 'Password must be at least 8 characters',

@@ -4,7 +4,7 @@ import { api, session } from './owner.js';
 import { tr } from './i18n.js';
 
 const LS = 'oay:ntags';
-const local = () => { try { return { prices: true, offers: true, ...JSON.parse(localStorage.getItem(LS) || '{}') }; } catch { return { prices: true, offers: true }; } };
+const local = () => { try { return { prices: true, offers: true, news: true, ...JSON.parse(localStorage.getItem(LS) || '{}') }; } catch { return { prices: true, offers: true, news: true }; } };
 const sw = (k, on) => `<label class="tgl"><input type="checkbox" data-k="${k}" ${on ? 'checked' : ''}><i></i></label>`;
 const chk = (k, label, on) => `<label class="nrow"><span>${label}</span><input type="checkbox" class="nchk" data-k="${k}" ${on ? 'checked' : ''}></label>`;
 
@@ -14,7 +14,8 @@ export function notifsPage() {
     <div class="ncard master"><div><b>تفعيل الإشعارات</b><span id="nstate">تلقي التنبيهات على جهازك</span></div>${sw('master', false)}</div>
     <div class="ncard"><h4>التحديثات</h4>
       ${chk('prices', 'أعلمني عند تغيّر سعر أو حالة أي أرض، أو نزول أرض جديدة', t.prices)}
-      ${chk('offers', 'أعلمني بالعروض لفترة محدودة', t.offers)}</div>
+      ${chk('offers', 'أعلمني بالعروض لفترة محدودة', t.offers)}
+      ${chk('news', 'أعلمني بالأخبار العقارية الجديدة', t.news)}</div>
     ${u ? `<div class="ncard"><h4>الرسائل الخاصة</h4>
       ${chk('chat_first', 'أعلمني عند استلام رسالة خاصة جديدة', true)}
       ${chk('chat_all', 'أخبرني عندما أتلقى كل رسالة خاصة', true)}</div>
@@ -50,9 +51,9 @@ export async function initNotifs(pg) {
   pg.querySelector('#nsave').onclick = async (e) => {
     const b = e.currentTarget; b.disabled = true;
     const v = (k) => !!(pg.querySelector(`[data-k=${k}]`) || {}).checked;
-    const tags = { prices: v('prices'), offers: v('offers') };
+    const tags = { prices: v('prices'), offers: v('offers'), news: v('news') };
     try { localStorage.setItem(LS, JSON.stringify(tags)); } catch { /* ignore */ }
-    try { if (push && push.os) push.os.User.addTags({ prices: tags.prices ? '1' : '0', offers: tags.offers ? '1' : '0' }); } catch { /* ignore */ }
+    try { if (push && push.os) push.os.User.addTags({ prices: tags.prices ? '1' : '0', offers: tags.offers ? '1' : '0', news: tags.news ? '1' : '0' }); } catch { /* ignore */ }
     try {
       if (session.token()) await api('notif_save', { chat_first: v('chat_first'), chat_all: v('chat_all'), group: v('group'), reqs: v('reqs') });
       H.toast('تم حفظ إعدادات الإشعارات ✓');

@@ -48,7 +48,7 @@ export function newsPage() {
   return `<div class="pad newspg">${admin ? `<form class="ncard nform" id="nform"><h4>إضافة خبر جديد</h4>
       <textarea id="ntext" rows="3" maxlength="400" placeholder="نص الخبر…"></textarea>
       <input id="nlink" type="url" dir="ltr" placeholder="رابط (اختياري) https://">
-      <button class="btn primary block">نشر الخبر في الشريط</button></form>
+      <div class="nbtns"><button class="btn primary" data-pub="1">🔔 نشر مع إشعار للهواتف</button><button class="btn ghost" data-pub="0">نشر بدون تنبيه</button></div></form>
     <div class="ncard nspeed"><h4>سرعة الشريط</h4>
       <div class="nsrow"><span>🐢 بطيء</span><input type="range" id="nspd" min="15" max="150" step="5" value="${speed}"><span>سريع 🐇</span></div>
       <p class="muted" id="nspv"></p><button class="btn ghost block" id="nspsave">حفظ السرعة</button></div>` : ''}
@@ -73,12 +73,20 @@ export function initNewsPage(pg) {
   }
   draw(); loadNews().then(draw);
   const form = pg.querySelector('#nform');
-  if (form) form.onsubmit = async (e) => {
-    e.preventDefault(); const b = form.querySelector('button'); b.disabled = true;
-    try { took(await api('adm_news_add', { text: pg.querySelector('#ntext').value, link: pg.querySelector('#nlink').value.trim() })); pg.querySelector('#ntext').value = ''; pg.querySelector('#nlink').value = ''; H.toast('تم نشر الخبر في الشريط ✓'); }
-    catch (ex) { H.toast(ex.message); }
-    b.disabled = false;
-  };
+  if (form) {
+    let notify = '1';
+    form.querySelectorAll('[data-pub]').forEach((b) => { b.onclick = () => { notify = b.dataset.pub; }; });
+    form.onsubmit = async (e) => {
+      e.preventDefault(); const bs = form.querySelectorAll('[data-pub]'); bs.forEach((b) => { b.disabled = true; });
+      if (e.submitter && e.submitter.dataset.pub) notify = e.submitter.dataset.pub;
+      try {
+        const j = await api('adm_news_add', { text: pg.querySelector('#ntext').value, link: pg.querySelector('#nlink').value.trim(), notify });
+        took(j); pg.querySelector('#ntext').value = ''; pg.querySelector('#nlink').value = '';
+        H.toast(notify === '1' ? (j.pushed === false ? 'نُشر الخبر — تعذّر إرسال الإشعار' : 'تم نشر الخبر وإرسال إشعار للهواتف ✓') : 'تم نشر الخبر بدون تنبيه ✓');
+      } catch (ex) { H.toast(ex.message); }
+      bs.forEach((b) => { b.disabled = false; });
+    };
+  }
   box.addEventListener('click', async (e) => {
     const t = e.target.closest('button'); if (!t || !admin) return;
     try {

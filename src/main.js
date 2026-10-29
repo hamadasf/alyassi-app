@@ -216,6 +216,7 @@ function openFromPush(ev) {
   const data = n.additionalData || n.data || {};
   if (data.open === 'land' && data.id) { refresh(false); openLandId(String(data.id)); return; }
   if (data.open === 'chat') { closeAll(); showTab('chats'); setTimeout(() => (data.user && (session.user() || {}).admin ? pushPage('chat', String(data.user)) : pushPage('mychat')), 300); return; }
+  if (data.open === 'news') { closeAll(); showTab('home'); loadNews(); setTimeout(() => pushPage('news'), 300); return; }
   if (data.open === 'group') { closeAll(); showTab('chats'); setTimeout(() => pushPage('group'), 300); return; }
   if (data.open === 'account' || data.open === 'admin') { closeAll(); showTab('contact'); setTimeout(() => pushPage(data.open), 300); return; }
   refresh(false).then(() => document.querySelector('[data-changes]')?.click());
@@ -874,6 +875,7 @@ async function boot() {
   if (location.hash === '#notify') { history.replaceState(null, '', location.pathname); setTimeout(() => push.enable(), 1200); }
   const hm = /^#land=(.+)$/.exec(location.hash);
   if (hm) { history.replaceState(null, '', location.pathname); openLandId(decodeURIComponent(hm[1])); }
+  if (location.hash === '#news') { history.replaceState(null, '', location.pathname); setTimeout(() => pushPage('news'), 600); }
   if (location.hash === '#chat') { history.replaceState(null, '', location.pathname); showTab('chats'); }
   if (location.hash === '#updates') { history.replaceState(null, '', location.pathname); document.querySelector('[data-changes]')?.click(); }
 }

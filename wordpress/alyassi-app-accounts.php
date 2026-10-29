@@ -874,7 +874,9 @@ function oay_acc_adm_news_add() {
 	$n = oay_news_all(); $id = 1; foreach ( $n as $x ) { $id = max( $id, (int) $x['id'] + 1 ); }
 	array_unshift( $n, array( 'id' => $id, 't' => time() * 1000, 'text' => $text, 'link' => $link ) );
 	update_option( 'oay_news', array_slice( $n, 0, 30 ), false );
-	oay_news_out();
+	$sent = null;
+	if ( '1' === oay_acc_arg( 'notify', 2 ) ) { $sent = oay_news_push( $id, $text ); }
+	oay_acc_ok( array( 'items' => oay_news_all(), 'speed' => oay_news_speed(), 'pushed' => $sent ) );
 }
 function oay_acc_adm_news_delete() {
 	oay_acc_need_admin(); $id = absint( oay_acc_arg( 'id', 12 ) );
@@ -887,4 +889,20 @@ function oay_acc_adm_news_move() {
 	$j = false === $i ? false : ( $up ? $i - 1 : $i + 1 );
 	if ( false !== $j && isset( $n[ $j ] ) ) { $t = $n[ $i ]; $n[ $i ] = $n[ $j ]; $n[ $j ] = $t; update_option( 'oay_news', $n, false ); }
 	oay_news_out();
+}
+/** Sends the news to every phone (except those that turned news alerts off in «خيارات الإشعارات»). */
+function oay_news_push( $id, $text ) {
+	$key = trim( (string) get_option( 'oay_onesignal_key', '' ) );
+	if ( '' === $key || ! function_exists( 'oay_tag_filter' ) ) { return false; }
+	$title = '📰 أخبار عقارية · عمر الياسي للعقارات';
+	$r = wp_remote_post( 'https://api.onesignal.com/notifications?c=push', array(
+		'timeout' => 10,
+		'headers' => array( 'Content-Type' => 'application/json', 'Authorization' => 'Key ' . $key ),
+		'body'    => wp_json_encode( array(
+			'app_id' => OAY_APP_ID, 'target_channel' => 'push', 'filters' => oay_tag_filter( 'news' ),
+			'headings' => array( 'en' => $title, 'ar' => $title ), 'contents' => array( 'en' => mb_substr( $text, 0, 240 ), 'ar' => mb_substr( $text, 0, 240 ) ),
+			'web_url' => OAY_APP_URL . '#news', 'data' => array( 'open' => 'news', 'id' => $id ), 'ttl' => 86400, 'priority' => 10,
+		) ),
+	) );
+	return ! is_wp_error( $r ) && wp_remote_retrieve_response_code( $r ) < 300;
 }
