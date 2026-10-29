@@ -5,7 +5,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { cardModel, buildLandPdf } from './card.js';
-import { paintPlanLoc } from './planloc.js';
+import { paintPlanLoc, paintCardLoc } from './planloc.js';
 import { session, refreshMe, ownerLands, loadOwnerLands, api as accApi } from './owner.js';
 import { initChat, refreshUnread, renderChatsTab, chatPage, initChatPage, askAbout, myChatPage, initMyChat, groupPage, initGroup, profPage, initProf } from './chat.js';
 import { initNotifs, notifsPage } from './notifs.js';
@@ -405,12 +405,21 @@ function priceHTML(l, big) {
 const areaHTML = (l) => l.ft ? `${l.approx ? '≈ ' : ''}${money(l.ft)} قدم² <span class="subt">(${money(l.m2)} م²)</span>` : '—';
 const dot = (c) => `<i class="dot" style="background:rgb(${c.join(',')})"></i>`;
 
+/* plan pictures on land cards: painted only when a card comes into view */
+const locIO = 'IntersectionObserver' in window ? new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { locIO.unobserve(e.target); paintCard(e.target); } }), { rootMargin: '300px 300px' }) : null;
+function paintCard(cv) {
+  const d = DATA(); const l = d.lands.find((x) => x.id === cv.dataset.loc); const p = l && d.projects.find((x) => x.slug === l.project);
+  const fail = () => { if (!l) return; const im = document.createElement('img'); im.src = l.img; im.alt = ''; cv.replaceWith(im); };
+  if (!l || !p || !p.map) return fail();
+  paintCardLoc(cv, l, p.lands, p.map).then(() => cv.classList.add('on')).catch(fail);
+}
+new MutationObserver(() => { document.querySelectorAll('canvas.cardloc:not([data-w])').forEach((cv) => { cv.dataset.w = '1'; if (locIO) locIO.observe(cv); else paintCard(cv); }); }).observe(document.body, { childList: true, subtree: true });
 function landCard(l) {
   const st = STATUS[l.status] || STATUS.av;
   const fav = favs.has(l.id);
   const o = offerFor(l);
   return `<article class="card land${o ? ' has-ofr' : ''}" data-land="${esc(l.id)}">
-    <div class="ph"><img loading="lazy" decoding="async" src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">
+    <div class="ph${l.poly ? ' loc' : ''}">${l.poly ? `<canvas class="cardloc" data-loc="${esc(l.id)}"></canvas>` : `<img loading="lazy" decoding="async" src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">`}
       <span class="badge ${st.cls}">${st.label}</span>
       ${o ? `<span class="badge ofr">🔥 عرض</span>` : l.featured && l.status === 'av' ? `<span class="badge star">${I.star} مميزة</span>` : ''}
       ${changeBadge(l)}

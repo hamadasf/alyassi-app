@@ -7,7 +7,7 @@ import { SITE } from './config.js';
 const native = Capacitor.isNativePlatform();
 const COL = { av: '#12243F', res: '#00A040', sold: '#E10600' };   // same colours as the website
 const ST = { av: 'متاح', res: 'محجوز', sold: 'مباع' };
-const INK = '#10151C', WHITE = '#FFFFFF';
+const INK = '#10151C', WHITE = '#FFFFFF', HL = '#00E1FF';   // HL: the highlighted plot (a colour the plans never use)
 const FONT = "Tajawal, 'Segoe UI', Tahoma, sans-serif";
 const fmt = (n) => Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
 
@@ -149,7 +149,7 @@ export function drawPlanLoc(c, P, land, lands, map, { x = 0, y = 0, w, h, radius
   if (P.V) drawVec(c, P.V, P.VS, x0, y0, x1, y1, ppu);
   // plots with a status, as on the website
   for (const l of lands) {
-    if (!l.poly || !COL[l.status]) continue;
+    if (!l.poly || !COL[l.status] || l === land || l.id === land.id) continue;
     const xs = l.poly.map((q) => q[0]), ys = l.poly.map((q) => q[1]);
     if (Math.max(...xs) < x0 || Math.min(...xs) > x1 || Math.max(...ys) < y0 || Math.min(...ys) > y1) continue;
     poly(c, l.poly); c.fillStyle = COL[l.status]; c.fill(); c.lineWidth = 1.1; c.strokeStyle = WHITE; c.lineJoin = 'round'; c.stroke();
@@ -160,10 +160,20 @@ export function drawPlanLoc(c, P, land, lands, map, { x = 0, y = 0, w, h, radius
     c.font = `700 2.5px ${FONT}`; c.fillText(l.status === 'av' ? fmt(l.ft) : ST[l.status], 0, 4.1);
     c.restore();
   }
-  // the chosen plot: dark frame with a white line inside (the website's selection)
+  // the chosen plot, highlighted: bright cyan with a glow, so it stands out among the plots around it
+  c.save();
   poly(c, land.poly); c.lineJoin = 'round';
-  c.lineWidth = 4; c.strokeStyle = INK; c.stroke();
-  c.lineWidth = 2; c.strokeStyle = WHITE; c.stroke();
+  c.shadowColor = 'rgba(0, 225, 255, 1)'; c.shadowBlur = 14 * ppu; c.fillStyle = HL; c.fill();
+  c.shadowBlur = 0;
+  c.lineWidth = 3; c.strokeStyle = WHITE; c.stroke();
+  c.lineWidth = 1; c.strokeStyle = INK; c.stroke();
+  c.restore();
+  const [hx, hy] = centre(land);
+  c.save(); c.translate(hx, hy); c.rotate((land.pr || 0) * Math.PI / 180);
+  c.fillStyle = INK; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.direction = 'rtl';
+  c.font = `800 4.8px ${FONT}`; c.fillText(land.n, 0, 0.8);
+  c.font = `700 2.6px ${FONT}`; c.fillText(fmt(land.ft), 0, 4.3);
+  c.restore();
   c.restore();
 }
 
@@ -175,4 +185,21 @@ export async function paintPlanLoc(canvas, land, lands, map) {
   const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
   canvas.width = w; canvas.height = h;
   drawPlanLoc(canvas.getContext('2d'), P, land, lands, map, { w, h });
+}
+
+/* ---------- land cards: the plot on its plan instead of a stock photo (drawn when the card scrolls into view) ---------- */
+const shots = new Map();   // land key → finished bitmap (canvas), so lists re-render instantly
+export async function paintCardLoc(canvas, land, lands, map) {
+  const r = canvas.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+  const key = `${land.project}:${land.n}:${land.status}:${lands.map((l) => l.status[0]).join('')}:${w}x${h}`;
+  let off = shots.get(key);
+  if (!off) {
+    const P = await loadPlan(land.project, map);
+    await document.fonts.load('800 20px Tajawal', '0123').catch(() => {});
+    off = document.createElement('canvas'); off.width = w; off.height = h;
+    drawPlanLoc(off.getContext('2d'), P, land, lands, map, { w, h });
+    shots.set(key, off);
+  }
+  canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(off, 0, 0);
 }
