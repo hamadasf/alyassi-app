@@ -481,25 +481,30 @@ function renderHome() {
   const best = av.filter((l) => l.total).sort((a, b) => a.total - b.total).slice(0, 10);
   const cats = [...new Set(av.map((l) => l.cat))];
   const el = $('#home .content');
-  const tiles = homeTiles(projects, av);
   el.innerHTML = `
-    <section class="eah">
-      <div class="eah-top">
-        <img class="eah-logo" src="${LOGO}" alt="عمر الياسي للعقارات">
-        <div class="eah-acts">
-          <button class="eah-ic bell" data-changes aria-label="التحديثات">${I.bell}<i id="bellN" hidden></i></button>
-          <a class="eah-ic" href="${esc(waLink('مرحباً، أرغب بالاستفسار عن الأراضي المتاحة'))}" data-ext aria-label="واتساب">${I.wa}</a>
-          <button class="eah-lang notr" data-lang>${isEn() ? 'العربية' : 'English'}</button>
+    <section class="hero">
+      <div class="hero-top">
+        <img class="hero-logo" src="${LOGO}" alt="عمر الياسي للعقارات">
+        <div class="hero-acts">
+          <button class="hbtn" data-changes aria-label="التحديثات">${I.bell}<i id="bellN" hidden></i></button>
+          <button class="hbtn hlang notr" data-lang aria-label="Language">${isEn() ? 'AR' : 'EN'}</button>
         </div>
       </div>
-      <button class="eah-search" data-go="lands" data-focus="1">${I.search}<span>ابحث برقم القطعة أو اسم المشروع…</span></button>
+      <p>أراضٍ ومشاريع في الشارقة بخطط سداد مرنة ومواقع استراتيجية</p>
+      <button class="search-fake" data-go="lands" data-focus="1">${I.search}<span>ابحث برقم القطعة أو اسم المشروع…</span></button>
+      <div class="stats">
+        <div><b>${av.length || '—'}</b><span>أرض متاحة</span></div>
+        <div><b>${projects.length || '—'}</b><span>مشروع</span></div>
+        <div><b>${lands.filter((l) => l.status === 'sold').length || '—'}</b><span>تم بيعها</span></div>
+      </div>
     </section>
-    ${bannerHTML(av)}
-    <section class="eagrid">${tiles}</section>
+    ${bannerHTML(av, projects)}
     ${notifCard()}
     ${ofr.length ? `<div class="sec-h ofr-h"><h2>🔥 عروض لفترة محدودة</h2><button data-go="lands" data-offers="1">عرض الكل</button></div>
       <div class="hscroll lands">${ofr.map(landCard).join('')}</div>` : ''}
     ${cats.length ? `<div class="chips scroll">${cats.map((c) => `<button class="chip" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}
+    <div class="sec-h"><h2>مشاريعنا</h2><button data-go="projects">عرض الكل</button></div>
+    <div class="hscroll">${projects.length ? projects.map((p) => projectCard(p)).join('') : skeleton(2)}</div>
     ${featured.length ? `<div class="sec-h"><h2>أراضٍ مميزة</h2><button data-go="lands" data-feat="1">عرض الكل</button></div>
       <div class="hscroll lands">${featured.map(landCard).join('')}</div>` : ''}
     ${ownerLands().length ? `<div class="sec-h"><h2>أراضٍ معروضة للبيع</h2><button data-olands>عرض الكل</button></div>
@@ -513,47 +518,33 @@ function renderHome() {
   startBanner();
 }
 
-/* ---- home: banner slides and the tiles grid (the look of the Emirates Auction app) ---- */
-function bannerHTML(av) {
+/* ---- home: the slider under the header ---- */
+function bannerHTML(av, projects) {
   const ofr = offerLands();
-  const slides = [
-    `<button class="slide s-sell" data-addland><div><h3>اعرض أرضك معنا</h3><p>أراضٍ <i>|</i> مشاريع <i>|</i> بيع مباشر</p><span class="sbtn">أضف أرضك ←</span></div><img src="assets/villa-invest.jpg" alt=""></button>`,
-    ofr.length ? `<button class="slide s-ofr" data-go="lands" data-offers="1"><div><h3>🔥 عروض لفترة محدودة</h3><p>${ofr.length} ${ofr.length > 2 ? 'أراضٍ' : 'أرض'} بأسعار خاصة</p><span class="sbtn">شاهد العروض ←</span></div><img src="${esc(ofr[0].img)}" alt=""></button>`
-      : `<button class="slide s-ofr" data-go="lands" data-feat="1"><div><h3>أراضٍ مميزة</h3><p>${av.filter((l) => l.featured).length || av.length} أرض مختارة لك</p><span class="sbtn">تصفح الآن ←</span></div><img src="assets/villa-invest.jpg" alt=""></button>`,
-    `<a class="slide s-wa" href="${esc(waLink('مرحباً، أرغب بالاستفسار عن الأراضي المتاحة'))}" data-ext><div><h3>خطط سداد مرنة</h3><p>دفعة أولى وأقساط ميسّرة — استفسر الآن</p><span class="sbtn">${I.wa} واتساب</span></div><img src="assets/villa-invest.jpg" alt=""></a>`,
-  ];
-  return `<section class="eaban"><div class="easlides" id="easlides">${slides.join('')}</div><div class="eadots">${slides.map((_, i) => `<i${i ? '' : ' class="on"'}></i>`).join('')}</div></section>`;
-}
-function tile(attrs, img, name, sub, n, btn, cls = '') {
-  return `<button class="etile ${cls}" ${attrs}>${n ? `<i class="ecount">${n}</i>` : ''}<span class="eth"><img loading="lazy" src="${esc(img)}" alt="" onerror="this.style.opacity=0"></span>
-    <b>${esc(name)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}${btn ? `<span class="ebtn">${btn}</span>` : ''}</button>`;
-}
-function homeTiles(projects, av) {
-  if (!projects.length) return skeleton(2);
-  const ps = projects.slice().sort((a, b) => b.available - a.available);
-  const small = (p) => tile(`data-project="${esc(p.slug)}"`, p.poster, p.name, p.available ? 'بيع مباشر' : 'مكتمل البيع', p.available, `${I.grid || ''} تصفح الآن`);
-  const big = `<button class="etile big" data-go="lands"><img src="assets/villa-invest.jpg" alt=""><span class="ebig"><b>جميع الأراضي</b><small>${projects.length} مشروع · الشارقة</small></span><i class="ecount">${av.length}</i><span class="ebig-cta">${I.grid || ''} تصفح الآن</span></button>`;
-  const extra = [
-    tile('data-olands', (ownerLands()[0] && ownerLands()[0].photos[0]) || 'assets/villa-invest.jpg', 'أراضي الأعضاء', 'من المكاتب والملاك', ownerLands().length, 'تصفح ←'),
-    tile('data-addland', 'icons/icon-192.png', 'أضف أرضك', 'تُعرض بعد الموافقة', 0, 'أضف الآن ←', 'plain'),
-    tile('data-news', 'icons/icon-192.png', 'الأخبار العقارية', 'آخر الأخبار', 0, 'اقرأ ←', 'plain'),
-  ];
-  const cells = ps.slice(0, 3).map(small);
-  cells.push(ps[3] ? small(ps[3]) : extra.shift(), big);
-  ps.slice(4).forEach((p) => cells.push(small(p)));
-  return cells.concat(extra).join('');
+  const slide = (attrs, img, tag, title, sub, cta, cls = '') => { const t = attrs.startsWith('href') ? 'a' : 'button'; return `<${t} class="slide ${cls}" ${attrs}>
+      <img src="${esc(img)}" alt="" onerror="this.style.opacity=0"><span class="sl-shade"></span>
+      <span class="sl-body"><em class="sl-tag">${tag}</em><b>${title}</b><small>${sub}</small><span class="sl-cta">${cta}</span></span></${t}>`; };
+  const s = [];
+  if (ofr.length) s.push(slide('data-go="lands" data-offers="1"', ofr[0].img, '🔥 لفترة محدودة', 'عروض خاصة', `${ofr.length} ${ofr.length > 2 ? 'أراضٍ' : 'أرض'} بأسعار مميزة`, 'شاهد العروض', 'gold'));
+  projects.slice().sort((a, b) => b.available - a.available).slice(0, 3).forEach((p) => {
+    if (p.available) s.push(slide(`data-project="${esc(p.slug)}"`, p.poster, 'مشروع', esc(p.name), `${p.available} أرض متاحة${p.sub ? ' · ' + esc(p.sub.split('،')[0]) : ''}`, 'تصفح المشروع'));
+  });
+  s.push(slide('data-addland', 'assets/villa-invest.jpg', 'بيع معنا', 'اعرض أرضك للبيع', 'أضف أرضك من التطبيق وتُعرض بعد الموافقة', 'أضف أرضك', 'gold'));
+  s.push(slide(`href="${esc(waLink('مرحباً، أرغب بالاستفسار عن الأراضي المتاحة'))}" data-ext`, 'assets/villa-invest.jpg', 'استفسر الآن', 'خطط سداد مرنة', 'دفعة أولى وأقساط ميسّرة', `${I.wa} واتساب`, 'wa'));
+  return `<section class="eaban"><div class="easlides" id="easlides">${s.join('')}</div><div class="eadots">${s.map((_, i) => `<i${i ? '' : ' class="on"'}></i>`).join('')}</div></section>`;
 }
 let bannerT = 0;
 function startBanner() {
   const box = document.getElementById('easlides'); if (!box) return;
   const dots = box.parentElement.querySelectorAll('.eadots i');
-  const idx = () => Math.round(Math.abs(box.scrollLeft) / box.clientWidth);
+  const step = () => (box.children[1] ? Math.abs(box.children[1].offsetLeft - box.children[0].offsetLeft) : box.clientWidth);
+  const idx = () => Math.round(Math.abs(box.scrollLeft) / step());
   box.onscroll = () => { const k = idx(); dots.forEach((d, j) => d.classList.toggle('on', j === k)); };
   clearInterval(bannerT);
   bannerT = setInterval(() => {
     if (!box.isConnected || document.hidden) return;
     const n = box.children.length, k = (idx() + 1) % n, dir = getComputedStyle(box).direction === 'rtl' ? -1 : 1;
-    box.scrollTo({ left: dir * k * box.clientWidth, behavior: 'smooth' });
+    box.scrollTo({ left: dir * k * step(), behavior: 'smooth' });
   }, 4500);
 }
 
