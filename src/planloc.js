@@ -139,20 +139,28 @@ export function drawPlanLoc(c, P, land, lands, map, { x = 0, y = 0, w, h, radius
   // same framing as the website's «focus on a plot» (140 × 110 plan units around it), widened to the box's shape
   let vw = 140, vh = 110;
   if (vw / vh < w / h) vw = vh * w / h; else vh = vw * h / w;
-  const ppu = w / vw;
-  const x0 = cx - vw / 2, y0 = cy - vh / 2, x1 = x0 + vw, y1 = y0 + vh;
+  drawPlanView(c, P, lands, map, { x, y, w, h, radius, ppu: w / vw, x0: cx - vw / 2, y0: cy - vh / 2, sel: land });
+}
+
+/**
+ * Draws any part of the plan: plan units from (x0, y0) at `ppu` pixels per unit into the W×H box at (x, y).
+ * Plots are coloured by status like the website; `sel` (if any) is highlighted.
+ */
+export function drawPlanView(c, P, lands, map, { x = 0, y = 0, w, h, radius = 0, ppu, x0, y0, sel = null, labels = true }) {
+  const x1 = x0 + w / ppu, y1 = y0 + h / ppu;
   c.save();
   c.beginPath(); if (radius) c.roundRect(x, y, w, h, radius); else c.rect(x, y, w, h); c.clip();
   c.fillStyle = '#EFE9DD'; c.fillRect(x, y, w, h);
   c.translate(x, y); c.scale(ppu, ppu); c.translate(-x0, -y0);
-  if (P.img) { c.imageSmoothingQuality = 'high'; c.drawImage(P.img, 0, 0, map.w, map.h); }
-  if (P.V) drawVec(c, P.V, P.VS, x0, y0, x1, y1, ppu);
-  // plots with a status, as on the website
+  if (P && P.img) { c.imageSmoothingQuality = 'high'; c.drawImage(P.img, 0, 0, map.w, map.h); }
+  if (P && P.V) drawVec(c, P.V, P.VS, x0, y0, x1, y1, ppu);
+  const showText = labels && ppu * 4.5 >= 5;
   for (const l of lands) {
-    if (!l.poly || !COL[l.status] || l === land || l.id === land.id) continue;
+    if (!l.poly || !COL[l.status] || (sel && (l === sel || l.id === sel.id))) continue;
     const xs = l.poly.map((q) => q[0]), ys = l.poly.map((q) => q[1]);
     if (Math.max(...xs) < x0 || Math.min(...xs) > x1 || Math.max(...ys) < y0 || Math.min(...ys) > y1) continue;
-    poly(c, l.poly); c.fillStyle = COL[l.status]; c.fill(); c.lineWidth = 1.1; c.strokeStyle = WHITE; c.lineJoin = 'round'; c.stroke();
+    poly(c, l.poly); c.fillStyle = COL[l.status]; c.fill(); c.lineWidth = Math.max(1.1, 1 / ppu); c.strokeStyle = WHITE; c.lineJoin = 'round'; c.stroke();
+    if (!showText) continue;
     const [px, py] = centre(l);
     c.save(); c.translate(px, py); c.rotate((l.pr || 0) * Math.PI / 180);
     c.fillStyle = WHITE; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.direction = 'rtl';
@@ -160,22 +168,40 @@ export function drawPlanLoc(c, P, land, lands, map, { x = 0, y = 0, w, h, radius
     c.font = `700 2.5px ${FONT}`; c.fillText(l.status === 'av' ? fmt(l.ft) : ST[l.status], 0, 4.1);
     c.restore();
   }
-  // the chosen plot, highlighted: bright cyan with a glow, so it stands out among the plots around it
-  c.save();
-  poly(c, land.poly); c.lineJoin = 'round';
-  c.shadowColor = 'rgba(0, 225, 255, 1)'; c.shadowBlur = 14 * ppu; c.fillStyle = HL; c.fill();
-  c.shadowBlur = 0;
-  c.lineWidth = 3; c.strokeStyle = WHITE; c.stroke();
-  c.lineWidth = 1; c.strokeStyle = INK; c.stroke();
-  c.restore();
-  const [hx, hy] = centre(land);
-  c.save(); c.translate(hx, hy); c.rotate((land.pr || 0) * Math.PI / 180);
-  c.fillStyle = INK; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.direction = 'rtl';
-  c.font = `800 4.8px ${FONT}`; c.fillText(land.n, 0, 0.8);
-  c.font = `700 2.6px ${FONT}`; c.fillText(fmt(land.ft), 0, 4.3);
-  c.restore();
+  if (sel) {
+    const [cx, cy] = centre(sel);
+    // the chosen plot, highlighted: bright cyan with a glow, so it stands out among the plots around it
+    c.save();
+    if (sel.poly) poly(c, sel.poly); else { c.beginPath(); c.arc(cx, cy, 7, 0, Math.PI * 2); }   // not-listed plots: only their centre is known
+    c.lineJoin = 'round';
+    c.shadowColor = 'rgba(0, 225, 255, 1)'; c.shadowBlur = Math.min(40, 14 * ppu); c.fillStyle = HL; c.fill();
+    c.shadowBlur = 0;
+    c.lineWidth = Math.max(3, 2.5 / ppu); c.strokeStyle = WHITE; c.stroke();
+    c.lineWidth = Math.max(1, 1 / ppu); c.strokeStyle = INK; c.stroke();
+    c.restore();
+    if (ppu * 4.8 >= 4) {
+      c.save(); c.translate(cx, cy); c.rotate((sel.pr || 0) * Math.PI / 180);
+      c.fillStyle = INK; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.direction = 'rtl';
+      c.font = `800 4.8px ${FONT}`; c.fillText(sel.n, 0, 0.8);
+      c.font = `700 2.6px ${FONT}`; c.fillText(fmt(sel.ft), 0, 4.3);
+      c.restore();
+    }
+  }
   c.restore();
 }
+/** Which listed plot is under plan point (px, py)? */
+export function plotAt(lands, px, py) {
+  for (const l of lands) {
+    const p = l.poly; if (!p || !COL[l.status]) continue;
+    let inside = false;
+    for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+      if ((p[i][1] > py) !== (p[j][1] > py) && px < ((p[j][0] - p[i][0]) * (py - p[i][1])) / (p[j][1] - p[i][1]) + p[i][0]) inside = !inside;
+    }
+    if (inside) return l;
+  }
+  return null;
+}
+export { centre as plotCentre };
 
 /** Plot page: renders into a <canvas> once the plan files are in. */
 export async function paintPlanLoc(canvas, land, lands, map) {

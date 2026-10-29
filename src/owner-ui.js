@@ -54,20 +54,21 @@ export async function initAccount(pg, next) {
       box.innerHTML = j.items.length ? j.items.map((x) => `<div class="mine">
         ${x.photos[0] ? `<img src="${esc(x.photos[0])}" alt="" loading="lazy">` : '<div class="noimg"></div>'}
         <div><b class="notr">${esc(x.title)}</b><span>${x.area ? money(x.area) + ' قدم²' : ''}${x.price ? ' · ' + money(x.price) + ' د.إ' : ''}</span>
-          <span class="pills"><i class="pill ${REVIEW[x.review][1]}">${REVIEW[x.review][0]}</i>${x.featured ? '<i class="pill star">⭐ مميز</i>' : ''}${x.onPlan ? '<i class="pill plan">على المخطط</i>' : ''}</span>
+          <span class="pills"><i class="pill ${REVIEW[x.review][1]}">${REVIEW[x.review][0]}</i>${featPills(x)}${x.onPlan ? '<i class="pill plan">على المخطط</i>' : ''}</span>
           ${x.note ? `<small>السبب: ${esc(x.note)}</small>` : ''}
-          ${!x.featured && x.review !== 'rejected' ? `<button class="btn ghost feat" data-feat="${x.id}">⭐ تمييز الإعلان${(session.user() || {}).admin ? '' : ' (70 نقطة)'}</button>` : ''}</div>
+          ${x.review !== 'rejected' ? `<button class="btn ghost feat" data-feat="${x.id}">${x.featured ? '⏫ تمديد / ترقية التمييز' : '⭐ باقات التمييز'}</button>` : ''}</div>
         ${x.review === 'approved' ? `<button class="back" data-oland="${x.id}" aria-label="عرض">‹</button>` : ''}</div>`).join('')
         : '<p class="muted">لم تضف أي أرض بعد.</p>';
+      box._items = j.items;
     } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
     box.onclick = async (e) => {
       const b = e.target.closest('[data-feat]'); if (!b) return;
       const u = session.user() || {};
       if (!u.admin && !u.verified) { toast('تمييز الإعلانات متاح للمكاتب الموثّقة'); H.pushPage('verify'); return; }
-      if (!u.admin && (u.points || 0) < 70) { toast(`رصيدك ${u.points || 0} نقطة — تمييز الإعلان يحتاج 70 نقطة. تواصل مع الإدارة لإضافة نقاط`); return; }
-      if (!confirm(u.admin ? 'تمييز هذا الإعلان؟' : 'تمييز هذا الإعلان مقابل 70 نقطة؟')) return;
+      const x = (box._items || []).find((i) => String(i.id) === b.dataset.feat);
+      const pkg = await pickPackage(x); if (!pkg) return;
       b.disabled = true;
-      try { await api('feature', { id: b.dataset.feat }); await refreshMe(); toast('تم تمييز الإعلان ⭐'); H.closeTop(); setTimeout(() => H.pushPage('account'), 280); }
+      try { await api('feature', { id: b.dataset.feat, pkg }); await refreshMe(); toast(pkg === 'slider' ? 'تم — إعلانك في السلايدر الرئيسي 🎞️' : 'تم تمييز الإعلان ⭐'); H.closeTop(); setTimeout(() => H.pushPage('account'), 280); }
       catch (ex) { toast(ex.message); b.disabled = false; }
     };
     return;
@@ -289,12 +290,13 @@ export function admAdPage(id) {
     ['المخطط التفاعلي', x.planMsg || (x.plan ? 'سيُضاف عند الموافقة' : '')], ['التاريخ', new Date(x.date).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE')]].filter((r) => r[1]);
   return `<div class="ogal">${x.photos.length ? x.photos.map((s) => `<img src="${esc(s)}" alt="" loading="lazy" data-web="${esc(s)}">`).join('') : '<div class="noimg"></div>'}</div>
     <div class="pad acc">
-      <span class="pills"><i class="pill ${REVIEW[x.review][1]}">${REVIEW[x.review][0]}</i>${x.featured ? '<i class="pill star">⭐ مميز</i>' : ''}${x.onPlan ? '<i class="pill plan">على المخطط</i>' : ''}</span>
+      <span class="pills"><i class="pill ${REVIEW[x.review][1]}">${REVIEW[x.review][0]}</i>${featPills(x)}${x.onPlan ? '<i class="pill plan">على المخطط</i>' : ''}</span>
       <div class="inst">${rows.map((r) => `<div class="r"><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}</div>
       <div class="admact">
         ${x.review !== 'approved' ? '<button class="btn wa" data-act="approve">✓ موافقة وعرض</button>' : ''}
         ${x.review !== 'rejected' ? `<button class="btn ghost" data-act="reject">✕ ${x.review === 'approved' ? 'إخفاء' : 'رفض'}</button>` : ''}
-        <button class="btn ghost" data-act="feature">${x.featured ? 'إلغاء التمييز' : '⭐ تمييز'}</button>
+        <button class="btn ghost" data-act="feature">${x.featured ? 'إلغاء التمييز' : '⭐ تمييز دائم'}</button>
+        <button class="btn ghost" data-act="pkg">🎞️ باقة (أسبوع / شهر / سلايدر)</button>
         <button class="btn ghost danger" data-act="delete">🗑 حذف</button>
         ${x.owner ? `<button class="btn ghost" data-auser="${x.owner.id}">👤 ملف صاحب الإعلان</button>` : ''}
       </div>
@@ -312,6 +314,7 @@ export function initAdmAd(pg, id) {
     try {
       if (act === 'approve') { const r = await api('adm_review', { id, approve: '1' }); done('تمت الموافقة ✓' + (r.planMsg ? ' — ' + r.planMsg : '')); }
       else if (act === 'reject') { const note = prompt('سبب الرفض (اختياري):', '') ; if (note === null) { b.disabled = false; return; } await api('adm_review', { id, approve: '0', note }); done('تم'); }
+      else if (act === 'pkg') { const pkg = await pickPackage(x); if (!pkg) { b.disabled = false; return; } await api('adm_feature', { id, pkg }); done('تم تفعيل الباقة ⭐'); }
       else if (act === 'feature') { await api('adm_feature', { id, on: x.featured ? '0' : '1' }); done(x.featured ? 'تم إلغاء التمييز' : 'تم تمييز الإعلان ⭐'); }
       else if (act === 'delete') { if (!confirm('حذف هذا الإعلان نهائياً من التطبيق؟')) { b.disabled = false; return; } await api('adm_delete', { id }); done('تم حذف الإعلان'); }
     } catch (ex) { toast(ex.message); b.disabled = false; }
@@ -373,16 +376,47 @@ export async function initAdmUser(pg, id) {
   load();
 }
 
+
+/* ---------- featuring packages ---------- */
+const PKGS = [
+  { id: 'week', pts: 70, days: 7, name: 'تمييز أسبوع', desc: 'يظهر أولاً في القوائم مع شارة «مميز» لمدة 7 أيام' },
+  { id: 'month', pts: 220, days: 30, name: 'تمييز شهر', desc: 'يظهر أولاً في القوائم مع شارة «مميز» لمدة 30 يوماً — توفير 20%' },
+  { id: 'slider', pts: 150, days: 7, name: 'السلايدر الرئيسي', desc: 'يظهر في سلايدر الصفحة الرئيسية + تمييز لمدة 7 أيام' },
+];
+const dm = (t) => { const d = new Date(t); return `${d.getDate()}/${d.getMonth() + 1}`; };
+export const featPills = (x) => `${x.featured ? `<i class="pill star">⭐ مميز${x.featUntil ? ' حتى ' + dm(x.featUntil) : ''}</i>` : ''}${x.slider ? `<i class="pill slid">🎞️ في السلايدر حتى ${dm(x.sliderUntil)}</i>` : ''}`;
+/** Bottom sheet with the packages; resolves with the chosen package id (or null). */
+export async function pickPackage(x) {
+  let list = PKGS; try { const m = await meta(); if (m.packages && m.packages.length) list = m.packages; } catch { /* defaults */ }
+  const u = session.user() || {};
+  return new Promise((done) => {
+    const el = document.createElement('div'); el.className = 'pkgsheet';
+    el.innerHTML = `<div class="pkgbox"><h3>اختر باقة التمييز</h3>
+      <p class="muted">${u.admin ? 'حساب الإدارة: كل الباقات مجانية' : `رصيدك: <b>${u.points || 0}</b> نقطة`}${x && x.featured && x.featUntil ? ` · مميز حالياً حتى ${dm(x.featUntil)} — الباقة تُضاف للمدة` : ''}</p>
+      ${list.map((k) => `<button class="pkg${k.id === 'slider' ? ' hot' : ''}" data-pkg="${k.id}" ${!u.admin && (u.points || 0) < k.pts ? 'data-low="1"' : ''}>
+        <span class="pk1"><b>${k.name}</b><small>${k.desc}</small></span><span class="pk2">${u.admin ? 'مجاناً' : `<b>${k.pts}</b><small>نقطة</small>`}</span></button>`).join('')}
+      <button class="btn ghost block" data-pkg="">إلغاء</button></div>`;
+    const close = (v) => { el.classList.remove('in'); setTimeout(() => el.remove(), 200); done(v); };
+    el.onclick = (e) => {
+      if (e.target === el) return close(null);
+      const b = e.target.closest('[data-pkg]'); if (!b) return;
+      if (b.dataset.low) { H.toast(`رصيدك لا يكفي لهذه الباقة — تواصل مع الإدارة لإضافة نقاط`); return; }
+      close(b.dataset.pkg || null);
+    };
+    document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('in'));
+  });
+}
+
 /* ================= approved lands from owners ================= */
 export function oLandCard(x) {
   const { esc, money, I } = H;
   return `<article class="card land oland" data-oland="${x.id}">
     <div class="ph">${x.photos[0] ? `<img loading="lazy" decoding="async" src="${esc(x.photos[0])}" alt="" onerror="this.style.opacity=0">` : ''}
-      <span class="badge av">للبيع</span>${x.featured ? `<span class="badge star">⭐ مميز</span>` : ''}</div>
+      <span class="badge av">للبيع</span>${x.featured ? `<span class="badge star">⭐ مميز</span>` : ''}${x.slider ? '<span class="badge slid">🎞️ مختار</span>' : ''}</div>
     <div class="body">
       <div class="row between"><h3 class="notr">${esc(x.title)}</h3>${x.price ? `<div class="price">${money(x.price)} <small>د.إ</small></div>` : ''}</div>
       ${x.project || x.location ? `<div class="meta">${I.pin}<span>${esc(x.project || x.location)}</span></div>` : ''}
-      ${x.seller ? `<div class="seller">${I.verified}<span class="notr">${esc(x.seller)}</span></div>` : ''}
+      ${x.seller ? `<div class="seller">${I.verified}<span class="notr">${esc(x.seller)}</span>${x.rating && x.rating.n ? `<span class="srate">★ ${x.rating.avg.toFixed(1)} <small>(${x.rating.n})</small></span>` : ''}</div>` : ''}
       <div class="specs">${x.area ? `<span>${I.area}${money(x.area)} قدم²</span>` : ''}${x.type ? `<span>${I.tag}${esc(x.type)}</span>` : ''}</div>
     </div></article>`;
 }

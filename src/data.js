@@ -101,6 +101,7 @@ export const STATUS = {
   av: { label: 'متاحة', cls: 'av' },
   res: { label: 'محجوزة', cls: 'res' },
   sold: { label: 'مباعة', cls: 'sold' },
+  na: { label: 'غير متوفرة', cls: 'na' },
 };
 
 export function category(use = '') {
@@ -145,7 +146,13 @@ function buildProject(p, plan, state) {
     };
   }).map(typeImage);
   const count = (st) => lands.filter((l) => l.status === st).length;
+  // plots on the plan that the company does not list (shown only when searching): [n, type, ft, centre]
+  const na = plan.plots.filter(([n]) => !(sp[n] && sp[n].s)).map(([n, t, ft, , , , poly, pc]) => {
+    const c = pc || (poly && poly.length ? [Math.round(poly.reduce((a, q) => a + q[0], 0) / poly.length * 10) / 10, Math.round(poly.reduce((a, q) => a + q[1], 0) / poly.length * 10) / 10] : null);
+    return [String(n), t, Math.round(ft || 0), c];
+  });
   return {
+    na, types: Object.fromEntries(Object.entries(plan.types || {}).map(([k, v]) => [k, { use: v.use || '', tag: v.tag || '', floors: v.floors || '', c: v.c || null }])),
     ...p, name: plan.name || p.title, sub: plan.sub, note: plan.note, poster: plan.poster || p.poster,
     loc: (state && state.loc) || '', updated: (state && state.updated) || '', map: plan.map || null,
     lands, available: count('av'), reserved: count('res'), sold: count('sold'),

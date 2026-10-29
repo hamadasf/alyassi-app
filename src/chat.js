@@ -167,9 +167,20 @@ function msgsHTML(items, admin, seen) {
     const tail = !prev || prev.from !== m.from;
     const text = isLabel(m) ? '' : m.text;
     h += `<div class="cmsg ${mine ? 'me' : 'them'}${tail ? ' tail' : ''}">${m.ref ? refCard(m.ref, admin) : ''}${filesHTML(m.files)}${text ? `<p class="notr">${linkify(text)}</p>` : ''}${meta(m, mine, seen)}</div>`;
+    if (m.rate && !admin) h += rateCard(m);
     prev = m;
   }
   return h;
+}
+
+/* ---------- «كيف كان التعامل؟» after the office forwarded an advertiser's number ---------- */
+export const starsHTML = (v, cls = '') => `<span class="stars ${cls}" aria-label="${v}/5">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= Math.round(v) ? 'on' : ''}">★</i>`).join('')}</span>`;
+function rateCard(m) {
+  const r = m.rate, { esc } = H;
+  if (r.stars) return `<div class="ratec done"><span>شكراً لتقييمك تعاملك مع <b class="notr">${esc(r.name)}</b></span>${starsHTML(r.stars)}<button data-rerate="${m.id}">تعديل</button></div>`;
+  return `<div class="ratec" data-rate="${m.id}"><b>كيف كان تعاملك مع <span class="notr">${esc(r.name)}</span>؟</b>
+    <div class="rstars">${[1, 2, 3, 4, 5].map((i) => `<button type="button" data-st="${i}" aria-label="${i}">★</button>`).join('')}</div>
+    <textarea rows="2" maxlength="500" placeholder="اكتب رأيك (اختياري)"></textarea><button class="btn primary block rsend" disabled>إرسال التقييم</button></div>`;
 }
 
 /* ---------- a conversation (user ↔ office, or office ↔ user for the admin) ---------- */
@@ -182,7 +193,16 @@ function bindChat(root, { admin, uid }) {
   let items = [], seen = 0, sending = false;
   const draw = (keep) => {
     const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+    // keep a half-filled rating card as it is when new messages arrive
+    const open = [...box.querySelectorAll('[data-rate]')].map((rc) => ({ id: rc.dataset.rate, v: rc.dataset.v, t: rc.querySelector('textarea').value, f: document.activeElement === rc.querySelector('textarea') }));
+    const top = box.scrollTop;
     box.innerHTML = msgsHTML(items, admin, seen);
+    open.forEach((o) => {
+      const rc = box.querySelector(`[data-rate="${o.id}"]`); if (!rc) return;
+      if (o.v) { rc.dataset.v = o.v; rc.querySelectorAll('[data-st]').forEach((b) => b.classList.toggle('on', +b.dataset.st <= +o.v)); rc.querySelector('.rsend').disabled = false; }
+      const ta = rc.querySelector('textarea'); ta.value = o.t; if (o.f) ta.focus();
+    });
+    if (open.length && keep) box.scrollTop = top;
     if (!keep || atEnd) box.scrollTop = box.scrollHeight;
   };
   const showChip = () => {
@@ -218,6 +238,19 @@ function bindChat(root, { admin, uid }) {
   onSend.allowEmpty = () => !admin && !!pendingRef;
   const { ta } = bindComposer(root, { admin, onSend });
   box.addEventListener('click', async (e) => {
+    const rr = e.target.closest('[data-rerate]');
+    if (rr) { const m = items.find((x) => String(x.id) === rr.dataset.rerate); if (m) { m.rate.stars = 0; draw(true); } return; }
+    const rc = e.target.closest('[data-rate]');
+    if (rc) {
+      const st = e.target.closest('[data-st]'), m = items.find((x) => String(x.id) === rc.dataset.rate); if (!m) return;
+      if (st) { rc.dataset.v = st.dataset.st; rc.querySelectorAll('[data-st]').forEach((b) => b.classList.toggle('on', +b.dataset.st <= +st.dataset.st)); rc.querySelector('.rsend').disabled = false; return; }
+      if (e.target.closest('.rsend')) {
+        const b = rc.querySelector('.rsend'); b.disabled = true;
+        try { await api('rate_send', { listing: m.rate.listing, stars: rc.dataset.v, text: rc.querySelector('textarea').value }); m.rate.stars = +rc.dataset.v; H.toast('شكراً — تم إرسال تقييمك ⭐'); draw(true); }
+        catch (ex) { H.toast(ex.message); b.disabled = false; }
+      }
+      return;
+    }
     const f = e.target.closest('[data-fwd]'); if (!f) return;
     e.stopPropagation();
     const m = items.find((x) => x.ref && String(x.ref.id) === f.dataset.fwd); if (!m) return;
@@ -373,8 +406,13 @@ export async function initProf(pg, id) {
   } else if (!me.admin && p.id !== me.id) {
     h += `<div class="pbtns"><button class="btn primary" data-askuser="${p.id}">${I.chat} استفسر عن طريق الإدارة</button></div>`;
   }
+  const rt = p.rating || { avg: 0, n: 0, items: [] };
+  h += `<div class="pcard prate"><h4>تقييمات التعامل</h4>${rt.n ? `<div class="rsum"><b>${rt.avg.toFixed(1)}</b>${starsHTML(rt.avg, 'big')}<span>${rt.n} تقييم</span></div>
+    ${rt.items.map((r) => `<div class="ritem"><div>${starsHTML(r.stars)}<b class="notr">${esc(r.name)}</b><time>${new Date(r.t).toLocaleDateString(loc(), { day: 'numeric', month: 'short', year: 'numeric' })}</time>${me.admin ? `<button class="rdel" data-rdel="${r.from}:${r.lid}">حذف</button>` : ''}</div>${r.text ? `<p class="notr">${esc(r.text)}</p>` : ''}</div>`).join('')}`
+    : '<p class="muted">لا توجد تقييمات بعد — التقييم يكون من العملاء بعد تواصلهم مع المعلن عن طريق الإدارة.</p>'}</div>`;
   h += p.items.length ? `<h3 class="msec">العقارات المعروضة (${money(p.ads)})</h3><div class="list">${p.items.map(oLandCard).join('')}</div>` : '';
   el.innerHTML = h;
+  el.querySelectorAll('[data-rdel]').forEach((b) => { b.onclick = async (e) => { e.stopPropagation(); if (!confirm('حذف هذا التقييم؟')) return; const [from, listing] = b.dataset.rdel.split(':'); try { await api('rate_delete', { owner: p.id, from, listing }); b.closest('.ritem').remove(); H.toast('تم حذف التقييم'); } catch (ex) { H.toast(ex.message); } }; });
   const ask = el.querySelector('[data-askuser]');
   if (ask) ask.onclick = (e) => { e.stopPropagation(); pendingQuote = `أرغب بالتواصل بخصوص إعلانات ${name}`; H.pushPage('mychat'); };
 }

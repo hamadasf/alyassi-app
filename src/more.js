@@ -24,8 +24,10 @@ export function renderMore(el) {
       ${row(I.plusc, 'أضف أرضك للبيع', 'data-addland')}
       ${row(I.search, 'بحث محفوظ', 'data-saved', `<small>${saved.all().length || ''}</small>`)}
       ${row(I.heart, 'المفضلة', 'data-tab="favs"')}
+      ${row(I.wallet, 'حاسبة الأقساط', 'data-calc=""')}
       ${row(I.doc, 'الأخبار العقارية', 'data-news', u && u.admin ? '<small>إدارة الشريط</small>' : '')}
       ${u && u.admin ? row(I.shield, 'لوحة الإدارة', 'data-admin') : ''}
+      ${u && u.admin ? row(I.grid, 'التقرير الأسبوعي', 'data-report') : ''}
     </div>
     <h3 class="msec">الحساب والإعدادات</h3>
     <div class="mbox">

@@ -10,6 +10,10 @@ import { session, refreshMe, ownerLands, loadOwnerLands, api as accApi } from '.
 import { initChat, refreshUnread, renderChatsTab, chatPage, initChatPage, askAbout, myChatPage, initMyChat, groupPage, initGroup, profPage, initProf } from './chat.js';
 import { initNotifs, notifsPage } from './notifs.js';
 import { initNews, loadNews, renderTicker, newsPage, initNewsPage } from './news.js';
+import { initCalc, calcPage, initCalc2 } from './calc.js';
+import { initPlanView, planViewPage, initPlanView2 } from './planview.js';
+import { track } from './track.js';
+import { initReport, reportPage, initReportPage } from './report.js';
 import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser } from './owner-ui.js';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
@@ -216,6 +220,7 @@ function openFromPush(ev) {
   const data = n.additionalData || n.data || {};
   if (data.open === 'land' && data.id) { refresh(false); openLandId(String(data.id)); return; }
   if (data.open === 'chat') { closeAll(); showTab('chats'); setTimeout(() => (data.user && (session.user() || {}).admin ? pushPage('chat', String(data.user)) : pushPage('mychat')), 300); return; }
+  if (data.open === 'report') { closeAll(); showTab('contact'); setTimeout(() => pushPage('report'), 300); return; }
   if (data.open === 'news') { closeAll(); showTab('home'); loadNews(); setTimeout(() => pushPage('news'), 300); return; }
   if (data.open === 'group') { closeAll(); showTab('chats'); setTimeout(() => pushPage('group'), 300); return; }
   if (data.open === 'account' || data.open === 'admin') { closeAll(); showTab('contact'); setTimeout(() => pushPage(data.open), 300); return; }
@@ -398,6 +403,7 @@ function toast(msg) {
 /* ================= cards ================= */
 function priceHTML(l, big) {
   if (l.status === 'sold') return `<div class="price muted">تم البيع</div>`;
+  if (l.status === 'na') return `<div class="price muted">غير معروضة للبيع</div>`;
   const o = offerFor(l);
   if (o && offerPrice(l, o)) return `<div class="price ofr${big ? ' big' : ''}">${offerWas(l, o) ? `<s>${money(offerWas(l, o))}</s>` : ''}${money(offerPrice(l, o))} <small>د.إ</small></div>`;
   if (!l.total) return `<div class="price ask">السعر عند الاستفسار</div>`;
@@ -409,7 +415,7 @@ const dot = (c) => `<i class="dot" style="background:rgb(${c.join(',')})"></i>`;
 /* plan pictures on land cards: painted only when a card comes into view */
 const locIO = 'IntersectionObserver' in window ? new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { locIO.unobserve(e.target); paintCard(e.target); } }), { rootMargin: '300px 300px' }) : null;
 function paintCard(cv) {
-  const d = DATA(); const l = d.lands.find((x) => x.id === cv.dataset.loc); const p = l && d.projects.find((x) => x.slug === l.project);
+  const d = DATA(); const l = findLand(cv.dataset.loc); const p = l && d.projects.find((x) => x.slug === l.project);
   const fail = () => { if (!l) return; const im = document.createElement('img'); im.src = l.img; im.alt = ''; cv.replaceWith(im); };
   if (!l || !p || !p.map) return fail();
   paintCardLoc(cv, l, p.lands, p.map).then(() => cv.classList.add('on')).catch(fail);
@@ -420,7 +426,7 @@ function landCard(l) {
   const fav = favs.has(l.id);
   const o = offerFor(l);
   return `<article class="card land${o ? ' has-ofr' : ''}" data-land="${esc(l.id)}">
-    <div class="ph${l.poly ? ' loc' : ''}">${l.poly ? `<canvas class="cardloc" data-loc="${esc(l.id)}"></canvas>` : `<img loading="lazy" decoding="async" src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">`}
+    <div class="ph${l.poly || l.pc ? ' loc' : ''}">${l.poly || l.pc ? `<canvas class="cardloc" data-loc="${esc(l.id)}"></canvas>` : `<img loading="lazy" decoding="async" src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">`}
       <span class="badge ${st.cls}">${st.label}</span>
       ${o ? `<span class="badge ofr">🔥 عرض</span>` : l.featured && l.status === 'av' ? `<span class="badge star">${I.star} مميزة</span>` : ''}
       ${changeBadge(l)}
@@ -525,6 +531,7 @@ function bannerHTML(av, projects) {
       <img src="${esc(img)}" alt="" onerror="this.style.opacity=0"><span class="sl-shade"></span>
       <span class="sl-body"><em class="sl-tag">${tag}</em><b>${title}</b><small>${sub}</small><span class="sl-cta">${cta}</span></span></${t}>`; };
   const s = [];
+  ownerLands().filter((x) => x.slider).slice(0, 4).forEach((x) => s.push(slide(`data-oland="${esc(x.id)}"`, x.photos[0] || 'assets/villa-invest.jpg', '⭐ إعلان مميز', esc(x.title), `${x.price ? money(x.price) + ' د.إ' : ''}${x.area ? ' · ' + money(x.area) + ' قدم²' : ''}${x.seller ? ' · ' + esc(x.seller) : ''}`, 'التفاصيل')));
   if (ofr.length) s.push(slide('data-go="lands" data-offers="1"', ofr[0].img, '🔥 لفترة محدودة', 'عروض خاصة', `${ofr.length} ${ofr.length > 2 ? 'أراضٍ' : 'أرض'} بأسعار مميزة`, 'شاهد العروض', 'gold'));
   projects.slice().sort((a, b) => b.available - a.available).slice(0, 3).forEach((p) => {
     if (p.available) s.push(slide(`data-project="${esc(p.slug)}"`, p.poster, 'مشروع', esc(p.name), `${p.available} أرض متاحة${p.sub ? ' · ' + esc(p.sub.split('،')[0]) : ''}`, 'تصفح المشروع'));
@@ -550,10 +557,25 @@ function startBanner() {
 
 /* ---- lands with filters ---- */
 const F = { q: '', project: '', status: 'av', cat: '', minA: '', maxA: '', minP: '', maxP: '', sort: 'default', feat: false, offers: false };
+/* plots the company does not list: searchable, opened as «غير متوفرة» */
+let naMemo = null, naFor = null;
+function naLands() {
+  const d = DATA(); if (naFor === d) return naMemo; naFor = d;
+  naMemo = d.projects.flatMap((p) => (p.na || []).map(([n, t, ft, pc]) => {
+    const ty = (p.types && p.types[t]) || {};
+    return { id: p.slug + ':' + n, n, t, project: p.slug, projectName: p.name, status: 'na', featured: false, use: ty.use || 'أرض', tag: ty.tag || '', loc: '', floors: ty.floors || '',
+      color: ty.c || [190, 190, 190], cat: '', ft, m2: Math.round(ft / 10.7639), approx: true, ppf: 0, total: 0, inst: [], first: 0, img: p.poster, sketch: '', doc: '', docId: 0, dims: null, poly: null, pc: pc || null, pr: 0, lo: '', projectLoc: p.loc || '' };
+  }));
+  return naMemo;
+}
+const findLand = (id) => DATA().lands.find((x) => x.id === id) || naLands().find((x) => x.id === id);
 function filtered() {
   const q = F.q.trim();
-  let a = DATA().lands.filter((l) =>
-    (!F.status || l.status === F.status) && (!F.project || l.project === F.project) && (!F.cat || l.cat === F.cat) &&
+  // a search looks through every plot — available, reserved, sold and not listed — unless a status is chosen in the filters
+  const all = q && F.status === 'av';
+  const pool = all || F.status === 'na' || F.status === '' ? DATA().lands.concat(naLands()) : DATA().lands;
+  let a = pool.filter((l) =>
+    (all || !F.status || l.status === F.status) && (!F.project || l.project === F.project) && (!F.cat || l.cat === F.cat) &&
     (!F.feat || l.featured) && (!F.offers || offerFor(l)) &&
     (!F.minA || l.ft >= +F.minA) && (!F.maxA || l.ft <= +F.maxA) &&
     (!F.minP || (l.total && l.total >= +F.minP)) && (!F.maxP || (l.total && l.total <= +F.maxP)) &&
@@ -564,6 +586,7 @@ function filtered() {
   else if (s === 'price-desc') a.sort((x, y) => (y.total || 0) - (x.total || 0));
   else if (s === 'area-desc') a.sort((x, y) => y.ft - x.ft);
   else if (s === 'area-asc') a.sort((x, y) => x.ft - y.ft);
+  else if (q) { const R = { av: 0, res: 1, sold: 2, na: 3 }; a.sort((x, y) => ((y.n === q) - (x.n === q)) || (R[x.status] - R[y.status]) || (!!offerFor(y) - !!offerFor(x)) || (y.featured - x.featured)); }
   else a.sort((x, y) => (!!offerFor(y) - !!offerFor(x)) || (y.featured - x.featured) || (!!y.total - !!x.total));
   return a;
 }
@@ -609,13 +632,13 @@ function projectPage(p) {
   const types = {};
   p.lands.filter((l) => l.status === 'av').forEach((l) => { const k = l.use + (l.tag ? ' · ' + l.tag : ''); (types[k] = types[k] || { c: l.color, n: 0 }).n++; });
   const av = p.lands.filter((l) => l.status === 'av').sort((a, b) => (!!offerFor(b) - !!offerFor(a)) || (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12)));
-  return `<div class="hero-img" data-plan="${esc(p.plan)}"><img src="${esc(p.poster)}" alt=""><span class="open-plan">${I.map} افتح المخطط التفاعلي</span></div>
+  return `<div class="hero-img" data-plan="${esc(p.plan)}" data-pview="${esc(p.slug)}"><img src="${esc(p.poster)}" alt=""><span class="open-plan">${I.map} افتح المخطط التفاعلي</span></div>
     <div class="pad">
       <h1>${esc(p.name)}</h1>${p.sub ? `<div class="meta">${I.pin}<span>${esc(p.sub)}</span></div>` : ''}
       <button class="btn wa block share-big" data-pshare="${esc(p.slug)}">${I.wa} مشاركة المشروع PDF</button>
       <div class="stat3"><div class="av"><b>${p.available}</b>متاحة</div><div class="res"><b>${p.reserved}</b>محجوزة</div><div class="sold"><b>${p.sold}</b>مباعة</div></div>
       <div class="grid2">
-        <button class="btn primary" data-plan="${esc(p.plan)}">${I.map} المخطط التفاعلي</button>
+        <button class="btn primary" data-plan="${esc(p.plan)}" data-pview="${esc(p.slug)}">${I.map} المخطط التفاعلي</button>
         ${p.loc ? `<a class="btn ghost" href="${esc(p.loc)}" data-ext>${I.pin} الموقع</a>` : ''}
         ${p.pdf ? `<a class="btn ghost" href="${esc(p.pdf)}" data-ext>${I.pdf} ملف المشروع PDF</a>` : ''}
         <a class="btn wa" href="${esc(waLink(`مرحباً، أرغب بالاستفسار عن مشروع ${p.name}\n${p.plan}`))}" data-ext>${I.wa} استفسر</a>
@@ -633,8 +656,8 @@ function landPage(l) {
   const sumInst = l.inst.reduce((a, x) => a + (+x[1] || 0), 0);
   const o = offerFor(l);
   const proj = DATA().projects.find((p) => p.slug === l.project);
-  const loc = proj && proj.map && l.poly && l.poly.length > 2 ? '<canvas class="planloc-cv"></canvas>' : '';
-  return `<div class="hero-img land${loc ? ' planloc' : ''}"${loc ? ` data-plan="${esc(landUrl(l))}"` : ''}>${loc || `<img src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">`}
+  const loc = proj && proj.map && ((l.poly && l.poly.length > 2) || l.pc) ? '<canvas class="planloc-cv"></canvas>' : '';
+  return `<div class="hero-img land${loc ? ' planloc' : ''}"${loc ? ` data-plan="${esc(landUrl(l))}" data-pview="${esc(l.project + '|' + l.n)}"` : ''}>${loc || `<img src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">`}
       ${loc ? `<span class="planloc-cap">${I.map} موقع القطعة في مخطط المشروع · اضغط للتكبير</span>` : ''}
       <span class="badge ${st.cls}">${st.label}</span>
       <button class="fav big${fav ? ' on' : ''}" data-fav="${esc(l.id)}" aria-label="مفضلة">${I.heart}</button></div>
@@ -654,8 +677,9 @@ function landPage(l) {
         <div class="inst"><div class="r head"><span>الدفعة الأولى</span><b>${money(l.first)} د.إ</b></div>
         ${l.inst.map((x, i) => `<div class="r"><span>القسط ${i + 1} · <bdi>${esc(fmtDate(x[0]))}</bdi></span><b>${money(x[1])} د.إ</b></div>`).join('')}
         <div class="r total"><span>الإجمالي</span><b>${money(l.first + sumInst)} د.إ</b></div></div>` : ''}
+      ${l.status === 'av' || l.status === 'res' ? `<button class="btn calcbtn block" data-calc="${esc(l.id)}">🧮 حاسبة الأقساط${l.total ? '' : ' (أدخل السعر)'}</button>` : ''}
       ${l.sketch && l.sketch !== l.img ? `<h2 class="h2">كروكي القطعة</h2><img class="sketch" src="${esc(l.sketch)}" alt="" loading="lazy" data-web="${esc(l.sketch)}">` : ''}
-      <button class="btn primary block" data-plan="${esc(landUrl(l))}">${I.map} عرض القطعة على المخطط</button>
+      <button class="btn primary block" data-plan="${esc(landUrl(l))}" data-pview="${esc(l.project + '|' + l.n)}">${I.map} عرض القطعة على المخطط</button>
       ${l.doc ? `<a class="btn ghost block" href="${esc(l.doc)}" data-ext>${I.pdf} مخطط القطعة (PDF)</a>` : ''}
     </div>
     <div class="bar">
@@ -697,18 +721,21 @@ function pushPage(kind, id) {
   else if (kind === 'chat') { html = chatPage(id); }
   else if (kind === 'uprof') { html = profPage(); }
   else if (kind === 'news') { html = newsPage(); }
+  else if (kind === 'plan') { p = d.projects.find((x) => x.slug === String(id).split('|')[0]); if (!p) return; html = planViewPage(p); }
+  else if (kind === 'report') { html = reportPage(); }
+  else if (kind === 'calc') { l = id ? findLand(id) : null; html = calcPage(l); }
   else if (kind === 'mychat') { html = myChatPage(); }
   else if (kind === 'group') { html = groupPage(); }
   else if (kind === 'aad') { html = admAdPage(id); if (!html) return; }
   else if (kind === 'auser') { html = admUserPage(); }
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
-  else { l = d.lands.find((x) => x.id === id); if (!l) return; html = landPage(l); }
+  else { l = findLand(id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
-  pg.innerHTML = own ? `${html}` : `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${TITLE[kind] || 'تفاصيل الأرض'}</span>${kind === 'land' || kind === 'project' ? `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>` : ''}</header><div class="scroller">${html}</div>`;
+  pg.innerHTML = own ? `${html}` : `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${kind === 'plan' ? esc(p.name) : TITLE[kind] || 'تفاصيل الأرض'}</span>${kind === 'land' || kind === 'project' ? `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>` : ''}</header><div class="scroller">${html}</div>`;
   document.body.appendChild(pg);
   if (kind === 'account') initAccount(pg, id);
   if (kind === 'addland') initAddLand(pg);
@@ -720,13 +747,20 @@ function pushPage(kind, id) {
   if (kind === 'group') initGroup(pg);
   if (kind === 'uprof') initProf(pg, id);
   if (kind === 'news') initNewsPage(pg);
+  if (kind === 'calc') { initCalc2(pg, l); track('calc', id || ''); }
+  if (kind === 'report') initReportPage(pg, 0);
+  if (kind === 'land') track('view', id);
+  if (kind === 'oland') track('view', id);
+  if (kind === 'plan') track('plan', String(id).split('|')[0]);
+  if (kind === 'plan') initPlanView2(pg, p, String(id).split('|')[1]);
   if (kind === 'notifs') initNotifs(pg);
   if (kind === 'aad') initAdmAd(pg, id);
   if (kind === 'auser') initAdmUser(pg, id);
-  if (l && l.poly) { const cv = pg.querySelector('.planloc-cv'), proj = d.projects.find((x) => x.slug === l.project); if (cv && proj) requestAnimationFrame(() => paintPlanLoc(cv, l, proj.lands, proj.map).then(() => cv.classList.add('on')).catch(() => { const im = document.createElement('img'); im.src = l.img; im.alt = ''; cv.replaceWith(im); pg.querySelector('.planloc-cap')?.remove(); })); }
-  if (p) renderList($('#projList', pg), p.lands.filter((x) => x.status === 'av').sort((a, b) => (!!offerFor(b) - !!offerFor(a)) || (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12))), landCard, 'لا توجد أراضٍ متاحة حالياً في هذا المشروع');
+  if (l && (l.poly || l.pc)) { const cv = pg.querySelector('.planloc-cv'), proj = d.projects.find((x) => x.slug === l.project); if (cv && proj) requestAnimationFrame(() => paintPlanLoc(cv, l, proj.lands, proj.map).then(() => cv.classList.add('on')).catch(() => { const im = document.createElement('img'); im.src = l.img; im.alt = ''; cv.replaceWith(im); pg.querySelector('.planloc-cap')?.remove(); })); }
+  if (p && kind === 'project') renderList($('#projList', pg), p.lands.filter((x) => x.status === 'av').sort((a, b) => (!!offerFor(b) - !!offerFor(a)) || (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12))), landCard, 'لا توجد أراضٍ متاحة حالياً في هذا المشروع');
   push.render();
   requestAnimationFrame(() => pg.classList.add('in'));
+  pg._id = kind === 'land' || kind === 'oland' ? String(id) : '';
   stack.push(pg);
   history.pushState({ depth: stack.length }, '');
 }
@@ -763,19 +797,21 @@ function resetFilters() { Object.assign(F, { q: '', project: '', status: 'av', c
 
 /* ================= events ================= */
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('button, a, [data-land], [data-oland], [data-aad], [data-auser], [data-chat], [data-group], [data-mychat], [data-prof], [data-news], [data-project], [data-plan], [data-web]');
+  const t = e.target.closest('button, a, [data-land], [data-oland], [data-aad], [data-auser], [data-chat], [data-group], [data-mychat], [data-prof], [data-news], [data-calc], [data-report], [data-project], [data-plan], [data-web]');
   if (!t) return;
   const ds = t.dataset;
   if (ds.fav) { e.stopPropagation(); const on = favs.toggle(ds.fav); document.querySelectorAll(`[data-fav="${CSS.escape(ds.fav)}"]`).forEach((b) => b.classList.toggle('on', on)); toast(on ? 'أضيفت إلى المفضلة' : 'أزيلت من المفضلة'); if (current === 'favs' && !stack.length) renderFavs(); return; }
   if (t.tagName === 'A') {
     const href = t.getAttribute('href') || '';
+    const top = stack[stack.length - 1], here = (top && top._id) || '';
+    if (/wa\.me\//.test(href)) track('wa', here); else if (/^tel:/.test(href)) track('call', here);
     if (ds.ext !== undefined || /^https?:/.test(href)) { e.preventDefault(); openExternal(href); }
     return;  // tel: / mailto: handled by the system
   }
   if (ds.share) {
-    e.stopPropagation();
+    e.stopPropagation(); track('share', ds.share.split(':').slice(1).join(':'));
     const [kind, ...rest] = ds.share.split(':'); const id = rest.join(':'); const d = DATA();
-    if (kind === 'land') { const l = d.lands.find((x) => x.id === id); if (l) openShareSheet(l); }
+    if (kind === 'land') { const l = findLand(id); if (l) openShareSheet(l); }
     else { const p = d.projects.find((x) => x.slug === id); if (p) openProjectShare(p); }
     return;
   }
@@ -787,6 +823,8 @@ document.addEventListener('click', (e) => {
   if (ds.admin !== undefined) { pushPage('admin'); return; }
   if (ds.profile !== undefined) { pushPage('profile'); return; }
   if (ds.news !== undefined) { pushPage('news'); return; }
+  if (ds.report !== undefined) { pushPage('report'); return; }
+  if (ds.calc !== undefined) { pushPage('calc', ds.calc); return; }
   if (ds.prof !== undefined) { if (session.token()) pushPage('uprof', ds.prof); return; }
   if (ds.chat) { pushPage('chat', ds.chat); return; }
   if (ds.group !== undefined) { if (session.token()) pushPage('group'); else pushPage('account'); return; }
@@ -818,6 +856,7 @@ document.addEventListener('click', (e) => {
     if (ds.tab === current && !stack.length) { const sc = $('#' + current + ' .scroller'); sc && sc.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     closeAll(); return showTab(ds.tab);
   }
+  if (ds.pview) { const [slug] = ds.pview.split('|'); const pj = DATA().projects.find((x) => x.slug === slug); if (pj && pj.map) return pushPage('plan', ds.pview); }
   if (ds.plan) return openWeb(ds.plan);
   if (ds.web) return openWeb(ds.web);
   if (ds.reset !== undefined) return resetFilters();
@@ -889,12 +928,16 @@ function refresh(force) {
 initOwnerUI({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), waLink, CONTACT });
 initChat({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id) });
 initNews({ esc, toast, I });
+initCalc({ esc, toast, I, money, waLink });
+initPlanView({ esc, toast, I, money });
+initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
 window.__oayPush = push;   // the notification settings page talks to the push service
 initMore({ isEn, setLang, esc, toast, I, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), closeAll: () => closeAll(), waLink, CONTACT, EMBLEM, SITE });
 session.subs.add(() => { renderContact(); refreshUnread(); push.link(); if (current === 'chats') renderChatsTab($('#chats .content')); });
 
 async function boot() {
   startI18n();
+  track('open');
   renderTicker();
   document.querySelectorAll('[data-i]').forEach((el) => { el.innerHTML = I[el.dataset.i] + el.innerHTML; });
   if (loadFromCache()) renderAll(); else { renderHome(); renderLands(); renderProjects(); renderContact(); }
