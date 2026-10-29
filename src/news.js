@@ -4,7 +4,9 @@ import { api, session } from './owner.js';
 
 let H = null, items = [];
 const LS = 'oay:news';
-try { items = JSON.parse(localStorage.getItem(LS) || '[]') || []; } catch { items = []; }
+// shown until the website answers (and if it has not been updated yet)
+const START = [{ id: 1, t: Date.UTC(2026, 9, 29, 7), text: 'افتتاح الفرع الجديد لدائرة التسجيل العقاري بالشارقة "فرع مويلح"، لنكون أقرب إليكم ونقدم خدماتنا بكفاءة وسهولة', link: '' }];
+try { items = JSON.parse(localStorage.getItem(LS) || 'null') || START; } catch { items = START; }
 export function initNews(h) { H = h; }
 
 const SEP = '<img class="tk-sep" src="icons/icon-192.png" alt="">';
