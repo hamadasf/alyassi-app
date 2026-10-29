@@ -184,11 +184,15 @@ function oay_cat_of( $use ) {
 }
 /** A project's plots (number → [type use, ft]) from its plan file — cached. */
 function oay_plan_plots( $slug ) {
-	$k = 'oay_pp_' . md5( $slug ); $c = get_transient( $k ); if ( is_array( $c ) ) { return $c; }
+	$k = 'oay_pp2_' . md5( $slug ); $c = get_transient( $k ); if ( is_array( $c ) ) { return $c; }
 	$f = WP_PLUGIN_DIR . '/alyassi-dabdaba-plan/assets/p/' . basename( $slug ) . '/plan.json'; $out = array();
 	if ( is_readable( $f ) ) {
 		$j = json_decode( (string) file_get_contents( $f ), true );
 		$types = $j['cfg']['types'] ?? array();
+		if ( ! $types ) {   // plans without their own types use the app's defaults (src/config.js DEFAULT_TYPES)
+			$types = array( 'magenta' => array( 'use' => 'تجاري سكني' ), 'gold' => array( 'use' => 'تجاري سكني' ), 'yellow' => array( 'use' => 'تجاري سكني' ), 'khaki' => array( 'use' => 'تجاري سكني' ),
+				'salmon' => array( 'use' => 'تجاري مكاتب سكني' ), 'darkred' => array( 'use' => 'تجاري مكاتب سكني' ), 'red' => array( 'use' => 'محلات تجارية' ) );
+		}
 		foreach ( (array) ( $j['plots'] ?? array() ) as $q ) { if ( isset( $q['n'] ) ) { $out[ (string) $q['n'] ] = array( (string) ( $types[ $q['t'] ?? '' ]['use'] ?? '' ), (float) ( $q['ft'] ?? 0 ) ); } }
 	}
 	set_transient( $k, $out, DAY_IN_SECONDS );
