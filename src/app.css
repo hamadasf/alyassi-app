@@ -618,8 +618,8 @@ img { -webkit-user-drag: none; }
 .tk-track { display: flex; width: max-content; height: 100%; align-items: center; will-change: transform; }
 .tk-track.run { animation: tkmove linear infinite; }
 .tk-view:active .tk-track { animation-play-state: paused; }
-/* the bar moves right → left: the next news enters from the right edge */
-@keyframes tkmove { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--tk-w))); } }
+/* the bar moves left → right: the next news enters from the left edge (the start of an Arabic sentence comes first) */
+@keyframes tkmove { from { transform: translateX(calc(-1 * var(--tk-w))); } to { transform: translateX(0); } }
 .tk-set { display: flex; align-items: center; flex: none; }
 .tk-item { direction: rtl; white-space: nowrap; color: #fff; font-size: 14.5px; font-weight: 600; padding: 0 14px; line-height: 38px; }
 .tk-sep { width: 24px; height: 24px; border-radius: 50%; flex: none; object-fit: cover; box-shadow: 0 0 0 1.5px var(--gold); background: #fff; }
@@ -635,3 +635,9 @@ img { -webkit-user-drag: none; }
 .nitem p { margin: 0; font-size: 16px; line-height: 1.85; color: #0f172a; }
 .nadm { display: flex; gap: 8px; border-top: 1px solid #eef1f5; padding-top: 8px; }
 .nadm button { padding: 6px 14px; border-radius: 10px; background: #f1f5f9; color: var(--navy); font-weight: 700; } .nadm button:disabled { opacity: .35; } .nadm .del { margin-inline-start: auto; background: #fee2e2; color: #b91c1c; }
+
+.nspeed { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; } .nspeed h4 { padding: 0; }
+.nsrow { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #475569; white-space: nowrap; } .nsrow input { flex: 1; accent-color: var(--gold); }
+.nedit { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #eef1f5; padding-top: 10px; }
+.nedit textarea, .nedit input { font: inherit; font-size: 15px; border: 1.5px solid #dfe3ea; border-radius: 12px; padding: 9px 12px; }
+.nadm .save { background: var(--navy); color: #fff; }

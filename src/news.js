@@ -7,11 +7,18 @@ const LS = 'oay:news';
 // shown until the website answers (and if it has not been updated yet)
 const START = [{ id: 1, t: Date.UTC(2026, 9, 29, 7), text: 'افتتاح الفرع الجديد لدائرة التسجيل العقاري بالشارقة "فرع مويلح"، لنكون أقرب إليكم ونقدم خدماتنا بكفاءة وسهولة', link: '' }];
 try { items = JSON.parse(localStorage.getItem(LS) || 'null') || START; } catch { items = START; }
+let speed = 50;   // pixels per second — set by the office
+try { speed = +localStorage.getItem(LS + ':speed') || 50; } catch { /* ignore */ }
 export function initNews(h) { H = h; }
+const keep = (j) => {
+  items = j.items || []; if (j.speed) speed = j.speed;
+  try { localStorage.setItem(LS, JSON.stringify(items)); localStorage.setItem(LS + ':speed', String(speed)); } catch { /* ignore */ }
+};
+function setDuration(track) { const w = parseFloat(track.style.getPropertyValue('--tk-w')) || 0; if (w) track.style.animationDuration = Math.max(4, w / speed) + 's'; }
 
 const SEP = '<img class="tk-sep" src="icons/icon-192.png" alt="">';
 export async function loadNews() {
-  try { const j = await api('news'); items = j.items || []; try { localStorage.setItem(LS, JSON.stringify(items)); } catch { /* ignore */ } } catch { /* keep cached */ }
+  try { keep(await api('news')); } catch { /* keep cached */ }
   renderTicker();
   return items;
 }
@@ -30,7 +37,7 @@ export function renderTicker() {
     track.innerHTML = `<div class="tk-set">${html}</div><div class="tk-set" aria-hidden="true">${html}</div>`;
     const w = track.firstElementChild.scrollWidth;
     track.style.setProperty('--tk-w', w + 'px');
-    track.style.animationDuration = Math.max(12, w / 55) + 's';
+    setDuration(track);
     track.classList.add('run');
   });
 }
@@ -41,7 +48,10 @@ export function newsPage() {
   return `<div class="pad newspg">${admin ? `<form class="ncard nform" id="nform"><h4>إضافة خبر جديد</h4>
       <textarea id="ntext" rows="3" maxlength="400" placeholder="نص الخبر…"></textarea>
       <input id="nlink" type="url" dir="ltr" placeholder="رابط (اختياري) https://">
-      <button class="btn primary block">نشر الخبر في الشريط</button></form>` : ''}
+      <button class="btn primary block">نشر الخبر في الشريط</button></form>
+    <div class="ncard nspeed"><h4>سرعة الشريط</h4>
+      <div class="nsrow"><span>🐢 بطيء</span><input type="range" id="nspd" min="15" max="150" step="5" value="${speed}"><span>سريع 🐇</span></div>
+      <p class="muted" id="nspv"></p><button class="btn ghost block" id="nspsave">حفظ السرعة</button></div>` : ''}
     <div id="nlist"></div></div>`;
 }
 export function initNewsPage(pg) {
@@ -50,10 +60,17 @@ export function initNewsPage(pg) {
   const draw = () => {
     box.innerHTML = items.length ? items.map((n, i) => `<article class="ncard nitem"><div class="nhead"><img src="icons/icon-192.png" alt=""><div><b>عمر الياسي للعقارات</b><time>${date(n.t)}</time></div></div>
         <p class="notr">${H.esc(n.text)}</p>${n.link ? `<a class="btn ghost" href="${H.esc(n.link)}" data-ext>التفاصيل</a>` : ''}
-        ${admin ? `<div class="nadm"><button data-nup="${n.id}" ${i ? '' : 'disabled'}>▲</button><button data-ndown="${n.id}" ${i < items.length - 1 ? '' : 'disabled'}>▼</button><button class="del" data-ndel="${n.id}">حذف</button></div>` : ''}</article>`).join('')
+        ${admin ? `<div class="nadm"><button data-nedit="${n.id}">تعديل</button><button data-nup="${n.id}" ${i ? '' : 'disabled'}>▲</button><button data-ndown="${n.id}" ${i < items.length - 1 ? '' : 'disabled'}>▼</button><button class="del" data-ndel="${n.id}">حذف</button></div>` : ''}</article>`).join('')
       : `<div class="cempty">${H.I.bell}<p>لا توجد أخبار حالياً</p></div>`;
   };
-  const took = (j) => { items = j.items || []; try { localStorage.setItem(LS, JSON.stringify(items)); } catch { /* ignore */ } draw(); renderTicker(); };
+  const took = (j) => { keep(j); draw(); renderTicker(); };
+  const spd = pg.querySelector('#nspd');
+  if (spd) {
+    const label = () => { pg.querySelector('#nspv').textContent = `${spd.value} — ${spd.value < 40 ? 'بطيء' : spd.value < 80 ? 'متوسط' : 'سريع'}`; };
+    label();
+    spd.oninput = () => { speed = +spd.value; label(); const t = document.querySelector('.tk-track'); if (t) setDuration(t); };   // live preview on the bar
+    pg.querySelector('#nspsave').onclick = async () => { try { took(await api('adm_news_speed', { speed: spd.value })); H.toast('تم حفظ سرعة الشريط ✓'); } catch (ex) { H.toast(ex.message); } };
+  }
   draw(); loadNews().then(draw);
   const form = pg.querySelector('#nform');
   if (form) form.onsubmit = async (e) => {
@@ -65,6 +82,16 @@ export function initNewsPage(pg) {
   box.addEventListener('click', async (e) => {
     const t = e.target.closest('button'); if (!t || !admin) return;
     try {
+      if (t.dataset.nedit) {
+        const card = t.closest('.nitem'), n = items.find((x) => String(x.id) === t.dataset.nedit); if (!n || card.querySelector('.nedit')) return;
+        card.insertAdjacentHTML('beforeend', `<form class="nedit"><textarea rows="3" maxlength="400">${H.esc(n.text)}</textarea><input type="url" dir="ltr" placeholder="رابط (اختياري) https://" value="${H.esc(n.link || '')}"><div class="nadm"><button class="save">حفظ التعديل</button><button type="button" class="cancel">إلغاء</button></div></form>`);
+        const f = card.querySelector('.nedit');
+        f.querySelector('.cancel').onclick = (ev) => { ev.stopPropagation(); f.remove(); };
+        f.onsubmit = async (ev) => { ev.preventDefault(); try { took(await api('adm_news_edit', { id: n.id, text: f.querySelector('textarea').value, link: f.querySelector('input').value.trim() })); H.toast('تم تعديل الخبر ✓'); } catch (ex) { H.toast(ex.message); } };
+        f.querySelector('textarea').focus();
+        return;
+      }
+      if (t.closest('.nedit')) return;
       if (t.dataset.ndel) { if (!confirm('حذف هذا الخبر من الشريط؟')) return; took(await api('adm_news_delete', { id: t.dataset.ndel })); }
       else if (t.dataset.nup) took(await api('adm_news_move', { id: t.dataset.nup, up: '1' }));
       else if (t.dataset.ndown) took(await api('adm_news_move', { id: t.dataset.ndown, up: '0' }));

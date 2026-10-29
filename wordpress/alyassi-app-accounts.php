@@ -94,7 +94,7 @@ function oay_acc_new_user( $email, $name, $pass ) {
 
 /* ---------------- account API ---------------- */
 $oay_acc_actions = array( 'register', 'login', 'google', 'me', 'profile', 'logout', 'meta', 'upload', 'submit', 'mine', 'public', 'delete', 'plotcheck', 'feature',
-	'forgot', 'delete_account', 'avatar', 'verify_request', 'adm_verifs', 'adm_verify', 'chat_get', 'chat_send', 'chat_unread', 'adm_chats', 'adm_chat', 'adm_chat_send', 'notif_get', 'notif_save', 'group_get', 'group_send', 'group_delete', 'chat_file', 'user_get', 'news', 'adm_news_add', 'adm_news_delete', 'adm_news_move',
+	'forgot', 'delete_account', 'avatar', 'verify_request', 'adm_verifs', 'adm_verify', 'chat_get', 'chat_send', 'chat_unread', 'adm_chats', 'adm_chat', 'adm_chat_send', 'notif_get', 'notif_save', 'group_get', 'group_send', 'group_delete', 'chat_file', 'user_get', 'news', 'adm_news_add', 'adm_news_delete', 'adm_news_move', 'adm_news_edit', 'adm_news_speed',
 	'adm_ads', 'adm_review', 'adm_save', 'adm_delete', 'adm_feature', 'adm_users', 'adm_user', 'adm_points', 'adm_ban' );
 foreach ( $oay_acc_actions as $a ) {
 	add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a );
@@ -852,7 +852,20 @@ function oay_news_all() {
 	}
 	return array_values( array_filter( (array) $n, 'is_array' ) );
 }
-function oay_acc_news() { oay_acc_ok( array( 'items' => oay_news_all() ) ); }
+function oay_news_speed() { $v = (int) get_option( 'oay_news_speed', 50 ); return max( 15, min( 150, $v ) ); }
+function oay_news_out() { oay_acc_ok( array( 'items' => oay_news_all(), 'speed' => oay_news_speed() ) ); }
+function oay_acc_news() { oay_news_out(); }
+function oay_acc_adm_news_edit() {
+	oay_acc_need_admin(); $id = absint( oay_acc_arg( 'id', 12 ) );
+	$text = trim( preg_replace( '/\s+/u', ' ', sanitize_text_field( oay_acc_arg( 'text', 400 ) ) ) );
+	if ( mb_strlen( $text ) < 3 ) { oay_acc_err( 'اكتب نص الخبر' ); }
+	$n = oay_news_all(); $found = false;
+	foreach ( $n as &$x ) { if ( (int) $x['id'] === $id ) { $x['text'] = $text; $x['link'] = esc_url_raw( oay_acc_arg( 'link', 400 ) ); $found = true; } }
+	unset( $x );
+	if ( ! $found ) { oay_acc_err( 'الخبر غير موجود', 404 ); }
+	update_option( 'oay_news', $n, false ); oay_news_out();
+}
+function oay_acc_adm_news_speed() { oay_acc_need_admin(); update_option( 'oay_news_speed', max( 15, min( 150, (int) oay_acc_arg( 'speed', 4 ) ) ), false ); oay_news_out(); }
 function oay_acc_adm_news_add() {
 	oay_acc_need_admin();
 	$text = trim( preg_replace( '/\s+/u', ' ', sanitize_text_field( oay_acc_arg( 'text', 400 ) ) ) );
@@ -861,17 +874,17 @@ function oay_acc_adm_news_add() {
 	$n = oay_news_all(); $id = 1; foreach ( $n as $x ) { $id = max( $id, (int) $x['id'] + 1 ); }
 	array_unshift( $n, array( 'id' => $id, 't' => time() * 1000, 'text' => $text, 'link' => $link ) );
 	update_option( 'oay_news', array_slice( $n, 0, 30 ), false );
-	oay_acc_ok( array( 'items' => oay_news_all() ) );
+	oay_news_out();
 }
 function oay_acc_adm_news_delete() {
 	oay_acc_need_admin(); $id = absint( oay_acc_arg( 'id', 12 ) );
 	update_option( 'oay_news', array_values( array_filter( oay_news_all(), function ( $x ) use ( $id ) { return (int) $x['id'] !== $id; } ) ), false );
-	oay_acc_ok( array( 'items' => oay_news_all() ) );
+	oay_news_out();
 }
 function oay_acc_adm_news_move() {
 	oay_acc_need_admin(); $id = absint( oay_acc_arg( 'id', 12 ) ); $up = '1' === oay_acc_arg( 'up', 2 );
 	$n = oay_news_all(); $i = array_search( $id, array_map( function ( $x ) { return (int) $x['id']; }, $n ), true );
 	$j = false === $i ? false : ( $up ? $i - 1 : $i + 1 );
 	if ( false !== $j && isset( $n[ $j ] ) ) { $t = $n[ $i ]; $n[ $i ] = $n[ $j ]; $n[ $j ] = $t; update_option( 'oay_news', $n, false ); }
-	oay_acc_ok( array( 'items' => oay_news_all() ) );
+	oay_news_out();
 }
