@@ -64,6 +64,7 @@ function oay_handle_change( $slug, $name, $old, $new ) {
 	$log = array_slice( array_merge( $ch, (array) get_option( 'oay_changes', array() ) ), 0, 300 );
 	update_option( 'oay_changes', $log, false );
 	oay_send( $ch );
+	do_action( 'oay_plot_changes', $slug, $name, $ch, $new );   // «أرض تناسبني» alerts (alyassi-app-crm.php)
 }
 
 function oay_send( $ch ) {

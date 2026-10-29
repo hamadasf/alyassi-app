@@ -13,7 +13,24 @@ const fmt = (n) => Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 
 
 /* ---------- loading the plan files (cached per project) ---------- */
 const b64ToBytes = (b64) => { const s = atob(b64); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
+/* plan files are kept on the phone (Cache Storage) so plans and land pictures work without internet;
+   a newer copy is fetched in the background whenever there is a connection */
+const PCACHE = 'oay-plan-v1';
 async function getBytes(project, kind, directUrl) {
+  const key = `https://cache.local/plan/${encodeURIComponent(project)}/${kind}`;
+  let store = null; try { if ('caches' in window) store = await caches.open(PCACHE); } catch { store = null; }
+  const save = (u8) => { if (store && u8 && u8.length) store.put(key, new Response(u8, { headers: { 'Content-Type': 'application/octet-stream' } })).catch(() => {}); return u8; };
+  if (store) {
+    const hit = await store.match(key).catch(() => null);
+    if (hit) {
+      const u8 = new Uint8Array(await hit.arrayBuffer());
+      if (navigator.onLine !== false) setTimeout(() => netBytes(project, kind, directUrl).then(save).catch(() => {}), 4000);
+      return u8;
+    }
+  }
+  return save(await netBytes(project, kind, directUrl));
+}
+async function netBytes(project, kind, directUrl) {
   if (native) {
     if (!directUrl) return null;
     const r = await CapacitorHttp.request({ url: directUrl, method: 'GET', responseType: 'arraybuffer', readTimeout: 40000, connectTimeout: 15000 });

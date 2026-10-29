@@ -4,6 +4,7 @@ import { api } from './owner.js';
 
 let dev = '';
 try { dev = localStorage.getItem('oay:dev') || ''; if (!dev) { dev = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, '0')).join(''); localStorage.setItem('oay:dev', dev); } } catch { dev = 'x' + Math.random().toString(16).slice(2); }
+export const deviceId = () => dev;
 let q = [], t = 0;
 function flush() {
   if (!q.length) return;

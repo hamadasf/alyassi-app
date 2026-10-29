@@ -697,6 +697,7 @@ function oay_acc_chat_send() {
 	$lid = absint( oay_acc_arg( 'listing', 12 ) ); if ( $lid && 'lands' !== get_post_type( $lid ) ) { $lid = 0; }
 	$first = 0 === oay_chat_unread_count( $tid, 'admin' );
 	oay_chat_add( $tid, $u->ID, 'user', oay_acc_arg( 'text', 2000 ), $lid );
+	if ( function_exists( 'oay_lead_add' ) ) { oay_lead_add( $u->ID, 'chat', $lid ? (string) $lid : '', $lid ? get_the_title( $lid ) : 'محادثة مع الإدارة' ); }
 	$who = get_user_meta( $u->ID, 'oay_company', true ) ?: $u->display_name;
 	oay_push_to( oay_notif_filter( oay_admin_ids(), $first ? 'chat_first' : 'chat_all' ), 'رسالة جديدة · ' . $who, mb_substr( oay_acc_arg( 'text', 2000 ) ?: 'استفسار عن إعلان', 0, 120 ), array( 'user' => $u->ID ) );
 	oay_acc_ok( array( 'items' => oay_chat_msgs( $tid, false ) ) + oay_chat_peer_office( $tid ) );
@@ -998,6 +999,9 @@ function oay_acc_track() {
 		if ( $id && isset( $d[ $t ] ) && ( isset( $d[ $t ][ $id ] ) || count( $d[ $t ] ) < 3000 ) ) { $d[ $t ][ $id ] = ( $d[ $t ][ $id ] ?? 0 ) + 1; }
 	}
 	update_option( $k, $d, false );
+	$tu = oay_acc_user_from_token( oay_acc_arg( 'token', 120 ) ); $uid = $tu && ! oay_acc_is_admin( $tu ) ? $tu->ID : 0;
+	if ( function_exists( 'oay_aud_note' ) ) { oay_aud_note( $dev, $uid, $ev ); }
+	if ( $uid && function_exists( 'oay_lead_from_track' ) ) { oay_lead_from_track( $uid, $ev ); }
 	oay_acc_ok();
 }
 function oay_land_name( $id ) {

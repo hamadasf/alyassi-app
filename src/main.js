@@ -12,7 +12,8 @@ import { initNotifs, notifsPage } from './notifs.js';
 import { initNews, loadNews, renderTicker, newsPage, initNewsPage } from './news.js';
 import { initCalc, calcPage, initCalc2 } from './calc.js';
 import { initPlanView, planViewPage, initPlanView2 } from './planview.js';
-import { track } from './track.js';
+import { track, deviceId } from './track.js';
+import { initCrm, wantedPage, initWanted, wantedAddPage, initWantedAdd, alertsPage, initAlerts, leadsPage, initLeads, leadPage, initLead, apushPage, initApush, guidePage, initGuide } from './crm.js';
 import { initReport, reportPage, initReportPage } from './report.js';
 import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser } from './owner-ui.js';
@@ -161,9 +162,10 @@ const push = {
   linked: '',
   link() {
     if (!push.os) return;
-    const u = session.user(); const id = u && session.token() ? 'oay-' + u.id : '';
+    // signed in: «oay-<member>»; visitors: «dev-<random phone id>» so the office can reach the people who looked at a project
+    const u = session.user(); const id = u && session.token() ? 'oay-' + u.id : 'dev-' + deviceId();
     if (id === push.linked) return;
-    try { if (id) push.os.login(id); else if (push.linked) push.os.logout(); push.linked = id; } catch (e) { console.warn('push link', e); }
+    try { push.os.login(id); push.linked = id; } catch (e) { console.warn('push link', e); }
   },
   on() {
     if (native) return push.nativeOn;
@@ -220,6 +222,12 @@ function openFromPush(ev) {
   const data = n.additionalData || n.data || {};
   if (data.open === 'land' && data.id) { refresh(false); openLandId(String(data.id)); return; }
   if (data.open === 'chat') { closeAll(); showTab('chats'); setTimeout(() => (data.user && (session.user() || {}).admin ? pushPage('chat', String(data.user)) : pushPage('mychat')), 300); return; }
+  if (data.open === 'leads') { closeAll(); showTab('contact'); setTimeout(() => pushPage('leads'), 300); return; }
+  if (data.open === 'oland' && data.id) { closeAll(); loadOwnerLands().then(() => pushPage('oland', String(data.id))); return; }
+  if (data.open === 'project' && data.id) { closeAll(); showTab('projects'); setTimeout(() => pushPage('project', String(data.id)), 300); return; }
+  if (data.open === 'wanted') { closeAll(); setTimeout(() => pushPage('wanted'), 300); return; }
+  if (data.open === 'url' && data.url) { openWeb(data.url); return; }
+  if (data.open === 'home') { closeAll(); showTab('home'); return; }
   if (data.open === 'report') { closeAll(); showTab('contact'); setTimeout(() => pushPage('report'), 300); return; }
   if (data.open === 'news') { closeAll(); showTab('home'); loadNews(); setTimeout(() => pushPage('news'), 300); return; }
   if (data.open === 'group') { closeAll(); showTab('chats'); setTimeout(() => pushPage('group'), 300); return; }
@@ -505,6 +513,7 @@ function renderHome() {
       </div>
     </section>
     ${bannerHTML(av, projects)}
+    <div class="qacts"><button data-alerts=""><span>🔔</span>أرض تناسبني</button><button data-wanted><span>📝</span>مطلوب أرض</button><button data-calc=""><span>🧮</span>حاسبة الأقساط</button><button data-guide><span>📘</span>دليل الإجراءات</button></div>
     ${notifCard()}
     ${ofr.length ? `<div class="sec-h ofr-h"><h2>🔥 عروض لفترة محدودة</h2><button data-go="lands" data-offers="1">عرض الكل</button></div>
       <div class="hscroll lands">${ofr.map(landCard).join('')}</div>` : ''}
@@ -723,6 +732,13 @@ function pushPage(kind, id) {
   else if (kind === 'news') { html = newsPage(); }
   else if (kind === 'plan') { p = d.projects.find((x) => x.slug === String(id).split('|')[0]); if (!p) return; html = planViewPage(p); }
   else if (kind === 'report') { html = reportPage(); }
+  else if (kind === 'wanted') { html = wantedPage(); }
+  else if (kind === 'wantedadd') { html = wantedAddPage(); }
+  else if (kind === 'alerts') { let pre = {}; try { pre = id ? JSON.parse(id) : {}; } catch { /* none */ } html = alertsPage(pre); }
+  else if (kind === 'leads') { html = leadsPage(); }
+  else if (kind === 'lead') { html = leadPage(); }
+  else if (kind === 'apush') { html = apushPage(id); }
+  else if (kind === 'guide') { html = guidePage(); }
   else if (kind === 'calc') { l = id ? findLand(id) : null; html = calcPage(l); }
   else if (kind === 'mychat') { html = myChatPage(); }
   else if (kind === 'group') { html = groupPage(); }
@@ -731,7 +747,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -749,6 +765,13 @@ function pushPage(kind, id) {
   if (kind === 'news') initNewsPage(pg);
   if (kind === 'calc') { initCalc2(pg, l); track('calc', id || ''); }
   if (kind === 'report') initReportPage(pg, 0);
+  if (kind === 'wanted') initWanted(pg);
+  if (kind === 'wantedadd') initWantedAdd(pg);
+  if (kind === 'alerts') initAlerts(pg);
+  if (kind === 'leads') initLeads(pg);
+  if (kind === 'lead') initLead(pg, id);
+  if (kind === 'apush') initApush(pg);
+  if (kind === 'guide') initGuide(pg);
   if (kind === 'land') track('view', id);
   if (kind === 'oland') track('view', id);
   if (kind === 'plan') track('plan', String(id).split('|')[0]);
@@ -797,7 +820,7 @@ function resetFilters() { Object.assign(F, { q: '', project: '', status: 'av', c
 
 /* ================= events ================= */
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('button, a, [data-land], [data-oland], [data-aad], [data-auser], [data-chat], [data-group], [data-mychat], [data-prof], [data-news], [data-calc], [data-report], [data-project], [data-plan], [data-web]');
+  const t = e.target.closest('button, a, [data-land], [data-oland], [data-aad], [data-auser], [data-chat], [data-group], [data-mychat], [data-prof], [data-news], [data-calc], [data-report], [data-lead], [data-project], [data-plan], [data-web]');
   if (!t) return;
   const ds = t.dataset;
   if (ds.fav) { e.stopPropagation(); const on = favs.toggle(ds.fav); document.querySelectorAll(`[data-fav="${CSS.escape(ds.fav)}"]`).forEach((b) => b.classList.toggle('on', on)); toast(on ? 'أضيفت إلى المفضلة' : 'أزيلت من المفضلة'); if (current === 'favs' && !stack.length) renderFavs(); return; }
@@ -824,6 +847,12 @@ document.addEventListener('click', (e) => {
   if (ds.profile !== undefined) { pushPage('profile'); return; }
   if (ds.news !== undefined) { pushPage('news'); return; }
   if (ds.report !== undefined) { pushPage('report'); return; }
+  if (ds.wanted !== undefined) { pushPage('wanted'); return; }
+  if (ds.alerts !== undefined) { pushPage('alerts', ds.alerts); return; }
+  if (ds.leads !== undefined) { pushPage('leads'); return; }
+  if (ds.lead) { pushPage('lead', ds.lead); return; }
+  if (ds.pushc !== undefined) { pushPage('apush'); return; }
+  if (ds.guide !== undefined) { pushPage('guide'); return; }
   if (ds.calc !== undefined) { pushPage('calc', ds.calc); return; }
   if (ds.prof !== undefined) { if (session.token()) pushPage('uprof', ds.prof); return; }
   if (ds.chat) { pushPage('chat', ds.chat); return; }
@@ -878,6 +907,10 @@ $('#q').addEventListener('input', (e) => { clearTimeout(qT); qT = setTimeout(() 
 $('#filterBtn').addEventListener('click', openSheet);
 $('#scrim').addEventListener('click', closeSheet);
 $('#applyF').addEventListener('click', applySheet);
+$('#alertF').addEventListener('click', () => {
+  applySheet();
+  pushPage('alerts', JSON.stringify({ project: F.project, cat: F.cat, maxPrice: +F.maxP || 0, minFt: +F.minA || 0, maxFt: +F.maxA || 0 }));
+});
 $('#saveF').addEventListener('click', () => {
   applySheet();
   const d = DATA(); const parts = [];
@@ -931,12 +964,21 @@ initNews({ esc, toast, I });
 initCalc({ esc, toast, I, money, waLink });
 initPlanView({ esc, toast, I, money });
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
+initCrm({ esc, toast, I, money, waLink, DATA: () => DATA(), pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop() });
 window.__oayPush = push;   // the notification settings page talks to the push service
 initMore({ isEn, setLang, esc, toast, I, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), closeAll: () => closeAll(), waLink, CONTACT, EMBLEM, SITE });
 session.subs.add(() => { renderContact(); refreshUnread(); push.link(); if (current === 'chats') renderChatsTab($('#chats .content')); });
 
+/* offline: a small bar on top; everything shown comes from what the phone saved last time */
+function netState() {
+  const off = navigator.onLine === false; const b = document.getElementById('offbar'); if (b) b.hidden = !off;
+  document.body.classList.toggle('offline', off);
+}
+window.addEventListener('online', () => { netState(); refresh(false); loadNews(); refreshUnread(); });
+window.addEventListener('offline', netState);
 async function boot() {
   startI18n();
+  netState();
   track('open');
   renderTicker();
   document.querySelectorAll('[data-i]').forEach((el) => { el.innerHTML = I[el.dataset.i] + el.innerHTML; });
@@ -945,6 +987,19 @@ async function boot() {
   if (native) {
     SystemBars.setStyle({ style: SystemBarsStyle.Dark }).catch(() => {});
     App.addListener('backButton', goBack);
+    // links from the home-screen widget: com.omaralyassi.realestate://open/news | home | land/<id> | oland/<id>
+    const widgetLink = (url) => {
+      const m = /^com\.omaralyassi\.realestate:\/\/open\/([^/?#]+)(?:\/([^?#]+))?/.exec(url || ''); if (!m) return;
+      const id = m[2] ? decodeURIComponent(m[2]) : '';
+      setTimeout(() => {
+        if (m[1] === 'news') { closeAll(); showTab('home'); pushPage('news'); }
+        else if (m[1] === 'land' && id) { closeAll(); openLandId(id); }
+        else if (m[1] === 'oland' && id) { closeAll(); loadOwnerLands().then(() => pushPage('oland', id)); }
+        else { closeAll(); showTab('home'); }
+      }, 400);
+    };
+    App.addListener('appUrlOpen', ({ url }) => widgetLink(url));
+    App.getLaunchUrl().then((r) => r && widgetLink(r.url)).catch(() => {});
     App.addListener('resume', () => { if (Date.now() - (DATA().at || 0) > 5 * 60e3) refresh(false); });
     setTimeout(() => SplashScreen.hide({ fadeOutDuration: 250 }).catch(() => {}), 150);
   }

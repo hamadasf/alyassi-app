@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="12dp" android:layoutDirection="rtl"
+    android:background="@drawable/widget_bg">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layoutDirection="rtl">
+        <ImageView android:id="@+id/w_logo" android:layout_width="30dp" android:layout_height="30dp" android:src="@mipmap/ic_launcher" android:contentDescription="عمر الياسي للعقارات" />
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="8dp"
+            android:text="أخبار عقارية · عمر الياسي" android:textColor="#C9A14A" android:textSize="13sp" android:textStyle="bold" android:textDirection="rtl" android:gravity="start" />
+        <ImageView android:id="@+id/w_refresh" android:layout_width="28dp" android:layout_height="28dp" android:padding="4dp" android:src="@android:drawable/ic_popup_sync" android:contentDescription="تحديث" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/w_news_box" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="vertical" android:paddingTop="6dp">
+        <TextView android:id="@+id/w_news" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textColor="#FFFFFF" android:textSize="14sp" android:maxLines="3" android:ellipsize="end" android:lineSpacingExtra="2dp"
+            android:textDirection="rtl" android:gravity="start" android:text="جارِ تحميل آخر الأخبار…" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/w_offer_box" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
+        android:background="@drawable/widget_offer_bg" android:padding="8dp" android:layout_marginTop="6dp" android:visibility="gone">
+        <TextView android:id="@+id/w_offer_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#0E1C36" android:textSize="12.5sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:textDirection="rtl" android:gravity="start" />
+        <TextView android:id="@+id/w_offer_body" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#3A2A05" android:textSize="12sp" android:maxLines="1" android:ellipsize="end" android:textDirection="rtl" android:gravity="start" />
+    </LinearLayout>
+</LinearLayout>

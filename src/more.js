@@ -25,9 +25,14 @@ export function renderMore(el) {
       ${row(I.search, 'بحث محفوظ', 'data-saved', `<small>${saved.all().length || ''}</small>`)}
       ${row(I.heart, 'المفضلة', 'data-tab="favs"')}
       ${row(I.wallet, 'حاسبة الأقساط', 'data-calc=""')}
+      ${row(I.bell, 'أرض تناسبني', 'data-alerts=""')}
+      ${row(I.search, 'مطلوب أرض', 'data-wanted')}
+      ${row(I.doc, 'دليل الإجراءات العقارية', 'data-guide')}
       ${row(I.doc, 'الأخبار العقارية', 'data-news', u && u.admin ? '<small>إدارة الشريط</small>' : '')}
       ${u && u.admin ? row(I.shield, 'لوحة الإدارة', 'data-admin') : ''}
       ${u && u.admin ? row(I.grid, 'التقرير الأسبوعي', 'data-report') : ''}
+      ${u && u.admin ? row(I.user, 'متابعة العملاء', 'data-leads') : ''}
+      ${u && u.admin ? row(I.bell, 'إشعار موجّه', 'data-pushc') : ''}
     </div>
     <h3 class="msec">الحساب والإعدادات</h3>
     <div class="mbox">

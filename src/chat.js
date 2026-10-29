@@ -287,6 +287,7 @@ export function initMyChat(pg) { pg.classList.add('chatpg'); bindChat(pg, { admi
 export function chatPage(uid) { return chatView(waHead('<span class="acc-av"></span>', '…', '', uid)); }
 export function initChatPage(pg, uid) { pg.classList.add('chatpg'); bindChat(pg, { admin: true, uid }); }
 export function askAbout(listing) { pendingRef = listing; }
+export function quoteToOffice(text) { pendingQuote = text; }
 
 /* ---------- the public group ---------- */
 export function groupPage() {
