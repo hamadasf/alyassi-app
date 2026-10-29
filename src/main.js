@@ -9,6 +9,7 @@ import { paintPlanLoc } from './planloc.js';
 import { session, refreshMe, ownerLands, loadOwnerLands, api as accApi } from './owner.js';
 import { initChat, refreshUnread, renderChatsTab, chatPage, initChatPage, askAbout, myChatPage, initMyChat, groupPage, initGroup, profPage, initProf } from './chat.js';
 import { initNotifs, notifsPage } from './notifs.js';
+import { initNews, loadNews, renderTicker, newsPage, initNewsPage } from './news.js';
 import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser } from './owner-ui.js';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
@@ -648,6 +649,7 @@ function pushPage(kind, id) {
   else if (kind === 'verify') { html = verifyPage(); }
   else if (kind === 'chat') { html = chatPage(id); }
   else if (kind === 'uprof') { html = profPage(); }
+  else if (kind === 'news') { html = newsPage(); }
   else if (kind === 'mychat') { html = myChatPage(); }
   else if (kind === 'group') { html = groupPage(); }
   else if (kind === 'aad') { html = admAdPage(id); if (!html) return; }
@@ -655,7 +657,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = d.lands.find((x) => x.id === id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -670,6 +672,7 @@ function pushPage(kind, id) {
   if (kind === 'mychat') initMyChat(pg);
   if (kind === 'group') initGroup(pg);
   if (kind === 'uprof') initProf(pg, id);
+  if (kind === 'news') initNewsPage(pg);
   if (kind === 'notifs') initNotifs(pg);
   if (kind === 'aad') initAdmAd(pg, id);
   if (kind === 'auser') initAdmUser(pg, id);
@@ -713,7 +716,7 @@ function resetFilters() { Object.assign(F, { q: '', project: '', status: 'av', c
 
 /* ================= events ================= */
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('button, a, [data-land], [data-oland], [data-aad], [data-auser], [data-chat], [data-group], [data-mychat], [data-prof], [data-project], [data-plan], [data-web]');
+  const t = e.target.closest('button, a, [data-land], [data-oland], [data-aad], [data-auser], [data-chat], [data-group], [data-mychat], [data-prof], [data-news], [data-project], [data-plan], [data-web]');
   if (!t) return;
   const ds = t.dataset;
   if (ds.fav) { e.stopPropagation(); const on = favs.toggle(ds.fav); document.querySelectorAll(`[data-fav="${CSS.escape(ds.fav)}"]`).forEach((b) => b.classList.toggle('on', on)); toast(on ? 'أضيفت إلى المفضلة' : 'أزيلت من المفضلة'); if (current === 'favs' && !stack.length) renderFavs(); return; }
@@ -736,6 +739,7 @@ document.addEventListener('click', (e) => {
   if (ds.olands !== undefined) { pushPage('olands'); return; }
   if (ds.admin !== undefined) { pushPage('admin'); return; }
   if (ds.profile !== undefined) { pushPage('profile'); return; }
+  if (ds.news !== undefined) { pushPage('news'); return; }
   if (ds.prof !== undefined) { if (session.token()) pushPage('uprof', ds.prof); return; }
   if (ds.chat) { pushPage('chat', ds.chat); return; }
   if (ds.group !== undefined) { if (session.token()) pushPage('group'); else pushPage('account'); return; }
@@ -828,7 +832,7 @@ function refresh(force) {
   const hadData = DATA().lands.length > 0;
   let raf = 0;
   loading = loadAll({ force, onPartial: hadData ? null : () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(renderAll); } })
-    .then(() => Promise.all([loadChanges().catch(() => {}), loadOwnerLands(), refreshUnread()]))
+    .then(() => Promise.all([loadChanges().catch(() => {}), loadOwnerLands(), refreshUnread(), loadNews()]))
     .then(() => { renderAll(); })
     .catch(() => { if (!DATA().lands.length) { $('#home .content').innerHTML = `<div class="empty">${I.wifi}<p>تعذّر الاتصال بالإنترنت</p><button class="btn ghost" id="retry">إعادة المحاولة</button></div>`; $('#retry').onclick = () => refresh(true); } else toast('تعذّر التحديث — تُعرض آخر بيانات محفوظة'); })
     .finally(() => { loading = null; });
@@ -837,12 +841,14 @@ function refresh(force) {
 
 initOwnerUI({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), waLink, CONTACT });
 initChat({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id) });
+initNews({ esc, toast, I });
 window.__oayPush = push;   // the notification settings page talks to the push service
 initMore({ isEn, setLang, esc, toast, I, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), closeAll: () => closeAll(), waLink, CONTACT, EMBLEM, SITE });
 session.subs.add(() => { renderContact(); refreshUnread(); push.link(); if (current === 'chats') renderChatsTab($('#chats .content')); });
 
 async function boot() {
   startI18n();
+  renderTicker();
   document.querySelectorAll('[data-i]').forEach((el) => { el.innerHTML = I[el.dataset.i] + el.innerHTML; });
   if (loadFromCache()) renderAll(); else { renderHome(); renderLands(); renderProjects(); renderContact(); }
   showTab('home');
