@@ -217,6 +217,7 @@ const EN = {
   "إلغاء": "Cancel",
   "تم تعديل الخبر ✓": "News updated ✓",
   "الخبر غير موجود": "News not found",
+  'تم نسخ الخبر ✓': 'News copied ✓',
   // server messages
   'محاولات كثيرة — حاول بعد قليل': 'Too many attempts — try again shortly', 'انتهت الجلسة — سجّل الدخول مرة أخرى': 'Session ended — please sign in again',
   'اكتب الاسم': 'Enter your name', 'البريد الإلكتروني غير صحيح': 'Invalid email address', 'كلمة المرور 8 أحرف على الأقل': 'Password must be at least 8 characters',

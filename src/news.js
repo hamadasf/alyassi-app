@@ -60,7 +60,7 @@ export function initNewsPage(pg) {
   const draw = () => {
     box.innerHTML = items.length ? items.map((n, i) => `<article class="ncard nitem"><div class="nhead"><img src="icons/icon-192.png" alt=""><div><b>عمر الياسي للعقارات</b><time>${date(n.t)}</time></div></div>
         <p class="notr">${H.esc(n.text)}</p>${n.link ? `<a class="btn ghost" href="${H.esc(n.link)}" data-ext>التفاصيل</a>` : ''}
-        ${admin ? `<div class="nadm"><button data-nedit="${n.id}">تعديل</button><button data-nup="${n.id}" ${i ? '' : 'disabled'}>▲</button><button data-ndown="${n.id}" ${i < items.length - 1 ? '' : 'disabled'}>▼</button><button class="del" data-ndel="${n.id}">حذف</button></div>` : ''}</article>`).join('')
+        ${admin ? `<div class="nadm"><button data-nedit="${n.id}">تعديل</button><button data-ncopy="${n.id}">نسخ</button><button data-nup="${n.id}" ${i ? '' : 'disabled'}>▲</button><button data-ndown="${n.id}" ${i < items.length - 1 ? '' : 'disabled'}>▼</button><button class="del" data-ndel="${n.id}">حذف</button></div>` : ''}</article>`).join('')
       : `<div class="cempty">${H.I.bell}<p>لا توجد أخبار حالياً</p></div>`;
   };
   const took = (j) => { keep(j); draw(); renderTicker(); };
@@ -82,6 +82,12 @@ export function initNewsPage(pg) {
   box.addEventListener('click', async (e) => {
     const t = e.target.closest('button'); if (!t || !admin) return;
     try {
+      if (t.dataset.ncopy) {
+        const n = items.find((x) => String(x.id) === t.dataset.ncopy); if (!n) return;
+        const txt = n.text + (n.link ? '\n' + n.link : '');
+        try { await navigator.clipboard.writeText(txt); } catch { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+        H.toast('تم نسخ الخبر ✓'); return;
+      }
       if (t.dataset.nedit) {
         const card = t.closest('.nitem'), n = items.find((x) => String(x.id) === t.dataset.nedit); if (!n || card.querySelector('.nedit')) return;
         card.insertAdjacentHTML('beforeend', `<form class="nedit"><textarea rows="3" maxlength="400">${H.esc(n.text)}</textarea><input type="url" dir="ltr" placeholder="رابط (اختياري) https://" value="${H.esc(n.link || '')}"><div class="nadm"><button class="save">حفظ التعديل</button><button type="button" class="cancel">إلغاء</button></div></form>`);
