@@ -981,7 +981,7 @@ function oay_acc_rate_delete() {
 }
 
 /* ================= usage numbers for the weekly report (anonymous: a random id per phone, no personal data) ================= */
-const OAY_TRACK_EVENTS = array( 'open', 'view', 'share', 'wa', 'call', 'plan', 'calc' );
+const OAY_TRACK_EVENTS = array( 'open', 'view', 'share', 'wa', 'call', 'plan', 'calc', 'form' );
 function oay_day_key( $ts = null ) { return 'oay_st_' . wp_date( 'Ymd', $ts ?? time() ); }
 function oay_acc_track() {
 	oay_acc_limit( 'trk', 900 );
@@ -1002,6 +1002,7 @@ function oay_acc_track() {
 	$tu = oay_acc_user_from_token( oay_acc_arg( 'token', 120 ) ); $uid = $tu && ! oay_acc_is_admin( $tu ) ? $tu->ID : 0;
 	if ( function_exists( 'oay_aud_note' ) ) { oay_aud_note( $dev, $uid, $ev ); }
 	if ( $uid && function_exists( 'oay_lead_from_track' ) ) { oay_lead_from_track( $uid, $ev ); }
+	if ( function_exists( 'oay_contacts_from_track' ) ) { oay_contacts_from_track( $dev, $tu, $ev ); }
 	oay_acc_ok();
 }
 function oay_land_name( $id ) {

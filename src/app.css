@@ -822,3 +822,20 @@ img { -webkit-user-drag: none; }
 body.offline .ticker, body.offline .hero { margin-top: 0; }
 .cgrid > label { min-width: 0; } .cform input:not([type=range]):not([type=checkbox]), .cform select, .cform textarea { width: 100%; min-width: 0; box-sizing: border-box; }
 .wform { margin: 16px; }
+
+/* contact bar like Bayut */
+.cbar3 { display: grid !important; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.cbar3 .btn { padding-left: 6px; padding-right: 6px; font-size: 14px; }
+.cbar3 .cb { background: #fff; border: 1.5px solid var(--navy); color: var(--navy); }
+.refno { font-size: 12.5px; color: #64748b; margin: 2px 0 8px; } .refno b { color: var(--navy); letter-spacing: .3px; }
+.cbform input { font: inherit; font-size: 16px; border: 1.5px solid #dfe3ea; border-radius: 12px; padding: 11px 12px; background: #fff; }
+.cbform textarea { font: inherit; font-size: 15px; border: 1.5px solid #dfe3ea; border-radius: 12px; padding: 10px 12px; resize: none; }
+
+.ck { grid-template-columns: repeat(3, 1fr); } .ck div { background: #fff; border-radius: 14px; padding: 10px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.ck span { font-size: 12px; color: #64748b; font-weight: 700; } .ck b { font-size: 22px; color: var(--navy); } .ck em { font-style: normal; font-size: 11px; color: #94a3b8; }
+.crow { display: flex; gap: 10px; background: #fff; border-radius: 16px; padding: 12px; margin-bottom: 8px; align-items: flex-start; }
+.crow.due { box-shadow: inset 4px 0 0 #f59e0b; }
+.cic { font-style: normal; font-size: 20px; width: 38px; height: 38px; border-radius: 12px; background: #f1f5f9; display: grid; place-items: center; flex: none; }
+.crow > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; } .crow b { color: var(--navy); font-size: 14px; } .crow span { font-size: 13px; color: #475569; }
+.crow p { margin: 2px 0; font-size: 13.5px; color: #334155; background: #f8fafc; border-radius: 10px; padding: 6px 10px; } .crow time { font-size: 11.5px; color: #94a3b8; white-space: nowrap; }
+.clink { color: #2563eb; font-weight: 700; font-size: 13.5px; text-align: start; padding: 0; } .cact { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; align-items: center; }

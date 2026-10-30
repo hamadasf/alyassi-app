@@ -31,6 +31,7 @@ export function renderMore(el) {
       ${row(I.doc, 'الأخبار العقارية', 'data-news', u && u.admin ? '<small>إدارة الشريط</small>' : '')}
       ${u && u.admin ? row(I.shield, 'لوحة الإدارة', 'data-admin') : ''}
       ${u && u.admin ? row(I.grid, 'التقرير الأسبوعي', 'data-report') : ''}
+      ${u && u.admin ? row(I.phone, 'سجل التواصل', 'data-contacts') : ''}
       ${u && u.admin ? row(I.user, 'متابعة العملاء', 'data-leads') : ''}
       ${u && u.admin ? row(I.bell, 'إشعار موجّه', 'data-pushc') : ''}
     </div>

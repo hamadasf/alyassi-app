@@ -7,7 +7,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 foreach ( array( 'adm_leads', 'adm_lead', 'adm_lead_save', 'wanted_submit', 'wanted_mine', 'wanted_list', 'wanted_delete', 'adm_wanted', 'adm_wanted_review',
-	'alert_list', 'alert_save', 'alert_delete', 'adm_push', 'adm_push_count', 'guide', 'adm_guide_save', 'widget' ) as $a ) {
+	'alert_list', 'alert_save', 'alert_delete', 'adm_push', 'adm_push_count', 'guide', 'adm_guide_save', 'widget', 'contact_req', 'adm_contacts' ) as $a ) {
 	add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a );
 	add_action( 'wp_ajax_nopriv_oay_acc_' . $a, 'oay_acc_' . $a );
 }
@@ -335,4 +335,53 @@ function oay_acc_widget() {
 	if ( ! $offer ) { foreach ( (array) get_option( 'oay_changes', array() ) as $c ) { if ( 'new' === ( $c['kind'] ?? '' ) || 'price' === ( $c['kind'] ?? '' ) ) { $offer = array( 'title' => ( 'new' === $c['kind'] ? '🆕 أرض جديدة · ' : '💲 سعر جديد · ' ) . 'قطعة ' . $c['n'] . ' · ' . $c['projectName'], 'body' => ! empty( $c['to'] ) ? number_format( (int) $c['to'] ) . ' د.إ' : '', 'id' => $c['id'] ); break; } } }
 	header( 'Cache-Control: public, max-age=300' );
 	wp_send_json( array( 'ok' => true, 'news' => $news ? $news[0]['text'] : '', 'newsCount' => count( $news ), 'offer' => $offer, 't' => oay_crm_ms() ) );
+}
+
+/* ======================================================================================
+ * 7. Contact like Bayut: every call / WhatsApp tap and «طلب اتصال» on any listing reaches the office
+ *    and is logged here with the listing's reference, so the office knows who asked about what.
+ * ==================================================================================== */
+function oay_contact_log( $e ) {
+	$log = get_option( 'oay_contacts', array() ); if ( ! is_array( $log ) ) { $log = array(); }
+	array_unshift( $log, $e + array( 't' => oay_crm_ms() ) );
+	update_option( 'oay_contacts', array_slice( $log, 0, 1000 ), false );
+}
+function oay_ref_of( $id ) {
+	if ( ctype_digit( (string) $id ) ) { return 'OAY-M' . $id; }
+	list( $slug, $n ) = array_pad( explode( ':', (string) $id, 2 ), 2, '' );
+	$ab = implode( '', array_map( function ( $w ) { return ctype_digit( $w ) ? $w : mb_substr( $w, 0, 1 ); }, array_filter( preg_split( '/[-_]/', $slug ) ) ) );
+	return 'OAY-' . $n . '-' . strtoupper( $ab );
+}
+function oay_contacts_from_track( $dev, $u, $ev ) {
+	foreach ( $ev as $e ) {
+		if ( ! is_array( $e ) || ! in_array( $e['e'] ?? '', array( 'wa', 'call' ), true ) ) { continue; }
+		$id = substr( preg_replace( '/[^\w:\-]/u', '', (string) ( $e['id'] ?? '' ) ), 0, 60 );
+		oay_contact_log( array( 'kind' => $e['e'], 'id' => $id, 'name' => $id && function_exists( 'oay_land_name' ) ? oay_land_name( $id ) : 'عام', 'ref' => $id ? oay_ref_of( $id ) : '',
+			'uid' => $u ? $u->ID : 0, 'who' => $u ? $u->display_name : '', 'dev' => substr( md5( (string) $dev ), 0, 8 ) ) );
+	}
+}
+function oay_acc_contact_req() {
+	oay_acc_limit( 'cbreq', 15 );
+	$name = mb_substr( sanitize_text_field( oay_acc_arg( 'name', 60 ) ), 0, 60 ); $phone = preg_replace( '/[^\d+]/', '', oay_acc_arg( 'phone', 20 ) );
+	if ( '' === $name || strlen( preg_replace( '/\D/', '', $phone ) ) < 9 ) { oay_acc_err( 'اكتب الاسم ورقم جوال صحيح' ); }
+	$id = substr( preg_replace( '/[^\w:\-]/u', '', oay_acc_arg( 'id', 60 ) ), 0, 60 );
+	$msg = mb_substr( sanitize_textarea_field( oay_acc_arg( 'msg', 500 ) ), 0, 500 );
+	$u = oay_acc_user_from_token( oay_acc_arg( 'token', 120 ) );
+	$title = $id && function_exists( 'oay_land_name' ) ? oay_land_name( $id ) : mb_substr( sanitize_text_field( oay_acc_arg( 'title', 120 ) ), 0, 120 );
+	$e = array( 'kind' => 'form', 'id' => $id, 'name' => $title, 'ref' => $id ? oay_ref_of( $id ) : '', 'uid' => $u ? $u->ID : 0, 'who' => $name, 'phone' => $phone, 'msg' => $msg, 'wa' => '1' === oay_acc_arg( 'wa', 2 ), 'done' => false );
+	oay_contact_log( $e );
+	if ( $u ) { if ( ! get_user_meta( $u->ID, 'oay_phone', true ) ) { update_user_meta( $u->ID, 'oay_phone', $phone ); } oay_lead_add( $u->ID, 'form', $id, $title ); }
+	if ( function_exists( 'oay_push_to' ) ) { oay_push_to( oay_admin_ids(), '📩 طلب اتصال · ' . $name, $title . ( $e['ref'] ? ' · ' . $e['ref'] : '' ) . ' · ' . $phone, array( 'open' => 'contacts' ) ); }
+	oay_acc_ok();
+}
+function oay_acc_adm_contacts() {
+	oay_acc_need_admin();
+	$log = get_option( 'oay_contacts', array() ); if ( ! is_array( $log ) ) { $log = array(); }
+	$done = oay_acc_arg( 'done', 30 );   // mark a call-back request as handled
+	if ( '' !== $done ) { foreach ( $log as &$x ) { if ( (string) $x['t'] === $done ) { $x['done'] = true; } } unset( $x ); update_option( 'oay_contacts', $log, false ); }
+	$k = oay_acc_arg( 'kind', 10 );
+	$items = array_values( array_filter( $log, function ( $x ) use ( $k ) { return ! $k || $k === $x['kind']; } ) );
+	$week = oay_crm_ms() - 7 * DAY_IN_SECONDS * 1000; $c = array( 'call' => 0, 'wa' => 0, 'form' => 0 );
+	foreach ( $log as $x ) { if ( $x['t'] > $week && isset( $c[ $x['kind'] ] ) ) { $c[ $x['kind'] ]++; } }
+	oay_acc_ok( array( 'items' => array_slice( $items, 0, 300 ), 'week' => $c, 'open' => count( array_filter( $log, function ( $x ) { return 'form' === $x['kind'] && empty( $x['done'] ); } ) ) ) );
 }

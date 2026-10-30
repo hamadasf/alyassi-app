@@ -1,6 +1,7 @@
 // Screens for accounts and user-submitted lands. Plugged into main.js's page stack.
 import { Capacitor } from '@capacitor/core';
 import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands } from './owner.js';
+import { contactBar, refLine } from './contact.js';
 
 const native = Capacitor.isNativePlatform();
 let H = null;   // helpers from main.js: { esc, toast, I, money, pushPage, closeTop, waLink, CONTACT }
@@ -426,20 +427,17 @@ export function oLandsPage() {
 }
 export function oLandPage(x) {
   const { esc, money, I, waLink, CONTACT } = H;
-  const msg = `مرحباً، أرغب بالاستفسار عن الأرض المعروضة: ${x.title}${x.number ? ' (رقم ' + x.number + ')' : ''} — إعلان رقم ${x.id}`;
   const rows = [['المشروع / المنطقة', x.project], ['نوع الأرض', x.type], ['رقم الأرض', x.number], ['المساحة', x.area ? money(x.area) + ' قدم² (' + money(x.area / 10.7639) + ' م²)' : ''],
     ['الدفعة المقدمة', x.down ? money(x.down) + ' د.إ' : ''], ['عدد الأقساط', x.installments || ''], ['الموقع', x.location]].filter((r) => r[1]);
   return `<div class="ogal">${x.photos.length ? x.photos.map((s) => `<img src="${esc(s)}" alt="" loading="lazy" data-web="${esc(s)}">`).join('') : '<div class="noimg"></div>'}</div>
     <div class="pad">
       <h1 class="notr">${esc(x.title)}</h1>
+      ${refLine(String(x.id))}
       ${x.seller ? `<div class="seller big">${I.verified}<span>${esc(x.seller)} · مكتب عقاري موثّق</span></div>` : ''}
       ${x.price ? `<div class="pricebox"><div class="price big">${money(x.price)} <small>د.إ</small></div></div>` : ''}
       <div class="inst">${rows.map((r) => `<div class="r"><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}</div>
       ${x.description ? `<p class="odesc notr">${esc(x.description)}</p>` : ''}
       ${x.maps ? `<a class="btn ghost block" href="${esc(x.maps)}" data-ext>${I.pin} الموقع على الخريطة</a>` : ''}
     </div>
-    ${x.byAdmin ? `<div class="bar">
-      <a class="btn call" href="tel:${CONTACT.phone}">${I.phone} اتصال</a>
-      <a class="btn wa" href="${esc(waLink(msg))}" data-ext>${I.wa} واتساب</a>
-    </div>` : `<div class="bar"><button class="btn primary block" data-askad="${x.id}">${I.chat} تواصل مع الإدارة بخصوص الإعلان</button></div>`}`;
+    ${contactBar({ id: String(x.id), title: x.title + (x.number ? ' (رقم ' + x.number + ')' : ''), url: '' })}`;
 }

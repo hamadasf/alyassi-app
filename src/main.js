@@ -13,7 +13,8 @@ import { initNews, loadNews, renderTicker, newsPage, initNewsPage } from './news
 import { initCalc, calcPage, initCalc2 } from './calc.js';
 import { initPlanView, planViewPage, initPlanView2 } from './planview.js';
 import { track, deviceId } from './track.js';
-import { initCrm, wantedPage, initWanted, wantedAddPage, initWantedAdd, alertsPage, initAlerts, leadsPage, initLeads, leadPage, initLead, apushPage, initApush, guidePage, initGuide } from './crm.js';
+import { initContact, contactBar, refLine, callbackSheet, refOf } from './contact.js';
+import { initCrm, wantedPage, initWanted, wantedAddPage, initWantedAdd, alertsPage, initAlerts, leadsPage, initLeads, leadPage, initLead, apushPage, initApush, guidePage, initGuide, contactsPage, initContacts } from './crm.js';
 import { initReport, reportPage, initReportPage } from './report.js';
 import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser } from './owner-ui.js';
@@ -33,7 +34,7 @@ const fmtDate = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); re
 /* ================= helpers ================= */
 const waLink = (text) => `https://wa.me/${CONTACT.whatsapp}?text=${encodeURIComponent(text)}`;
 const landUrl = (l) => `${SITE}/${l.project}/#p${l.n}`;
-const landMsg = (l) => `مرحباً، أرغب بالاستفسار عن القطعة رقم ${l.n} في مشروع ${l.projectName}\n${landUrl(l)}`;
+const landMsg = (l) => `مرحباً، وجدت هذا الإعلان في تطبيق عمر الياسي للعقارات وأرغب بالاستفسار:\nقطعة رقم ${l.n} · ${l.projectName}\nرقم المرجع: ${refOf(l)}\n${landUrl(l)}`;
 
 async function openWeb(url, title) {
   if (!native) { window.open(url, '_blank'); return; }
@@ -222,6 +223,7 @@ function openFromPush(ev) {
   const data = n.additionalData || n.data || {};
   if (data.open === 'land' && data.id) { refresh(false); openLandId(String(data.id)); return; }
   if (data.open === 'chat') { closeAll(); showTab('chats'); setTimeout(() => (data.user && (session.user() || {}).admin ? pushPage('chat', String(data.user)) : pushPage('mychat')), 300); return; }
+  if (data.open === 'contacts') { closeAll(); showTab('contact'); setTimeout(() => pushPage('contacts'), 300); return; }
   if (data.open === 'leads') { closeAll(); showTab('contact'); setTimeout(() => pushPage('leads'), 300); return; }
   if (data.open === 'oland' && data.id) { closeAll(); loadOwnerLands().then(() => pushPage('oland', String(data.id))); return; }
   if (data.open === 'project' && data.id) { closeAll(); showTab('projects'); setTimeout(() => pushPage('project', String(data.id)), 300); return; }
@@ -449,8 +451,8 @@ function landCard(l) {
       <div class="specs"><span>${I.area}${areaHTML(l)}</span>${l.floors ? `<span>${I.floors}${esc(l.floors)}</span>` : ''}</div>
       ${l.first && l.status !== 'sold' ? `<div class="plan-pay">${I.wallet} دفعة أولى ${money(l.first)} د.إ + ${l.inst.length} أقساط</div>` : ''}
       <div class="actions">
-        <a class="btn call" href="tel:${CONTACT.phone}">${I.phone} اتصال</a>
-        <a class="btn wa" href="${esc(waLink(landMsg(l)))}" data-ext>${I.wa} واتساب</a>
+        <a class="btn call" href="tel:${CONTACT.phone}" data-tid="${esc(l.id)}">${I.phone} اتصال</a>
+        <a class="btn wa" href="${esc(waLink(landMsg(l)))}" data-ext data-tid="${esc(l.id)}">${I.wa} واتساب</a>
       </div>
     </div>
   </article>`;
@@ -673,6 +675,7 @@ function landPage(l) {
     <div class="pad">
       <div class="row between"><h1>قطعة رقم ${esc(l.n)}</h1>${l.featured && l.status === 'av' ? `<span class="badge star inline">${I.star} مميزة</span>` : ''}</div>
       <button class="meta link" data-project="${esc(l.project)}">${I.pin}<span>مشروع ${esc(l.projectName)}</span></button>
+      ${refLine(l.id)}
       <button class="btn wa block share-big" data-share="land:${esc(l.id)}">${I.wa} مشاركة التفاصيل + مخطط الأرض PDF</button>
       ${o ? `<div class="ofr-box"><b>🔥 عرض لفترة محدودة</b>${o.note ? `<span>${esc(o.note)}</span>` : ''}<div class="ofr-t2">⏳ <span data-until="${o.until}">${leftText(o.until)}</span> · حتى ${dmy(o.until)}</div></div>` : ''}
       <div class="pricebox">${priceHTML(l, true)}${l.ppf && l.status !== 'sold' ? `<span>سعر القدم ${money(l.ppf)} د.إ</span>` : ''}</div>
@@ -691,10 +694,7 @@ function landPage(l) {
       <button class="btn primary block" data-plan="${esc(landUrl(l))}" data-pview="${esc(l.project + '|' + l.n)}">${I.map} عرض القطعة على المخطط</button>
       ${l.doc ? `<a class="btn ghost block" href="${esc(l.doc)}" data-ext>${I.pdf} مخطط القطعة (PDF)</a>` : ''}
     </div>
-    <div class="bar">
-      <a class="btn call" href="tel:${CONTACT.phone}">${I.phone} اتصال</a>
-      <a class="btn wa" href="${esc(waLink(landMsg(l)))}" data-ext>${I.wa} واتساب</a>
-    </div>`;
+    ${contactBar({ id: l.id, title: `قطعة رقم ${l.n} · ${l.projectName}`, url: landUrl(l) })}`;
 }
 
 /* ================= navigation ================= */
@@ -739,6 +739,7 @@ function pushPage(kind, id) {
   else if (kind === 'lead') { html = leadPage(); }
   else if (kind === 'apush') { html = apushPage(id); }
   else if (kind === 'guide') { html = guidePage(); }
+  else if (kind === 'contacts') { html = contactsPage(); }
   else if (kind === 'calc') { l = id ? findLand(id) : null; html = calcPage(l); }
   else if (kind === 'mychat') { html = myChatPage(); }
   else if (kind === 'group') { html = groupPage(); }
@@ -747,7 +748,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -772,6 +773,7 @@ function pushPage(kind, id) {
   if (kind === 'lead') initLead(pg, id);
   if (kind === 'apush') initApush(pg);
   if (kind === 'guide') initGuide(pg);
+  if (kind === 'contacts') initContacts(pg);
   if (kind === 'land') track('view', id);
   if (kind === 'oland') track('view', id);
   if (kind === 'plan') track('plan', String(id).split('|')[0]);
@@ -826,7 +828,7 @@ document.addEventListener('click', (e) => {
   if (ds.fav) { e.stopPropagation(); const on = favs.toggle(ds.fav); document.querySelectorAll(`[data-fav="${CSS.escape(ds.fav)}"]`).forEach((b) => b.classList.toggle('on', on)); toast(on ? 'أضيفت إلى المفضلة' : 'أزيلت من المفضلة'); if (current === 'favs' && !stack.length) renderFavs(); return; }
   if (t.tagName === 'A') {
     const href = t.getAttribute('href') || '';
-    const top = stack[stack.length - 1], here = (top && top._id) || '';
+    const top = stack[stack.length - 1], here = ds.tid || (top && top._id) || '';
     if (/wa\.me\//.test(href)) track('wa', here); else if (/^tel:/.test(href)) track('call', here);
     if (ds.ext !== undefined || /^https?:/.test(href)) { e.preventDefault(); openExternal(href); }
     return;  // tel: / mailto: handled by the system
@@ -838,6 +840,7 @@ document.addEventListener('click', (e) => {
     else { const p = d.projects.find((x) => x.slug === id); if (p) openProjectShare(p); }
     return;
   }
+  if (ds.callback) { e.stopPropagation(); callbackSheet(ds.callback, ds.cbt || '', ds.ref || ''); return; }
   if (ds.pshare) { e.stopPropagation(); const p = DATA().projects.find((x) => x.slug === ds.pshare); if (p) openProjectShare(p); return; }
   if (ds.notify !== undefined) { push.enable(); return; }
   if (ds.account !== undefined) { pushPage('account'); return; }
@@ -853,6 +856,7 @@ document.addEventListener('click', (e) => {
   if (ds.lead) { pushPage('lead', ds.lead); return; }
   if (ds.pushc !== undefined) { pushPage('apush'); return; }
   if (ds.guide !== undefined) { pushPage('guide'); return; }
+  if (ds.contacts !== undefined) { pushPage('contacts'); return; }
   if (ds.calc !== undefined) { pushPage('calc', ds.calc); return; }
   if (ds.prof !== undefined) { if (session.token()) pushPage('uprof', ds.prof); return; }
   if (ds.chat) { pushPage('chat', ds.chat); return; }
@@ -962,6 +966,7 @@ initOwnerUI({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id), closeT
 initChat({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id) });
 initNews({ esc, toast, I });
 initCalc({ esc, toast, I, money, waLink });
+initContact({ esc, toast, I, waLink, CONTACT });
 initPlanView({ esc, toast, I, money });
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
 initCrm({ esc, toast, I, money, waLink, DATA: () => DATA(), pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop() });
