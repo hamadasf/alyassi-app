@@ -13,7 +13,7 @@ import { initNews, loadNews, renderTicker, newsPage, initNewsPage } from './news
 import { initCalc, calcPage, initCalc2 } from './calc.js';
 import { initPlanView, planViewPage, initPlanView2 } from './planview.js';
 import { track, deviceId } from './track.js';
-import { initContact, contactBar, refLine, callbackSheet, refOf } from './contact.js';
+import { initContact, contactBar, refLine, callbackSheet, refOf, waText } from './contact.js';
 import { initCrm, wantedPage, initWanted, wantedAddPage, initWantedAdd, alertsPage, initAlerts, leadsPage, initLeads, leadPage, initLead, apushPage, initApush, guidePage, initGuide, contactsPage, initContacts } from './crm.js';
 import { initReport, reportPage, initReportPage } from './report.js';
 import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
@@ -34,7 +34,7 @@ const fmtDate = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); re
 /* ================= helpers ================= */
 const waLink = (text) => `https://wa.me/${CONTACT.whatsapp}?text=${encodeURIComponent(text)}`;
 const landUrl = (l) => `${SITE}/${l.project}/#p${l.n}`;
-const landMsg = (l) => `مرحباً، وجدت هذا الإعلان في تطبيق عمر الياسي للعقارات وأرغب بالاستفسار:\nقطعة رقم ${l.n} · ${l.projectName}\nرقم المرجع: ${refOf(l)}\n${landUrl(l)}`;
+const landMsg = (l) => waText(`قطعة رقم ${l.n} · ${l.projectName}`, landUrl(l), refOf(l));
 
 async function openWeb(url, title) {
   if (!native) { window.open(url, '_blank'); return; }

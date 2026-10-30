@@ -10,11 +10,14 @@ const abbr = (slug) => String(slug || '').split(/[-_]/).filter(Boolean).map((w) 
 /** Reference number shown on the listing and sent with every message: OAY-4938-DN (company plot) / OAY-M901 (member listing). */
 export const refOf = (x) => (x.project && x.n ? `OAY-${x.n}-${abbr(x.project)}` : `OAY-M${x.id}`);
 
+/** The WhatsApp message, worded like Bayut's: interest + listing link + reference number. */
+export const waText = (title, url, ref) => `مرحباً، أنا مهتم بعقارك الموجود على تطبيق عمر الياسي للعقارات${title ? ` (${title})` : ''}، رابط الإعلان:\n${url || 'https://omaralyassirealestate.com'}\nالرقم المرجعي\n${ref}`;
+
 /** id: the land id used by the app ('slug:n' or member listing id); title: what the client sees in the message. */
 export function contactBar({ id, title, url }) {
   const { esc, I, CONTACT, waLink } = H;
   const ref = refOf(typeof id === 'string' && id.includes(':') ? { project: id.split(':')[0], n: id.split(':')[1] } : { id });
-  const msg = `مرحباً، وجدت هذا الإعلان في تطبيق عمر الياسي للعقارات وأرغب بالاستفسار:\n${title}\nرقم المرجع: ${ref}${url ? '\n' + url : ''}`;
+  const msg = waText(title, url, ref);
   return `<div class="bar cbar3">
     <a class="btn call" href="tel:${CONTACT.phone}" data-tid="${esc(id)}">${I.phone} اتصال</a>
     <a class="btn wa" href="${esc(waLink(msg))}" data-ext data-tid="${esc(id)}">${I.wa} واتساب</a>

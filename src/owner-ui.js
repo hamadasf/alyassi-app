@@ -439,5 +439,5 @@ export function oLandPage(x) {
       ${x.description ? `<p class="odesc notr">${esc(x.description)}</p>` : ''}
       ${x.maps ? `<a class="btn ghost block" href="${esc(x.maps)}" data-ext>${I.pin} الموقع على الخريطة</a>` : ''}
     </div>
-    ${contactBar({ id: String(x.id), title: x.title + (x.number ? ' (رقم ' + x.number + ')' : ''), url: '' })}`;
+    ${contactBar({ id: String(x.id), title: x.title + (x.number ? ' · رقم ' + x.number : ''), url: x.url || '' })}`;
 }
