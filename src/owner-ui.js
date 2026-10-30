@@ -236,7 +236,7 @@ function admCard(x) {
 }
 export function adminPage() {
   return `<div class="pad acc">
-    <div class="seg four"><button data-atab="pending">الطلبات <em id="cPending"></em></button><button data-atab="publish">المعروضة</button><button data-atab="draft">المرفوضة</button><button data-atab="verify">التوثيق <em id="cVerify"></em></button><button data-atab="users">المستخدمون</button></div>
+    <div class="seg four"><button data-atab="pending">الطلبات <em id="cPending"></em></button><button data-atab="publish">المعروضة</button><button data-atab="draft">المرفوضة</button>${(session.user() || {}).admin ? '<button data-atab="verify">التوثيق <em id="cVerify"></em></button>' : ''}<button data-atab="users">المستخدمون</button></div>
     <div id="admSearch" hidden><input class="srch" id="admQ" placeholder="ابحث بالاسم أو البريد…"></div>
     <div id="admList"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>
   </div>`;
@@ -329,11 +329,26 @@ export function initAdmAd(pg, id) {
     catch (ex) { err.textContent = ex.message; err.hidden = false; go.disabled = false; go.textContent = 'حفظ التعديلات'; }
   };
 }
+export const STAFF = { chats: 'الرد على المحادثات', leads: 'متابعة العملاء وسجل التواصل', viewings: 'مواعيد المعاينة', listings: 'مراجعة الإعلانات وطلبات الشراء', news: 'الأخبار والدليل', push: 'الإشعارات الموجّهة', report: 'التقرير الأسبوعي' };
+/* ---------- the office team (admin only) ---------- */
+export function staffPage() { return '<div class="pad acc" id="staffl"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>'; }
+export async function initStaff(pg) {
+  const { esc } = H; const box = pg.querySelector('#staffl');
+  try {
+    const j = await api('adm_staff_list');
+    box.innerHTML = `<div class="ccard"><b>فريق المكتب</b><p class="muted">لإضافة موظف: يسجّل حساباً في التطبيق، ثم افتح ملفه من «لوحة الإدارة ← المستخدمون» واختر صلاحياته.</p></div>
+      ${j.items.length ? j.items.map((u) => `<div class="mine adm" data-auser="${u.id}"><div class="acc-av">${esc((u.name || '?').charAt(0))}</div><div><b>${esc(u.name)}</b><span>${esc(u.email)}</span>
+        <span class="pills">${(u.staff || []).map((k) => `<i class="pill plan">${esc(STAFF[k] || k)}</i>`).join('')}</span></div><i class="chev">‹</i></div>`).join('') : '<p class="muted">لا يوجد موظفون بعد.</p>'}
+      <button class="btn primary block" id="pickStaff">👥 اختيار موظف من المستخدمين</button>`;
+    box.querySelector('#pickStaff').onclick = (e) => { e.stopPropagation(); ADM.tab = 'users'; H.pushPage('admin'); };
+  } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+}
 export function admUserPage() {
   return `<div class="pad acc" id="auser"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>`;
 }
 export async function initAdmUser(pg, id) {
   const { esc, toast } = H; const box = pg.querySelector('#auser');
+  const me = session.user() || {};
   const draw = (j) => {
     const u = j.user;
     box.innerHTML = `<div class="acc-card"><div class="acc-av">${esc((u.name || u.email || '?').charAt(0))}</div>
@@ -344,16 +359,24 @@ export async function initAdmUser(pg, id) {
         <span>${esc(u.verify.company)} · ${esc(u.verify.city)} · ${esc(u.verify.name)} · <a href="tel:${esc(u.verify.phone)}" dir="ltr">${esc(u.verify.phone)}</a></span>
         ${u.verify.status === 'pending' ? `<div class="admact"><button class="btn wa" data-vok2="1">✓ توثيق (+500 نقطة)</button><button class="btn ghost" data-vno2="1">✕ رفض</button></div>` : u.verify.status === 'approved' ? `<button class="btn ghost danger" data-vno2="1">إلغاء التوثيق</button>` : ''}</div>` : ''}
       <div class="pts"><b>${u.admin ? '∞' : u.points}</b><span>نقطة · تمييز إعلان = 70 نقطة</span></div>
-      <div class="admact">
+      ${me.admin ? `<div class="admact">
         <button class="btn gold" data-pts="70">＋ 70 نقطة (تمييز إعلان)</button>
         <button class="btn ghost" data-pts="custom">± نقاط بعدد آخر</button>
         ${u.admin ? '' : `<button class="btn ghost ${u.banned ? '' : 'danger'}" data-ban="${u.banned ? '0' : '1'}">${u.banned ? 'رفع الإيقاف' : '⛔ إيقاف الحساب'}</button>`}
       </div>
+      ${u.admin ? '' : `<div class="ccard staffbox"><h4 class="lh">🧑‍💼 موظف في فريق المكتب</h4><p class="muted">اختر ما يستطيع هذا الحساب فعله نيابةً عن الإدارة. الرسائل التي يرسلها للعملاء تظهر باسم «عمر الياسي للعقارات».</p>
+        ${Object.entries(STAFF).map(([k, v]) => `<label class="nrow"><span>${v}</span><input type="checkbox" class="nchk" data-perm="${k}" ${(u.staff || []).includes(k) ? 'checked' : ''}></label>`).join('')}
+        <button class="btn primary block" data-savestaff>حفظ الصلاحيات</button></div>`}` : ''}
       <h2 class="h2">إعلاناته (${j.ads.length})</h2>
       ${j.ads.length ? j.ads.map(admCard).join('') : '<p class="muted">لا توجد إعلانات.</p>'}`;
   };
   const load = async () => { try { draw(await api('adm_user', { id })); } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; } };
   box.onclick = async (e) => {
+    if (e.target.closest('[data-savestaff]')) {
+      const perms = [...box.querySelectorAll('[data-perm]')].filter((c) => c.checked).map((c) => c.dataset.perm);
+      try { await api('adm_staff', { id, perms }); toast(perms.length ? 'تم حفظ صلاحيات الموظف ✓' : 'تمت إزالة صلاحيات الموظف'); load(); } catch (ex) { toast(ex.message); }
+      return;
+    }
     const vk = e.target.closest('[data-vok2]'), vn = e.target.closest('[data-vno2]');
     if (vk || vn) {
       let note = ''; if (vn) { note = prompt('السبب (اختياري):', ''); if (note === null) return; }
@@ -439,5 +462,5 @@ export function oLandPage(x) {
       ${x.description ? `<p class="odesc notr">${esc(x.description)}</p>` : ''}
       ${x.maps ? `<a class="btn ghost block" href="${esc(x.maps)}" data-ext>${I.pin} الموقع على الخريطة</a>` : ''}
     </div>
-    ${contactBar({ id: String(x.id), title: x.title + (x.number ? ' · رقم ' + x.number : ''), url: x.url || '' })}`;
+    ${contactBar({ id: String(x.id), title: x.title + (x.number ? ' · رقم ' + x.number : ''), url: x.url || '', loc: x.maps || '' })}`;
 }

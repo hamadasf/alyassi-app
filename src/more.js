@@ -1,5 +1,5 @@
 // «المزيد» tab: profile, my activity, account & settings, support, terms & privacy.
-import { api, session, refreshMe, logout, resizePhoto } from './owner.js';
+import { api, session, refreshMe, logout, resizePhoto, can, isOffice } from './owner.js';
 
 let H = null;   // helpers from main.js
 export function initMore(h) { H = h; }
@@ -28,13 +28,19 @@ export function renderMore(el) {
       ${row(I.bell, 'أرض تناسبني', 'data-alerts=""')}
       ${row(I.search, 'مطلوب أرض', 'data-wanted')}
       ${row(I.doc, 'دليل الإجراءات العقارية', 'data-guide')}
-      ${row(I.doc, 'الأخبار العقارية', 'data-news', u && u.admin ? '<small>إدارة الشريط</small>' : '')}
-      ${u && u.admin ? row(I.shield, 'لوحة الإدارة', 'data-admin') : ''}
-      ${u && u.admin ? row(I.grid, 'التقرير الأسبوعي', 'data-report') : ''}
-      ${u && u.admin ? row(I.phone, 'سجل التواصل', 'data-contacts') : ''}
-      ${u && u.admin ? row(I.user, 'متابعة العملاء', 'data-leads') : ''}
-      ${u && u.admin ? row(I.bell, 'إشعار موجّه', 'data-pushc') : ''}
+      ${row(I.doc, 'الأخبار العقارية', 'data-news', can('news') ? '<small>إدارة الشريط</small>' : '')}
+      ${u ? row(I.calendar || I.bell, 'مواعيد المعاينة', 'data-myviews') : ''}
     </div>
+    ${isOffice() ? `<h3 class="msec">${u.admin ? 'الإدارة' : 'أدوات الموظف'}</h3><div class="mbox">
+      ${can('listings') ? row(I.shield, 'لوحة الإدارة', 'data-admin') : ''}
+      ${can('viewings') ? row(I.calendar || I.bell, 'مواعيد المعاينة (الإدارة)', 'data-views') : ''}
+      ${can('leads') ? row(I.user, 'متابعة العملاء', 'data-leads') : ''}
+      ${can('leads') ? row(I.phone, 'سجل التواصل', 'data-contacts') : ''}
+      ${can('chats') ? row(I.chat, 'المحادثات الخاصة', 'data-tab="chats"') : ''}
+      ${can('push') ? row(I.bell, 'إشعار موجّه', 'data-pushc') : ''}
+      ${can('report') ? row(I.grid, 'التقرير الأسبوعي', 'data-report') : ''}
+      ${u.admin ? row(I.verified, 'الموظفون', 'data-staff') : ''}
+    </div>` : ''}
     <h3 class="msec">الحساب والإعدادات</h3>
     <div class="mbox">
       ${row(I.verified, 'توثيق حسابك', u ? 'data-verify' : 'data-account', u ? (u.verified ? '<small class="okv">موثّق</small>' : u.verify && u.verify.status === 'pending' ? '<small>قيد المراجعة</small>' : '') : '')}
@@ -57,7 +63,7 @@ export function profilePage() {
   const { esc } = H; const u = session.user() || {};
   return `<div class="pprof">${avatar(u, 'bav')}<h2><span class="notr">${esc(u.verified && u.company ? u.company : u.name || '')}</span> ${vb(u)}</h2>
       ${u.verified && u.company ? `<p class="muted">${esc(u.name || '')}</p>` : ''}
-      <span class="role">${u.admin ? '🛡️ مدير' : u.verified ? '🏢 مكتب عقاري موثّق' : '🏠 عضو'}</span>
+      <span class="role">${u.admin ? '🛡️ مدير' : (u.staff || []).length ? '🧑‍💼 موظف' : u.verified ? '🏢 مكتب عقاري موثّق' : '🏠 عضو'}</span>
       <div class="pinfo"><div><b>${u.admin ? '∞' : u.points || 0}</b><span>نقطة</span></div><div><b dir="ltr">${esc(u.phone || '—')}</b><span>الجوال</span></div></div>
       <p class="muted">${esc(u.email || '')}${u.google ? ' · دخول بحساب جوجل' : ''}</p></div>
     <div class="pad"><button class="btn primary block share-big" data-editprofile>تعديل الملف</button></div>`;

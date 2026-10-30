@@ -1,11 +1,12 @@
 // Clients follow-up (office), «مطلوب أرض» requests, «أرض تناسبني» alerts, targeted notifications and the
 // Sharjah procedures guide.
-import { api, session } from './owner.js';
+import { api, session, can } from './owner.js';
 import { quoteToOffice } from './chat.js';
 
 let H = null;
 export function initCrm(h) { H = h; }
-const isAdmin = () => !!(session.user() || {}).admin;
+const isAdmin = () => can('listings');
+const canNews = () => can('news');
 const CATS = ['سكني', 'فلل', 'تجاري', 'محلات', 'صناعي'];
 const loc = () => (document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE');
 const day = (t) => new Date(t).toLocaleDateString(loc(), { day: 'numeric', month: 'short', year: 'numeric' });
@@ -232,7 +233,7 @@ export async function initGuide(pg) {
   const view = () => {
     el.innerHTML = `<div class="ccard ghead"><b>📘 دليل الإجراءات العقارية في الشارقة</b><span>معلومات عامة للاسترشاد — الأنظمة والرسوم تُحدَّث من الجهات الرسمية، وفريقنا يساعدك في كل خطوة.</span></div>
       ${secs.map((s, i) => `<details class="gsec"${i ? '' : ' open'}><summary>${esc(s.title)}</summary><div class="gbody notr">${link(s.body)}</div></details>`).join('')}
-      <div class="lbtns"><a class="btn wa" href="${esc(H.waLink('مرحباً، عندي استفسار عن إجراءات شراء وتسجيل أرض في الشارقة'))}" data-ext>${H.I.wa} اسأل فريقنا</a>${isAdmin() ? '<button class="btn ghost" id="gedit">✏️ تعديل الدليل</button>' : ''}</div>`;
+      <div class="lbtns"><a class="btn wa" href="${esc(H.waLink('مرحباً، عندي استفسار عن إجراءات شراء وتسجيل أرض في الشارقة'))}" data-ext>${H.I.wa} اسأل فريقنا</a>${canNews() ? '<button class="btn ghost" id="gedit">✏️ تعديل الدليل</button>' : ''}</div>`;
     const b = el.querySelector('#gedit'); if (b) b.onclick = edit;
   };
   const edit = () => {

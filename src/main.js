@@ -14,6 +14,8 @@ import { initCalc, calcPage, initCalc2 } from './calc.js';
 import { initPlanView, planViewPage, initPlanView2 } from './planview.js';
 import { track, deviceId } from './track.js';
 import { initContact, contactBar, refLine, callbackSheet, refOf, waText } from './contact.js';
+import { initViews, setBooking, bookPage, initBook, myViewsPage, initMyViews, viewsPage, initViewsAdm } from './views.js';
+import { staffPage, initStaff } from './owner-ui.js';
 import { initCrm, wantedPage, initWanted, wantedAddPage, initWantedAdd, alertsPage, initAlerts, leadsPage, initLeads, leadPage, initLead, apushPage, initApush, guidePage, initGuide, contactsPage, initContacts } from './crm.js';
 import { initReport, reportPage, initReportPage } from './report.js';
 import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
@@ -222,7 +224,9 @@ function openFromPush(ev) {
   const n = (ev && (ev.notification || ev.result && ev.result.notification)) || {};
   const data = n.additionalData || n.data || {};
   if (data.open === 'land' && data.id) { refresh(false); openLandId(String(data.id)); return; }
-  if (data.open === 'chat') { closeAll(); showTab('chats'); setTimeout(() => (data.user && (session.user() || {}).admin ? pushPage('chat', String(data.user)) : pushPage('mychat')), 300); return; }
+  if (data.open === 'chat') { closeAll(); showTab('chats'); setTimeout(() => (data.user && can('chats') ? pushPage('chat', String(data.user)) : pushPage('mychat')), 300); return; }
+  if (data.open === 'views') { closeAll(); showTab('contact'); setTimeout(() => pushPage('views'), 300); return; }
+  if (data.open === 'myviews') { closeAll(); showTab('contact'); setTimeout(() => pushPage('myviews'), 300); return; }
   if (data.open === 'contacts') { closeAll(); showTab('contact'); setTimeout(() => pushPage('contacts'), 300); return; }
   if (data.open === 'leads') { closeAll(); showTab('contact'); setTimeout(() => pushPage('leads'), 300); return; }
   if (data.open === 'oland' && data.id) { closeAll(); loadOwnerLands().then(() => pushPage('oland', String(data.id))); return; }
@@ -694,7 +698,7 @@ function landPage(l) {
       <button class="btn primary block" data-plan="${esc(landUrl(l))}" data-pview="${esc(l.project + '|' + l.n)}">${I.map} عرض القطعة على المخطط</button>
       ${l.doc ? `<a class="btn ghost block" href="${esc(l.doc)}" data-ext>${I.pdf} مخطط القطعة (PDF)</a>` : ''}
     </div>
-    ${contactBar({ id: l.id, title: `قطعة رقم ${l.n} · ${l.projectName}`, url: landUrl(l) })}`;
+    ${contactBar({ id: l.id, title: `قطعة رقم ${l.n} · ${l.projectName}`, url: landUrl(l), loc: l.lo || l.projectLoc || '' })}`;
 }
 
 /* ================= navigation ================= */
@@ -740,6 +744,10 @@ function pushPage(kind, id) {
   else if (kind === 'apush') { html = apushPage(id); }
   else if (kind === 'guide') { html = guidePage(); }
   else if (kind === 'contacts') { html = contactsPage(); }
+  else if (kind === 'book') { html = bookPage(); }
+  else if (kind === 'myviews') { html = myViewsPage(); }
+  else if (kind === 'views') { html = viewsPage(); }
+  else if (kind === 'staff') { html = staffPage(); }
   else if (kind === 'calc') { l = id ? findLand(id) : null; html = calcPage(l); }
   else if (kind === 'mychat') { html = myChatPage(); }
   else if (kind === 'group') { html = groupPage(); }
@@ -748,7 +756,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -774,6 +782,10 @@ function pushPage(kind, id) {
   if (kind === 'apush') initApush(pg);
   if (kind === 'guide') initGuide(pg);
   if (kind === 'contacts') initContacts(pg);
+  if (kind === 'book') initBook(pg);
+  if (kind === 'myviews') initMyViews(pg);
+  if (kind === 'views') initViewsAdm(pg);
+  if (kind === 'staff') initStaff(pg);
   if (kind === 'land') track('view', id);
   if (kind === 'oland') track('view', id);
   if (kind === 'plan') track('plan', String(id).split('|')[0]);
@@ -857,6 +869,10 @@ document.addEventListener('click', (e) => {
   if (ds.pushc !== undefined) { pushPage('apush'); return; }
   if (ds.guide !== undefined) { pushPage('guide'); return; }
   if (ds.contacts !== undefined) { pushPage('contacts'); return; }
+  if (ds.book) { setBooking({ id: ds.book, title: ds.btitle || '', ref: ds.bref || '', loc: ds.bloc || '' }); pushPage('book'); return; }
+  if (ds.myviews !== undefined) { pushPage('myviews'); return; }
+  if (ds.views !== undefined) { pushPage('views'); return; }
+  if (ds.staff !== undefined) { pushPage('staff'); return; }
   if (ds.calc !== undefined) { pushPage('calc', ds.calc); return; }
   if (ds.prof !== undefined) { if (session.token()) pushPage('uprof', ds.prof); return; }
   if (ds.chat) { pushPage('chat', ds.chat); return; }
@@ -967,6 +983,7 @@ initChat({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id) });
 initNews({ esc, toast, I });
 initCalc({ esc, toast, I, money, waLink });
 initContact({ esc, toast, I, waLink, CONTACT });
+initViews({ esc, toast, I, money });
 initPlanView({ esc, toast, I, money });
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
 initCrm({ esc, toast, I, money, waLink, DATA: () => DATA(), pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop() });

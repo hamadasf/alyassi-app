@@ -28,6 +28,9 @@ export const session = {
   subs: new Set(),
   emit() { session.subs.forEach((f) => { try { f(session.user()); } catch { /* ignore */ } }); },
 };
+/** Office powers: the admin has all of them; staff only those the admin gave them. */
+export function can(perm) { const u = session.user(); return !!u && (!!u.admin || (Array.isArray(u.staff) && u.staff.includes(perm))); }
+export function isOffice() { const u = session.user(); return !!u && (!!u.admin || (Array.isArray(u.staff) && u.staff.length > 0)); }
 export async function refreshMe() { if (!session.token()) return null; try { const j = await api('me'); ls.set('acc_user', j.user); return j.user; } catch { return session.user(); } }
 export async function logout() { try { await api('logout'); } catch { /* ignore */ } session.clear(); }
 

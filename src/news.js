@@ -1,6 +1,6 @@
 // «شريط الأخبار»: real-estate news scrolling right → left at the top of the app, the company emblem between items.
 // The office adds and removes news from the app (الأخبار العقارية page) — stored on the website.
-import { api, session } from './owner.js';
+import { api, session, can } from './owner.js';
 
 let H = null, items = [];
 const LS = 'oay:news';
@@ -44,7 +44,7 @@ export function renderTicker() {
 
 /* ---------- the news page (all items; the office adds / removes them here) ---------- */
 export function newsPage() {
-  const admin = !!(session.user() || {}).admin;
+  const admin = can('news');
   return `<div class="pad newspg">${admin ? `<form class="ncard nform" id="nform"><h4>إضافة خبر جديد</h4>
       <textarea id="ntext" rows="3" maxlength="400" placeholder="نص الخبر…"></textarea>
       <input id="nlink" type="url" dir="ltr" placeholder="رابط (اختياري) https://">
@@ -55,7 +55,7 @@ export function newsPage() {
     <div id="nlist"></div></div>`;
 }
 export function initNewsPage(pg) {
-  const admin = !!(session.user() || {}).admin, box = pg.querySelector('#nlist');
+  const admin = can('news'), box = pg.querySelector('#nlist');
   const date = (t) => new Date(t).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE', { day: 'numeric', month: 'long', year: 'numeric' });
   const draw = () => {
     box.innerHTML = items.length ? items.map((n, i) => `<article class="ncard nitem"><div class="nhead"><img src="icons/icon-192.png" alt=""><div><b>عمر الياسي للعقارات</b><time>${date(n.t)}</time></div></div>

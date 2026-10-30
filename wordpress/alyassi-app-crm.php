@@ -24,7 +24,7 @@ function oay_lead_get( $uid ) {
 }
 /** Records interest from a member. $src: chat | wa | call | wanted | alert | calc */
 function oay_lead_add( $uid, $src, $lid = '', $name = '' ) {
-	$u = get_userdata( $uid ); if ( ! $u || user_can( $u, 'manage_options' ) ) { return; }
+	$u = get_userdata( $uid ); if ( ! $u || user_can( $u, 'manage_options' ) || oay_is_office( $u ) ) { return; }
 	$l = oay_lead_get( $uid ) ?: array( 'status' => 'new', 'notes' => array(), 'next' => 0, 'items' => array(), 'last' => 0, 'created' => oay_crm_ms() );
 	$now = oay_crm_ms();
 	foreach ( $l['items'] as $it ) { if ( $it['src'] === $src && (string) $it['lid'] === (string) $lid && $now - $it['t'] < DAY_IN_SECONDS * 1000 ) { return; } }   // once a day per listing
@@ -42,7 +42,7 @@ function oay_lead_row( $u ) {
 		'online' => function_exists( 'oay_is_online' ) ? oay_is_online( $u->ID ) : false );
 }
 function oay_acc_adm_leads() {
-	oay_acc_need_admin(); $st = oay_acc_arg( 'status', 10 );
+	oay_acc_need_perm( 'leads' ); $st = oay_acc_arg( 'status', 10 );
 	$us = get_users( array( 'meta_key' => 'oay_lead_last', 'orderby' => 'meta_value_num', 'order' => 'DESC', 'number' => 400 ) );
 	$rows = array(); $counts = array_fill_keys( array_keys( OAY_LEAD_ST ), 0 ); $due = 0; $end = strtotime( 'tomorrow', current_time( 'timestamp' ) ) - ( current_time( 'timestamp' ) - time() );
 	foreach ( $us as $u ) {
@@ -53,13 +53,13 @@ function oay_acc_adm_leads() {
 	oay_acc_ok( array( 'items' => $rows, 'counts' => $counts, 'due' => $due, 'labels' => OAY_LEAD_ST ) );
 }
 function oay_acc_adm_lead() {
-	oay_acc_need_admin(); $u = get_userdata( absint( oay_acc_arg( 'id', 12 ) ) ); if ( ! $u ) { oay_acc_err( 'غير موجود', 404 ); }
+	oay_acc_need_perm( 'leads' ); $u = get_userdata( absint( oay_acc_arg( 'id', 12 ) ) ); if ( ! $u ) { oay_acc_err( 'غير موجود', 404 ); }
 	$l = oay_lead_get( $u->ID ) ?: array( 'status' => 'new', 'notes' => array(), 'next' => 0, 'items' => array(), 'last' => 0 );
 	$wanted = array_map( 'oay_wanted_card', get_posts( array( 'post_type' => 'oay_wanted', 'author' => $u->ID, 'post_status' => array( 'publish', 'pending', 'draft' ), 'numberposts' => 20 ) ) );
 	oay_acc_ok( array( 'user' => oay_lead_row( $u ), 'lead' => $l, 'wanted' => $wanted, 'alerts' => oay_alerts( $u->ID ), 'labels' => OAY_LEAD_ST ) );
 }
 function oay_acc_adm_lead_save() {
-	$me = oay_acc_need_admin(); $u = get_userdata( absint( oay_acc_arg( 'id', 12 ) ) ); if ( ! $u ) { oay_acc_err( 'غير موجود', 404 ); }
+	$me = oay_acc_need_perm( 'leads' ); $u = get_userdata( absint( oay_acc_arg( 'id', 12 ) ) ); if ( ! $u ) { oay_acc_err( 'غير موجود', 404 ); }
 	$l = oay_lead_get( $u->ID ) ?: array( 'status' => 'new', 'notes' => array(), 'next' => 0, 'items' => array(), 'last' => oay_crm_ms(), 'created' => oay_crm_ms() );
 	$in = oay_acc_in();
 	if ( isset( $in['status'] ) && isset( OAY_LEAD_ST[ $in['status'] ] ) ) { $l['status'] = $in['status']; if ( in_array( $in['status'], array( 'won', 'lost' ), true ) ) { $l['next'] = 0; } }
@@ -112,7 +112,7 @@ function oay_acc_wanted_submit() {
 	$area = mb_substr( sanitize_text_field( oay_acc_arg( 'area', 80 ) ), 0, 80 ); $pay = in_array( oay_acc_arg( 'pay', 10 ), array( 'cash', 'inst', 'any' ), true ) ? oay_acc_arg( 'pay', 10 ) : 'any';
 	if ( ! $cat && ! $plan && ! $area ) { oay_acc_err( 'اختر نوع الأرض أو المشروع أو المنطقة' ); }
 	$title = trim( 'مطلوب ' . ( $cat ?: 'أرض' ) . ( $plan ? ' · ' . $plan : '' ) . ( $area ? ' · ' . $area : '' ) );
-	$admin = oay_acc_is_admin( $u );
+	$admin = oay_acc_can( $u, 'listings' );
 	$id = wp_insert_post( array( 'post_type' => 'oay_wanted', 'post_status' => $admin ? 'publish' : 'pending', 'post_title' => $title, 'post_content' => $notes, 'post_author' => $u->ID ) );
 	if ( is_wp_error( $id ) || ! $id ) { oay_acc_err( 'تعذّر الحفظ' ); }
 	foreach ( array( 'cat' => $cat, 'project' => $plan, 'budget' => $budget, 'minft' => $minft, 'maxft' => $maxft, 'area' => $area, 'pay' => $pay ) as $k => $v ) { update_post_meta( $id, $k, $v ); }
@@ -123,22 +123,22 @@ function oay_acc_wanted_submit() {
 }
 function oay_acc_wanted_mine() { $u = oay_acc_need_user(); oay_acc_ok( array( 'items' => array_map( 'oay_wanted_card', get_posts( array( 'post_type' => 'oay_wanted', 'author' => $u->ID, 'post_status' => array( 'publish', 'pending', 'draft' ), 'numberposts' => 50 ) ) ) ) ); }
 function oay_acc_wanted_list() {
-	$admin = false; $tok = oay_acc_arg( 'token', 120 ); if ( $tok ) { $u = oay_acc_user_from_token( $tok ); $admin = oay_acc_is_admin( $u ); }
+	$admin = false; $tok = oay_acc_arg( 'token', 120 ); if ( $tok ) { $u = oay_acc_user_from_token( $tok ); $admin = oay_acc_can( $u, 'listings' ); }
 	$ps = get_posts( array( 'post_type' => 'oay_wanted', 'post_status' => 'publish', 'numberposts' => 200, 'date_query' => array( array( 'after' => '120 days ago' ) ) ) );
 	oay_acc_ok( array( 'items' => array_map( function ( $p ) use ( $admin ) { return oay_wanted_card( $p, $admin ); }, $ps ) ) );
 }
 function oay_acc_wanted_delete() {
 	$u = oay_acc_need_user(); $p = get_post( absint( oay_acc_arg( 'id', 12 ) ) );
-	if ( ! $p || 'oay_wanted' !== $p->post_type || ( (int) $p->post_author !== $u->ID && ! oay_acc_is_admin( $u ) ) ) { oay_acc_err( 'غير موجود', 404 ); }
+	if ( ! $p || 'oay_wanted' !== $p->post_type || ( (int) $p->post_author !== $u->ID && ! oay_acc_can( $u, 'listings' ) ) ) { oay_acc_err( 'غير موجود', 404 ); }
 	wp_delete_post( $p->ID, true ); oay_acc_ok();
 }
 function oay_acc_adm_wanted() {
-	oay_acc_need_admin(); $st = 'publish' === oay_acc_arg( 'status', 10 ) ? 'publish' : 'pending';
+	oay_acc_need_perm( 'listings' ); $st = 'publish' === oay_acc_arg( 'status', 10 ) ? 'publish' : 'pending';
 	$ps = get_posts( array( 'post_type' => 'oay_wanted', 'post_status' => $st, 'numberposts' => 200 ) );
 	oay_acc_ok( array( 'items' => array_map( function ( $p ) { return oay_wanted_card( $p, true ); }, $ps ), 'pending' => (int) wp_count_posts( 'oay_wanted' )->pending ) );
 }
 function oay_acc_adm_wanted_review() {
-	oay_acc_need_admin(); $p = get_post( absint( oay_acc_arg( 'id', 12 ) ) ); if ( ! $p || 'oay_wanted' !== $p->post_type ) { oay_acc_err( 'غير موجود', 404 ); }
+	oay_acc_need_perm( 'listings' ); $p = get_post( absint( oay_acc_arg( 'id', 12 ) ) ); if ( ! $p || 'oay_wanted' !== $p->post_type ) { oay_acc_err( 'غير موجود', 404 ); }
 	$ok = '1' === oay_acc_arg( 'approve', 2 );
 	wp_update_post( array( 'ID' => $p->ID, 'post_status' => $ok ? 'publish' : 'draft' ) );
 	if ( function_exists( 'oay_push_to' ) ) { oay_push_to( oay_notif_filter( array( (int) $p->post_author ), 'reqs' ), $ok ? 'تم نشر طلب الشراء ✓' : 'لم يُنشر طلب الشراء', $ok ? 'سنعلمك بأي أرض تناسب طلبك' : 'تواصل مع الإدارة للتفاصيل', array( 'open' => 'account' ) ); }
@@ -273,11 +273,11 @@ function oay_aud_aliases( $aud, $project = '', $uid = 0 ) {
 	return array_values( array_unique( $al ) );
 }
 function oay_acc_adm_push_count() {
-	oay_acc_need_admin(); $aud = oay_acc_arg( 'audience', 20 );
+	oay_acc_need_perm( 'push' ); $aud = oay_acc_arg( 'audience', 20 );
 	oay_acc_ok( array( 'n' => 'all' === $aud ? -1 : count( oay_aud_aliases( $aud, oay_acc_arg( 'project', 60 ), absint( oay_acc_arg( 'uid', 12 ) ) ) ) ) );
 }
 function oay_acc_adm_push() {
-	oay_acc_need_admin(); oay_acc_limit( 'admpush', 30 );
+	oay_acc_need_perm( 'push' ); oay_acc_limit( 'admpush', 30 );
 	$key = trim( (string) get_option( 'oay_onesignal_key', '' ) ); if ( '' === $key ) { oay_acc_err( 'مفتاح الإشعارات غير مضبوط' ); }
 	$aud = oay_acc_arg( 'audience', 20 ); $title = sanitize_text_field( oay_acc_arg( 'title', 120 ) ); $body = sanitize_textarea_field( oay_acc_arg( 'body', 400 ) );
 	if ( mb_strlen( $title ) < 2 || mb_strlen( $body ) < 2 ) { oay_acc_err( 'اكتب العنوان والنص' ); }
@@ -316,7 +316,7 @@ function oay_guide_default() {
 }
 function oay_acc_guide() { $g = get_option( 'oay_guide', null ); oay_acc_ok( array( 'sections' => is_array( $g ) && $g ? $g : oay_guide_default(), 'updated' => (int) get_option( 'oay_guide_t', 0 ) ) ); }
 function oay_acc_adm_guide_save() {
-	oay_acc_need_admin(); $in = oay_acc_in(); $out = array();
+	oay_acc_need_perm( 'news' ); $in = oay_acc_in(); $out = array();
 	foreach ( array_slice( (array) ( $in['sections'] ?? array() ), 0, 30 ) as $s ) {
 		if ( ! is_array( $s ) ) { continue; } $t = sanitize_text_field( mb_substr( (string) ( $s['title'] ?? '' ), 0, 120 ) ); $b = sanitize_textarea_field( mb_substr( (string) ( $s['body'] ?? '' ), 0, 5000 ) );
 		if ( '' === $t ) { continue; } $out[] = array( 'id' => sanitize_key( $s['id'] ?? '' ) ?: wp_generate_password( 6, false, false ), 'title' => $t, 'body' => $b );
@@ -375,7 +375,7 @@ function oay_acc_contact_req() {
 	oay_acc_ok();
 }
 function oay_acc_adm_contacts() {
-	oay_acc_need_admin();
+	oay_acc_need_perm( 'leads' );
 	$log = get_option( 'oay_contacts', array() ); if ( ! is_array( $log ) ) { $log = array(); }
 	$done = oay_acc_arg( 'done', 30 );   // mark a call-back request as handled
 	if ( '' !== $done ) { foreach ( $log as &$x ) { if ( (string) $x['t'] === $done ) { $x['done'] = true; } } unset( $x ); update_option( 'oay_contacts', $log, false ); }

@@ -1,7 +1,7 @@
 // «المحادثات»: the public group (signed-in members) and each member's private chat with the office.
 // Listings from offices are asked about through the office, which forwards the advertiser's WhatsApp number when
 // it sees fit — members never reach each other directly, and phone numbers are not allowed in chats.
-import { api, session, resizePhoto } from './owner.js';
+import { api, session, resizePhoto, can, isOffice } from './owner.js';
 import { oLandCard } from './owner-ui.js';
 
 let H = null;
@@ -277,10 +277,10 @@ export function renderChatsTab(el) {
   const draw = () => {
     const g = (summary && summary.group) || {}, pv = (summary && summary.private) || {};
     el.querySelector('#clist').innerHTML = rowHTML('data-group', groupIcon(), 'المجموعة العامة', g.lastText || 'رسائل الأعضاء — لكل المسجّلين', g.last, g.unread)
-      + (u.admin ? '' : rowHTML('data-mychat', officeAv(pv.online), 'عمر الياسي للعقارات', pv.lastText || 'راسل الإدارة واستفسر عن أي إعلان', pv.last, pv.unread));
+      + (can('chats') ? '' : rowHTML('data-mychat', officeAv(pv.online), 'عمر الياسي للعقارات', pv.lastText || 'راسل الإدارة واستفسر عن أي إعلان', pv.last, pv.unread));
   };
   draw(); refreshUnread().then(draw);
-  if (u.admin) { el.querySelector('#inbox').innerHTML = '<h3 class="msec">رسائل خاصة</h3><div id="ibx"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>'; loadInbox(el.querySelector('#ibx')); }
+  if (can('chats')) { el.querySelector('#inbox').innerHTML = '<h3 class="msec">رسائل خاصة</h3><div id="ibx"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>'; loadInbox(el.querySelector('#ibx')); }
 }
 export function myChatPage() { return chatView(waHead(officeAv(false), `عمر الياسي للعقارات ${H.I.verified}`, '', 0)); }
 export function initMyChat(pg) { pg.classList.add('chatpg'); bindChat(pg, { admin: false }); }
@@ -332,7 +332,7 @@ export function initGroup(pg) {
     } catch (e) { box.innerHTML = `<p class="muted pad">${esc(e.message)}</p>`; }
   };
   bindComposer(pg, {
-    admin: (session.user() || {}).admin,
+    admin: isOffice(),
     onSend: async (text, files) => {
       if (sending) return false; sending = true;
       try { const j = await api('group_send', { text, files, after: lastId }); took(j); items = items.concat(j.items); lastId = items[items.length - 1].id; draw(); return true; }
@@ -382,7 +382,7 @@ export async function initProf(pg, id) {
     el.innerHTML = `<div class="ptop">${officeAv(p.online, 'big')}<h2>عمر الياسي للعقارات ${I.verified}</h2><p class="pst${p.online ? ' on' : ''}">${st || 'حساب الإدارة'}</p></div>
       <div class="pstats"><div><b>${money(p.ads)}</b><span>أرض معروضة</span></div><div><b>${I.verified}</b><span>حساب موثّق</span></div></div>
       <div class="pcard"><p>المكتب الرسمي لعمر الياسي للعقارات — الشارقة. جميع الاستفسارات عن الإعلانات تتم عن طريقنا.</p></div>
-      <div class="pbtns">${me.admin ? '' : `<button class="btn primary" data-mychat>${I.chat} مراسلة الإدارة</button>`}<button class="btn ghost" data-contactpg>الاتصال بنا</button></div>`;
+      <div class="pbtns">${isOffice() ? '' : `<button class="btn primary" data-mychat>${I.chat} مراسلة الإدارة</button>`}<button class="btn ghost" data-contactpg>الاتصال بنا</button></div>`;
     return;
   }
   const name = p.verified && p.company ? p.company : p.name;
@@ -404,7 +404,7 @@ export async function initProf(pg, id) {
       ${f.banned ? '<div class="prow"><span>الحالة</span><b class="red">موقوف</b></div>' : ''}
       <div class="pbtns">${ph ? `<a class="btn ghost" href="tel:${esc(ph)}">اتصال</a><a class="btn wa" href="${esc(waNum(ph))}" data-ext>${I.wa || ''} واتساب</a>` : ''}
         ${f.id !== me.id ? `<button class="btn primary" data-chat="${f.id}">${I.chat} محادثة</button>` : ''}<button class="btn ghost" data-auser="${f.id}">إدارة الحساب</button></div></div>`;
-  } else if (!me.admin && p.id !== me.id) {
+  } else if (!isOffice() && p.id !== me.id) {
     h += `<div class="pbtns"><button class="btn primary" data-askuser="${p.id}">${I.chat} استفسر عن طريق الإدارة</button></div>`;
   }
   const rt = p.rating || { avg: 0, n: 0, items: [] };

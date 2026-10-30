@@ -14,11 +14,12 @@ export const refOf = (x) => (x.project && x.n ? `OAY-${x.n}-${abbr(x.project)}` 
 export const waText = (title, url, ref) => `مرحباً، أنا مهتم بعقارك الموجود على تطبيق عمر الياسي للعقارات${title ? ` (${title})` : ''}، رابط الإعلان:\n${url || 'https://omaralyassirealestate.com'}\nالرقم المرجعي\n${ref}`;
 
 /** id: the land id used by the app ('slug:n' or member listing id); title: what the client sees in the message. */
-export function contactBar({ id, title, url }) {
+export function contactBar({ id, title, url, loc = '' }) {
   const { esc, I, CONTACT, waLink } = H;
   const ref = refOf(typeof id === 'string' && id.includes(':') ? { project: id.split(':')[0], n: id.split(':')[1] } : { id });
   const msg = waText(title, url, ref);
-  return `<div class="bar cbar3">
+  return `<button class="btn bookbtn" data-book="${esc(id)}" data-btitle="${esc(title)}" data-bref="${esc(ref)}" data-bloc="${esc(loc)}">📅 احجز موعد معاينة</button>
+  <div class="bar cbar3">
     <a class="btn call" href="tel:${CONTACT.phone}" data-tid="${esc(id)}">${I.phone} اتصال</a>
     <a class="btn wa" href="${esc(waLink(msg))}" data-ext data-tid="${esc(id)}">${I.wa} واتساب</a>
     <button class="btn ghost cb" data-callback="${esc(id)}" data-cbt="${esc(title)}" data-ref="${esc(ref)}">${I.chat} طلب اتصال</button></div>`;
