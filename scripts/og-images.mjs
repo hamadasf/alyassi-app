@@ -1,3 +1,5 @@
+process.on('uncaughtException', (e) => { console.log(`::warning::link pictures crashed: ${String(e && e.stack || e).slice(0, 500).replace(/\n/g, ' | ')}`); process.exit(1); });
+process.on('unhandledRejection', (e) => { console.log(`::warning::link pictures crashed: ${String(e && e.stack || e).slice(0, 500).replace(/\n/g, ' | ')}`); process.exit(1); });
 // Link-preview pictures for WhatsApp: one image per listed plot — the plot on its project plan, highlighted — drawn with
 // the app's own plan code and published as web/og/<project>/<plot>.jpg. The website's share link (?oay_p=…) points to it.
 // A project's pictures are redrawn only when its plots, statuses or prices change.
@@ -73,11 +75,11 @@ for (const p of projects) {
       readdirSync(cacheDir).filter((f) => f.startsWith(p.slug + '-') && `${cacheDir}/${f}` !== cached).forEach((f) => rmSync(`${cacheDir}/${f}`, { recursive: true, force: true }));
       made++;
       console.log(`${p.slug}: ${Object.keys(imgs).length} pictures`);
-    } catch (e) { console.warn(`${p.slug}: failed — ${e.message}`); }
+    } catch (e) { console.log(`::warning::link pictures ${p.slug}: ${String(e.message).slice(0, 300)}`); }
   }
   const src = existsSync(cached) ? cached : readdirSync(cacheDir).map((f) => `${cacheDir}/${f}`).find((f) => f.startsWith(`${cacheDir}/${p.slug}-`));
   if (src) cpSync(src, `${outDir}/${p.slug}`, { recursive: true });
 }
 if (browser) await browser.close();
 writeFileSync(`${cacheDir}/.changed`, made ? '1' : '0');
-console.log(`link pictures: ${made} projects redrawn`);
+console.log(`::notice::link pictures: ${made} projects redrawn, ${projects.filter((p) => existsSync(`${outDir}/${p.slug}`)).length}/${projects.length} published`);
