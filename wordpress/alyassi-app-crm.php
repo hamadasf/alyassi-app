@@ -385,3 +385,33 @@ function oay_acc_adm_contacts() {
 	foreach ( $log as $x ) { if ( $x['t'] > $week && isset( $c[ $x['kind'] ] ) ) { $c[ $x['kind'] ]++; } }
 	oay_acc_ok( array( 'items' => array_slice( $items, 0, 300 ), 'week' => $c, 'open' => count( array_filter( $log, function ( $x ) { return 'form' === $x['kind'] && empty( $x['done'] ); } ) ) ) );
 }
+
+/* ======================================================================================
+ * 8. Share link of a plot (?oay_p=<project>-<plot>): a small page whose link preview in WhatsApp shows the plot
+ *    highlighted on its plan (picture made by the app's build, on GitHub Pages); people are sent on to the plan.
+ * ==================================================================================== */
+add_action( 'template_redirect', function () {
+	if ( empty( $_GET['oay_p'] ) ) { return; }
+	$raw = sanitize_text_field( wp_unslash( $_GET['oay_p'] ) );
+	if ( ! preg_match( '/^([a-z0-9-]+)-([A-Za-z0-9]+)$/', $raw, $m ) ) { return; }
+	$slug = $m[1]; $n = $m[2]; $name = $slug;
+	if ( function_exists( 'dnp_projects' ) ) { $pr = dnp_projects(); if ( empty( $pr[ $slug ] ) ) { return; } $name = $pr[ $slug ]['name']; }
+	$info = function_exists( 'oay_plot_info' ) ? oay_plot_info( $slug, $n ) : null;
+	$pl = oay_plan_plots( $slug ); $ft = (int) ( $pl[ $n ][1] ?? 0 );
+	$st = array( 'av' => 'متاحة', 'res' => 'محجوزة', 'sold' => 'مباعة' );
+	$title = 'قطعة رقم ' . $n . ' · ' . $name . ' | عمر الياسي للعقارات';
+	$desc = implode( ' · ', array_filter( array( $info ? ( $st[ $info['s'] ] ?? '' ) : '', $ft ? number_format( $ft ) . ' قدم²' : '', $info && 'sold' !== $info['s'] && $info['total'] ? number_format( $info['total'] ) . ' درهم' : '', 'موقع القطعة على المخطط التفاعلي' ) ) );
+	$img = 'https://hamadasf.github.io/alyassi-app/og/' . rawurlencode( $slug ) . '/' . rawurlencode( $n ) . '.jpg';
+	$to = home_url( '/' . $slug . '/#p' . rawurlencode( $n ) );
+	status_header( 200 ); nocache_headers(); header( 'Content-Type: text/html; charset=utf-8' );
+	echo '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+		. '<title>' . esc_html( $title ) . '</title><meta name="description" content="' . esc_attr( $desc ) . '">'
+		. '<meta property="og:type" content="website"><meta property="og:site_name" content="عمر الياسي للعقارات"><meta property="og:locale" content="ar_AE">'
+		. '<meta property="og:title" content="' . esc_attr( $title ) . '"><meta property="og:description" content="' . esc_attr( $desc ) . '">'
+		. '<meta property="og:url" content="' . esc_url( home_url( '/?oay_p=' . rawurlencode( $raw ) ) ) . '">'
+		. '<meta property="og:image" content="' . esc_url( $img ) . '"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:type" content="image/jpeg">'
+		. '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="' . esc_url( $img ) . '">'
+		. '<meta http-equiv="refresh" content="0;url=' . esc_url( $to ) . '"><script>location.replace(' . wp_json_encode( $to ) . ')</script></head>'
+		. '<body style="font-family:sans-serif;text-align:center;padding:40px"><a href="' . esc_url( $to ) . '">' . esc_html( $title ) . '</a></body></html>';
+	exit;
+}, 0 );

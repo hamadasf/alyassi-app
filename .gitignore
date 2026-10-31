@@ -11,3 +11,5 @@ out/
 web/
 www/icons/
 .pdfcache/
+.ogcache/
+.og/

@@ -36,7 +36,9 @@ const fmtDate = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); re
 /* ================= helpers ================= */
 const waLink = (text) => `https://wa.me/${CONTACT.whatsapp}?text=${encodeURIComponent(text)}`;
 const landUrl = (l) => `${SITE}/${l.project}/#p${l.n}`;
-const landMsg = (l) => waText(`قطعة رقم ${l.n} · ${l.projectName}`, landUrl(l), refOf(l));
+/** Link for messages: its WhatsApp preview shows the plot highlighted on the plan (the website page then opens the plan). */
+const shareUrl = (l) => `${SITE}/?oay_p=${encodeURIComponent(l.project + '-' + l.n)}`;
+const landMsg = (l) => waText(`قطعة رقم ${l.n} · ${l.projectName}`, shareUrl(l), refOf(l));
 
 async function openWeb(url, title) {
   if (!native) { window.open(url, '_blank'); return; }
@@ -268,9 +270,9 @@ function landShareText(l, withPdf) {
     m.pay.forEach((r) => L.push(`• ${r[0]}: ${money(r[1])} درهم`));
   }
   L.push('');
+  L.push('🗺️ *موقع الأرض على المخطط التفاعلي:*', shareUrl(l));
   if (projLoc) L.push('📍 *موقع المشروع على الخريطة:*', projLoc);
   if (l.lo) L.push('📌 *موقع الأرض على الخريطة:*', l.lo);
-  L.push('🗺️ *موقع الأرض على المخطط التفاعلي:*', m.planUrl);
   if (withPdf && withPdf.hasPdf) L.push('', '📎 مرفق: بطاقة القطعة + مخطط الأرض (PDF)');
   else if (withPdf) { L.push('', '📎 مرفق: بطاقة القطعة (PDF)'); if (l.doc) L.push('مخطط الأرض:', l.doc); }
   else if (l.doc) L.push('📎 *مخطط الأرض (PDF):*', l.doc);
@@ -698,7 +700,7 @@ function landPage(l) {
       <button class="btn primary block" data-plan="${esc(landUrl(l))}" data-pview="${esc(l.project + '|' + l.n)}">${I.map} عرض القطعة على المخطط</button>
       ${l.doc ? `<a class="btn ghost block" href="${esc(l.doc)}" data-ext>${I.pdf} مخطط القطعة (PDF)</a>` : ''}
     </div>
-    ${contactBar({ id: l.id, title: `قطعة رقم ${l.n} · ${l.projectName}`, url: landUrl(l), loc: l.lo || l.projectLoc || '' })}`;
+    ${contactBar({ id: l.id, title: `قطعة رقم ${l.n} · ${l.projectName}`, url: shareUrl(l), loc: l.lo || l.projectLoc || '' })}`;
 }
 
 /* ================= navigation ================= */

@@ -70,6 +70,28 @@ jobs:
           path: .pdfcache
           key: projpdf-${{ github.run_id }}
 
+      - name: Restore link pictures
+        uses: actions/cache/restore@v4
+        with:
+          path: .ogcache
+          key: ogimg-${{ github.run_id }}
+          restore-keys: ogimg-
+
+      - name: Link pictures for WhatsApp (each plot on its plan)
+        id: og
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          node scripts/og-images.mjs web/data.json web/og .ogcache
+          echo "changed=$(cat .ogcache/.changed)" >> "$GITHUB_OUTPUT"
+
+      - name: Keep link pictures for the next run
+        if: steps.og.outputs.changed == '1'
+        uses: actions/cache/save@v4
+        with:
+          path: .ogcache
+          key: ogimg-${{ github.run_id }}
+
       - name: Detect price / status changes
         run: |
           curl -fsSL --max-time 30 -o /tmp/prev-data.json "https://hamadasf.github.io/alyassi-app/data.json?t=$(date +%s)" || true
