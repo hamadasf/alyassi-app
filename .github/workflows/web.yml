@@ -98,6 +98,10 @@ jobs:
           curl -fsSL --max-time 30 -o /tmp/prev-changes.json "https://hamadasf.github.io/alyassi-app/changes.json?t=$(date +%s)" || true
           node scripts/diff.mjs /tmp/prev-data.json web/data.json /tmp/prev-changes.json web/changes.json /tmp/new-changes.json
 
+      - name: Update the website's app files (it pulls them from this repository)
+        continue-on-error: true
+        run: curl -fsS --max-time 60 -A "Mozilla/5.0 alyassi-app-ci" "https://omaralyassirealestate.com/wp-admin/admin-ajax.php?action=oay_self_update" || true
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
