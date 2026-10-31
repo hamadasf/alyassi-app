@@ -37,7 +37,9 @@ const fmtDate = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); re
 const waLink = (text) => `https://wa.me/${CONTACT.whatsapp}?text=${encodeURIComponent(text)}`;
 const landUrl = (l) => `${SITE}/${l.project}/#p${l.n}`;
 /** Link for messages: its WhatsApp preview shows the plot highlighted on the plan (the website page then opens the plan). */
-const shareUrl = (l) => `${SITE}/?oay_p=${encodeURIComponent(l.project + '-' + l.n)}`;
+// switched on once the website has the share page (alyassi-app-crm.php §8)
+const SHARE_PAGE = false;
+const shareUrl = (l) => (SHARE_PAGE ? `${SITE}/?oay_p=${encodeURIComponent(l.project + '-' + l.n)}` : landUrl(l));
 const landMsg = (l) => waText(`قطعة رقم ${l.n} · ${l.projectName}`, shareUrl(l), refOf(l));
 
 async function openWeb(url, title) {
