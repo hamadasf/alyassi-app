@@ -956,3 +956,7 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .pvst.na { background: #94a3b8; }
 .ppbtn { background: #eef2f8; color: #24305e; border: 1.5px solid #cfd8e8; font-weight: 800; }
 .ppname { display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: 14px; margin: 4px 0 12px; } .ppname input { padding: 12px; border: 1px solid var(--line); border-radius: 12px; font: inherit; font-size: 16px; }
+.invfld small { font-size: 12px; font-weight: 700; } .invfld small.ok { color: #15803d; } .invfld small.bad { color: #b91c1c; }
+.invbox { display: flex; flex-direction: column; gap: 8px; } .invrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--line); }
+.invrow b { font-size: 16px; letter-spacing: 1px; } .invrow small { display: block; color: #64748b; font-size: 12px; margin-top: 2px; } .invrow.used b { color: #94a3b8; }
+.invlink { display: block; margin: 6px auto; font-size: 13px; }

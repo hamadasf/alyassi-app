@@ -96,7 +96,7 @@ function oay_no_phones( $t ) {
 }
 function oay_acc_is_admin( $u ) { return $u && user_can( $u, 'manage_options' ); }
 /* ---------------- staff: members the office gives some of its powers ---------------- */
-const OAY_STAFF_PERMS = array( 'chats' => 'الرد على المحادثات', 'leads' => 'متابعة العملاء وسجل التواصل', 'viewings' => 'مواعيد المعاينة', 'listings' => 'مراجعة الإعلانات وطلبات الشراء', 'news' => 'الأخبار والدليل', 'push' => 'الإشعارات الموجّهة', 'report' => 'التقرير الأسبوعي' );
+const OAY_STAFF_PERMS = array( 'chats' => 'الرد على المحادثات', 'leads' => 'متابعة العملاء وسجل التواصل', 'viewings' => 'مواعيد المعاينة', 'listings' => 'مراجعة الإعلانات وطلبات الشراء', 'news' => 'الأخبار والدليل', 'push' => 'الإشعارات الموجّهة', 'report' => 'التقرير الأسبوعي', 'payplan' => 'إرسال خطة السداد' );
 function oay_staff_perms( $uid ) { $p = get_user_meta( $uid, 'oay_staff', true ); return is_array( $p ) ? array_values( array_intersect( $p, array_keys( OAY_STAFF_PERMS ) ) ) : array(); }
 /** Admins can do everything; staff only what they were given. */
 function oay_acc_can( $u, $perm ) { return $u && ( oay_acc_is_admin( $u ) || in_array( $perm, oay_staff_perms( $u->ID ), true ) ); }
@@ -156,7 +156,8 @@ function oay_acc_reg_fields() {
 /** Step 1 of signing up: a 6-digit code sent to the e-mail (valid 15 minutes, 5 tries), so only real addresses get accounts. */
 function oay_acc_reg_code() {
 	oay_acc_limit( 'regcode', 6 );
-	$f = oay_acc_reg_fields(); $key = 'oay_regc_' . md5( $f['email'] );
+	$f = oay_acc_reg_fields();
+	$inv = oay_acc_arg( 'invite', 20 ); if ( '' !== $inv && function_exists( 'oay_invite_get' ) && ! oay_invite_get( $inv ) ) { oay_acc_err( 'كود الدعوة غير صحيح أو مستخدم من قبل' ); } $key = 'oay_regc_' . md5( $f['email'] );
 	$old = get_transient( $key );
 	if ( is_array( $old ) && time() - (int) $old['t'] < 55 ) { oay_acc_err( 'انتظر دقيقة قبل طلب كود جديد' ); }
 	$code = (string) wp_rand( 100000, 999999 );
@@ -175,9 +176,12 @@ function oay_acc_register() {
 	if ( ! is_array( $c ) ) { oay_acc_err( 'انتهت صلاحية الكود — اطلب كوداً جديداً' ); }
 	if ( (int) $c['n'] >= 5 ) { delete_transient( $key ); oay_acc_err( 'محاولات كثيرة — اطلب كوداً جديداً' ); }
 	if ( ! wp_check_password( $code, $c['h'] ) ) { $c['n'] = (int) $c['n'] + 1; set_transient( $key, $c, 15 * MINUTE_IN_SECONDS ); oay_acc_err( 'الكود غير صحيح' ); }
+	$inv = oay_acc_arg( 'invite', 20 );
+	if ( '' !== $inv && function_exists( 'oay_invite_get' ) && ! oay_invite_get( $inv ) ) { oay_acc_err( 'كود الدعوة غير صحيح أو مستخدم من قبل' ); }
 	delete_transient( $key );
 	$uid = oay_acc_new_user( $email, $name, $pass );
 	update_user_meta( $uid, 'oay_email_verified', 1 );
+	if ( '' !== $inv && function_exists( 'oay_invite_apply' ) ) { oay_invite_apply( $uid, $inv ); }   // a staff invitation: joins the office team
 	if ( $phone ) { update_user_meta( $uid, 'oay_phone', $phone ); }
 	oay_acc_ok( array( 'token' => oay_acc_issue_token( $uid ), 'user' => oay_acc_userdata( get_userdata( $uid ) ) ) );
 }

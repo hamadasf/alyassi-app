@@ -738,7 +738,7 @@ function landPage(l) {
         <div class="r total"><span>الإجمالي</span><b>${money(l.first + sumInst)} د.إ</b></div></div>` : ''}
       ${can('listings') || can('report') ? `<button class="btn ghost block stbtn" data-stats="${esc(l.id)}">📊 إحصائيات الإعلان</button>` : ''}
       ${ADGEN_ON && can('listings') && l.poly ? `<button class="btn adgbtn block" data-adgen="${esc(l.id)}">🎨 صمّم منشور إعلان لهذه القطعة</button>` : ''}
-      ${l.total && l.status !== 'sold' ? `<button class="btn ppbtn block" data-payplan="${esc(l.id)}">📄 خطة السداد PDF</button>` : ''}
+      ${can('payplan') && l.total && l.status !== 'sold' ? `<button class="btn ppbtn block" data-payplan="${esc(l.id)}">📄 خطة السداد PDF</button>` : ''}
       ${l.status === 'av' || l.status === 'res' ? `<button class="btn calcbtn block" data-calc="${esc(l.id)}">🧮 حاسبة الأقساط${l.total ? '' : ' (أدخل السعر)'}</button>` : ''}
       ${l.sketch && l.sketch !== l.img ? `<h2 class="h2">كروكي القطعة</h2><img class="sketch" src="${esc(l.sketch)}" alt="" loading="lazy" data-web="${esc(l.sketch)}">` : ''}
       <button class="btn primary block" data-plan="${esc(landUrl(l))}" data-pview="${esc(l.project + '|' + l.n)}">${I.map} عرض القطعة على المخطط</button>
@@ -965,7 +965,7 @@ document.addEventListener('click', (e) => {
   if (ds.brand !== undefined) { pushPage('brand'); return; }
   if (ds.stats) { pushPage('stats', ds.stats); return; }
   if (ds.mystats !== undefined) { pushPage('mystats'); return; }
-  if (ds.payplan) { const pl = findLand(ds.payplan); if (pl) openPayPlan(pl); return; }
+  if (ds.payplan) { const pl = findLand(ds.payplan); if (pl && can('payplan')) openPayPlan(pl); return; }
   if (ds.chkupd !== undefined) { checkUpdate(openExternal, true).then((r) => { if (r === 'latest') toast('أنت على آخر نسخة ✓'); else if (!r) toast('تعذّر التحقق — تأكد من الإنترنت'); }); return; }
   if (ds.advmine !== undefined) { if (session.token()) pushPage('advmine'); else pushPage('account'); return; }
   if (ds.settings !== undefined) { pushPage('settings'); return; }
@@ -1092,6 +1092,16 @@ async function boot() {
   document.querySelectorAll('[data-i]').forEach((el) => { el.innerHTML = I[el.dataset.i] + el.innerHTML; });
   if (loadFromCache()) renderAll(); else { renderHome(); renderLands(); renderProjects(); renderContact(); }
   showTab('home');
+  // a staff invitation link (…/?inv=CODE): kept for the sign-up form, or used at once by a signed-in account
+  {
+    let inv = ''; try { inv = (new URLSearchParams(location.search).get('inv') || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); } catch { inv = ''; }
+    if (inv) {
+      try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ }
+      if (session.token()) {
+        setTimeout(async () => { if (!confirm('استخدام دعوة الموظف مع حسابك الحالي؟')) return; try { const j = await accApi('invite_redeem', { code: inv }); session.set(session.token(), j.user); toast('تمت إضافتك لفريق عمر الياسي للعقارات ✓'); } catch (e) { toast(e.message); } }, 800);
+      } else { try { localStorage.setItem('oay:inv', inv); } catch { /* private mode */ } setTimeout(() => pushPage('account'), 700); }
+    }
+  }
   if (native) {
     SystemBars.setStyle({ style: SystemBarsStyle.Dark }).catch(() => {});
     App.addListener('backButton', goBack);

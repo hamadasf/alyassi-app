@@ -4,6 +4,7 @@ import { pickersHTML, bindPickers, pickersError, submitAdv, advMissing, renderAd
 import { Capacitor } from '@capacitor/core';
 import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands, can } from './owner.js';
 import { contactBar, refLine } from './contact.js';
+import { APP_URL } from './config.js';
 
 const native = Capacitor.isNativePlatform();
 let H = null;   // helpers from main.js: { esc, toast, I, money, pushPage, closeTop, waLink, CONTACT }
@@ -26,6 +27,7 @@ export function accountPage() {
       ${!u.admin ? `<button class="btn ghost block stbtn" data-mystats>📊 إحصائيات إعلاناتي</button>` : ''}
       <h2 class="h2">طلباتي</h2>
       <div id="myList"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>
+      ${!u.admin ? '<button class="linkbtn invlink" data-redeem>لديك كود دعوة موظف؟</button>' : ''}
       <button class="btn ghost block" data-logout>تسجيل الخروج</button>
     </div>`;
   }
@@ -38,6 +40,7 @@ export function accountPage() {
       <label>البريد الإلكتروني<input name="email" type="email" dir="ltr" autocomplete="email" inputmode="email" maxlength="120"></label>
       <label data-only="register">رقم الجوال<input name="phone" type="tel" dir="ltr" autocomplete="tel" inputmode="tel" placeholder="05xxxxxxxx" maxlength="20"></label>
       <label>كلمة المرور<input name="password" type="password" dir="ltr" autocomplete="current-password" maxlength="200"></label>
+      <label data-only="register" class="invfld">كود دعوة موظف (إن وُجد)<input name="invite" dir="ltr" maxlength="12" autocapitalize="characters" placeholder="مثال: K7Q2M9XA"><small id="invOk"></small></label>
       ${pickersHTML({}, 'register')}
       <div class="codebox" id="codeBox" hidden>
         <b>📧 أرسلنا كود تفعيل من 6 أرقام إلى بريدك</b><span id="codeTo" dir="ltr"></span>
@@ -59,6 +62,12 @@ export async function initAccount(pg, next) {
   };
   if (session.token() && session.user()) {
     pg.querySelector('[data-logout]').onclick = async () => { await logout(); toast('تم تسجيل الخروج'); H.closeTop(); };
+    const rd = pg.querySelector('[data-redeem]');
+    if (rd) rd.onclick = async () => {
+      const code = (prompt('اكتب كود الدعوة:', '') || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!code) return;
+      try { const j = await api('invite_redeem', { code }); session.set(session.token(), j.user); toast('تمت إضافتك لفريق عمر الياسي للعقارات ✓'); H.closeTop(); setTimeout(() => H.pushPage('account'), 280); }
+      catch (ex) { toast(ex.message); }
+    };
     const box = pg.querySelector('#myList');
     try {
       const j = await api('mine');
@@ -106,7 +115,7 @@ export async function initAccount(pg, next) {
   form.email.addEventListener('input', () => { if (codeFor && form.email.value.trim().toLowerCase() !== codeFor) { resetCode(); go.textContent = 'إنشاء الحساب'; } });
   let resendAt = 0;
   const askCode = async (f) => {
-    await api('reg_code', { name: f.name, email: f.email, phone: f.phone, password: f.password });
+    await api('reg_code', { name: f.name, email: f.email, phone: f.phone, password: f.password, invite: String(f.invite || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '') });
     codeFor = f.email.trim().toLowerCase(); codeBox.hidden = false; pg.querySelector('#codeTo').textContent = f.email.trim();
     resendAt = Date.now() + 60000; form.code.focus(); go.textContent = 'تأكيد وإنشاء الحساب';
   };
@@ -115,11 +124,24 @@ export async function initAccount(pg, next) {
     try { await askCode(Object.fromEntries(new FormData(form))); toast('تم إرسال كود جديد'); } catch (ex) { err.textContent = ex.message; err.hidden = false; }
   };
   const readPics = bindPickers(form);
+  // a staff invitation (from the link, or typed): checked as soon as it is there
+  let invOk = false;
+  const invEl = form.invite, invMsg = pg.querySelector('#invOk');
+  const checkInv = async () => {
+    const code = invEl.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''); invOk = false; invMsg.textContent = ''; invMsg.className = '';
+    if (code.length < 6) { const pk = form.querySelector('.advpicks'); if (pk && mode === 'register') pk.hidden = false; return; }
+    try { const r = await api('invite_check', { code }); invOk = true; invMsg.textContent = '✓ دعوة موظف صالحة — الصلاحيات: ' + r.perms.join('، '); invMsg.className = 'ok'; }
+    catch (ex) { invMsg.textContent = ex.message; invMsg.className = 'bad'; }
+    const pk = form.querySelector('.advpicks'); if (pk && mode === 'register') pk.hidden = invOk;   // staff: no advertiser pictures needed
+  };
+  invEl.addEventListener('change', checkInv); invEl.addEventListener('input', () => { if (invEl.value.replace(/\W/g, '').length >= 8) checkInv(); });
+  { let saved = ''; try { saved = localStorage.getItem('oay:inv') || ''; } catch { /* none */ } if (saved) { invEl.value = saved; setMode('register'); checkInv(); } }
   form.onsubmit = async (e) => {
     e.preventDefault(); err.hidden = true;
     const f = Object.fromEntries(new FormData(form));
+    f.invite = String(f.invite || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!f.invite) delete f.invite;
     const pics = readPics();
-    const bad = mode === 'register' ? pickersError(pics) : null;
+    const bad = mode === 'register' && !(f.invite && invOk) ? pickersError(pics) : null;   // staff invited by the office: pictures not needed
     if (bad) { err.textContent = bad; err.hidden = false; return; }
     go.disabled = true; go.textContent = '…';
     if (mode === 'register' && !codeFor) {   // step 1: the code to the e-mail
@@ -131,7 +153,8 @@ export async function initAccount(pg, next) {
     try {
       const j = await api(mode, mode === 'login' ? { email: f.email, password: f.password } : f);
       session.set(j.token, j.user);
-      if (mode === 'register') { try { await submitAdv(pics); toast(pics.logo ? 'أُرسلت صورتك وشعار الشركة للاعتماد' : 'أُرسلت صورتك للاعتماد'); } catch { /* can be sent again from the account page */ } }
+      if (mode === 'register' && f.invite) { try { localStorage.removeItem('oay:inv'); } catch { /* none */ } toast('أهلاً بك في فريق عمر الياسي للعقارات ✓'); }
+      if (mode === 'register' && pics.photo) { try { await submitAdv(pics); toast(pics.logo ? 'أُرسلت صورتك وشعار الشركة للاعتماد' : 'أُرسلت صورتك للاعتماد'); } catch { /* can be sent again from the account page */ } }
       done(session.user() || j.user);
     } catch (ex) { err.textContent = ex.message; err.hidden = false; if (/انتهت|اطلب كود/.test(ex.message)) resetCode(); }
     go.disabled = false; go.textContent = mode === 'login' ? 'دخول' : codeFor ? 'تأكيد وإنشاء الحساب' : 'إنشاء الحساب';
@@ -367,7 +390,7 @@ export function initAdmAd(pg, id) {
     catch (ex) { err.textContent = ex.message; err.hidden = false; go.disabled = false; go.textContent = 'حفظ التعديلات'; }
   };
 }
-export const STAFF = { chats: 'الرد على المحادثات', leads: 'متابعة العملاء وسجل التواصل', viewings: 'مواعيد المعاينة', listings: 'مراجعة الإعلانات وطلبات الشراء', news: 'الأخبار والدليل', push: 'الإشعارات الموجّهة', report: 'التقرير الأسبوعي' };
+export const STAFF = { chats: 'الرد على المحادثات', leads: 'متابعة العملاء وسجل التواصل', viewings: 'مواعيد المعاينة', listings: 'مراجعة الإعلانات وطلبات الشراء', news: 'الأخبار والدليل', push: 'الإشعارات الموجّهة', report: 'التقرير الأسبوعي', payplan: 'إرسال خطة السداد' };
 /* ---------- the office team (admin only) ---------- */
 export function staffPage() { return '<div class="pad acc" id="staffl"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>'; }
 export async function initStaff(pg) {
@@ -377,8 +400,41 @@ export async function initStaff(pg) {
     box.innerHTML = `<div class="ccard"><b>فريق المكتب</b><p class="muted">لإضافة موظف: يسجّل حساباً في التطبيق، ثم افتح ملفه من «لوحة الإدارة ← المستخدمون» واختر صلاحياته.</p></div>
       ${j.items.length ? j.items.map((u) => `<div class="mine adm" data-auser="${u.id}"><div class="acc-av">${esc((u.name || '?').charAt(0))}</div><div><b>${esc(u.name)}</b><span>${esc(u.email)}</span>
         <span class="pills">${(u.staff || []).map((k) => `<i class="pill plan">${esc(STAFF[k] || k)}</i>`).join('')}</span></div><i class="chev">‹</i></div>`).join('') : '<p class="muted">لا يوجد موظفون بعد.</p>'}
-      <button class="btn primary block" id="pickStaff">👥 اختيار موظف من المستخدمين</button>`;
+      <button class="btn primary block" id="pickStaff">👥 اختيار موظف من المستخدمين</button>
+      <div class="ccard invbox"><b>🔗 رابط دعوة موظف</b><p class="muted">أرسل الرابط للموظف — يسجّل حساباً واحداً فقط عن طريقه ويحصل مباشرة على الصلاحيات التي تختارها هنا. كل رابط يُستخدم مرة واحدة.</p>
+        ${Object.entries(STAFF).map(([k, v]) => `<label class="nrow"><span>${v}</span><input type="checkbox" class="nchk" data-iperm="${k}" ${k === 'payplan' ? 'checked' : ''}></label>`).join('')}
+        <label class="ppname">اسم الموظف (للتذكير، اختياري)<input id="invNote" maxlength="60"></label>
+        <button class="btn gold block" id="invNew">＋ إنشاء رابط دعوة</button>
+        <div id="invList"></div></div>`;
     box.querySelector('#pickStaff').onclick = (e) => { e.stopPropagation(); ADM.tab = 'users'; H.pushPage('admin'); };
+    const invLink = (code) => `${APP_URL}?inv=${code}`;
+    const invText = (code) => `مرحباً 👋\nهذه دعوتك للانضمام إلى فريق *عمر الياسي للعقارات* في التطبيق.\n\n🔗 سجّل حسابك من الرابط:\n${invLink(code)}\n\nأو من تطبيق الأندرويد: حسابي ← حساب جديد ← اكتب كود الدعوة: *${code}*\n\nالرابط لحساب واحد فقط.`;
+    const list = box.querySelector('#invList');
+    const loadInv = async () => {
+      try {
+        const r = await api('adm_invites');
+        list.innerHTML = r.items.length ? `<h4 class="lh">الدعوات</h4>${r.items.map((x) => `<div class="invrow${x.used ? ' used' : ''}">
+            <div><b dir="ltr">${esc(x.code)}</b>${x.note ? ` · ${esc(x.note)}` : ''}<small>${x.used ? `✓ سجّل بها: ${esc(x.user)}` : 'لم تُستخدم بعد'} · ${(x.perms || []).map((k) => esc(r.labels[k] || k)).join('، ')}</small></div>
+            ${x.used ? '' : `<span class="rowbtns"><button class="btn sm wa" data-invsend="${esc(x.code)}">إرسال</button><button class="btn sm" data-invcopy="${esc(x.code)}">نسخ</button><button class="btn sm danger" data-invdel="${esc(x.code)}">حذف</button></span>`}</div>`).join('')}` : '';
+      } catch (e) { list.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+    };
+    box.querySelector('#invNew').onclick = async (e) => {
+      e.stopPropagation(); const b = e.currentTarget;
+      const perms = [...box.querySelectorAll('[data-iperm]')].filter((c) => c.checked).map((c) => c.dataset.iperm);
+      if (!perms.length) { H.toast('اختر صلاحية واحدة على الأقل'); return; }
+      b.disabled = true;
+      try { const r = await api('adm_invite_new', { perms, note: box.querySelector('#invNote').value.trim() }); box.querySelector('#invNote').value = ''; await loadInv(); { const a = document.createElement('a'); a.href = H.waLink(invText(r.code)); a.dataset.ext = ''; document.body.appendChild(a); a.click(); a.remove(); } }
+      catch (ex) { H.toast(ex.message); }
+      b.disabled = false;
+    };
+    list.onclick = async (e) => {
+      const s = e.target.closest('[data-invsend]'), c = e.target.closest('[data-invcopy]'), d = e.target.closest('[data-invdel]'); if (!s && !c && !d) return;
+      e.stopPropagation();
+      if (s) { const a = document.createElement('a'); a.href = H.waLink(invText(s.dataset.invsend)); a.dataset.ext = ''; document.body.appendChild(a); a.click(); a.remove(); return; }
+      if (c) { try { await navigator.clipboard.writeText(invText(c.dataset.invcopy)); H.toast('تم نسخ الدعوة — الصقها في أي محادثة'); } catch { H.toast(invLink(c.dataset.invcopy)); } return; }
+      if (d && confirm('حذف رابط الدعوة؟ لن يعمل بعد ذلك.')) { try { await api('adm_invite_del', { code: d.dataset.invdel }); loadInv(); } catch (ex) { H.toast(ex.message); } }
+    };
+    loadInv();
   } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
 }
 export function admUserPage() {
