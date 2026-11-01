@@ -6,7 +6,7 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { cardModel, buildLandPdf } from './card.js';
 import { paintPlanLoc, paintCardLoc } from './planloc.js';
-import { session, refreshMe, ownerLands, loadOwnerLands, api as accApi } from './owner.js';
+import { session, refreshMe, ownerLands, loadOwnerLands, api as accApi, can } from './owner.js';
 import { initChat, refreshUnread, renderChatsTab, chatPage, initChatPage, askAbout, myChatPage, initMyChat, groupPage, initGroup, profPage, initProf } from './chat.js';
 import { initNotifs, notifsPage } from './notifs.js';
 import { initNews, loadNews, renderTicker, newsPage, initNewsPage } from './news.js';
