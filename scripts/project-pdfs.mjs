@@ -47,7 +47,7 @@ for (const p of projects) {
       await ctx.close();
       console.log(`${p.slug}: built (${(statSync(tmp).size / 1048576).toFixed(1)} MB)`);
     } catch (e) {
-      console.warn(`${p.slug}: failed — ${e.message}`);
+      console.log(`::warning::${p.slug}: project PDF failed — ${e.message}`);
       // fall back to the last good copy, whatever state it was made from
       const old = readdirSync(cacheDir).find((f) => f.startsWith(p.slug + '-'));
       if (old) copyFileSync(`${cacheDir}/${old}`, `${outDir}/${p.slug}.pdf`);
@@ -58,4 +58,4 @@ for (const p of projects) {
 if (browser) await browser.close();
 writeFileSync(`${outDir}/index.json`, JSON.stringify(index));
 writeFileSync(`${cacheDir}/.changed`, built ? '1' : '0');
-console.log(`project PDFs: ${Object.keys(index).length}/${projects.length} ready, ${built} rebuilt`);
+console.log(`::notice::project PDFs: ${Object.keys(index).length}/${projects.length} ready, ${built} rebuilt; missing: ${projects.filter((p) => !index[p.slug]).map((p) => p.slug).join(', ') || 'none'}`);
