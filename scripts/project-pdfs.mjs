@@ -58,4 +58,4 @@ for (const p of projects) {
 if (browser) await browser.close();
 writeFileSync(`${outDir}/index.json`, JSON.stringify(index));
 writeFileSync(`${cacheDir}/.changed`, built ? '1' : '0');
-console.log(`::notice::project PDFs: ${Object.keys(index).length}/${projects.length} ready, ${built} rebuilt; missing: ${projects.filter((p) => !index[p.slug]).map((p) => p.slug).join(', ') || 'none'}`);
+console.log(`::notice::project PDFs: ${Object.keys(index).length}/${projects.length} ready, ${built} rebuilt; sizes: ${Object.entries(index).map(([k, v]) => k + '=' + (v.size / 1048576).toFixed(1) + 'MB').join(' ')}; missing: ${projects.filter((p) => !index[p.slug]).map((p) => p.slug).join(', ') || 'none'}`);
