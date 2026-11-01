@@ -415,3 +415,36 @@ add_action( 'template_redirect', function () {
 		. '<body style="font-family:sans-serif;text-align:center;padding:40px"><a href="' . esc_url( $to ) . '">' . esc_html( $title ) . '</a></body></html>';
 	exit;
 }, 0 );
+
+/* ---------- §9 the web app's ad designer: the site's own pictures / PDFs with CORS (so they can be drawn into the post) ----------
+ * Only files already public on this site: the uploads folder and the plan plugin's assets; only pictures and PDFs. */
+function oay_upl_serve() {
+	$u = isset( $_GET['u'] ) ? esc_url_raw( wp_unslash( $_GET['u'] ) ) : '';
+	$path = (string) wp_parse_url( $u, PHP_URL_PATH ); $host = (string) wp_parse_url( $u, PHP_URL_HOST );
+	if ( ! $path || strtolower( $host ) !== strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) ) ) { status_header( 404 ); exit; }
+	$up = wp_get_upload_dir();
+	$roots = array(
+		array( (string) wp_parse_url( $up['baseurl'], PHP_URL_PATH ), $up['basedir'] ),
+		array( (string) wp_parse_url( plugins_url( 'alyassi-dabdaba-plan/assets' ), PHP_URL_PATH ), WP_PLUGIN_DIR . '/alyassi-dabdaba-plan/assets' ),
+	);
+	$file = '';
+	foreach ( $roots as $r ) {
+		if ( $r[0] && 0 === strpos( $path, rtrim( $r[0], '/' ) . '/' ) ) {
+			$cand = realpath( $r[1] . '/' . rawurldecode( substr( $path, strlen( rtrim( $r[0], '/' ) ) + 1 ) ) );
+			$base = realpath( $r[1] );
+			if ( $cand && $base && 0 === strpos( $cand, $base . DIRECTORY_SEPARATOR ) ) { $file = $cand; }
+			break;
+		}
+	}
+	$types = array( 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp', 'pdf' => 'application/pdf' );
+	$ext = strtolower( pathinfo( $file, PATHINFO_EXTENSION ) );
+	if ( ! $file || ! isset( $types[ $ext ] ) || ! is_readable( $file ) || filesize( $file ) > 30 * MB_IN_BYTES ) { status_header( 404 ); exit; }
+	header( 'Access-Control-Allow-Origin: *' );
+	header( 'Content-Type: ' . $types[ $ext ] );
+	header( 'Content-Length: ' . filesize( $file ) );
+	header( 'Cache-Control: public, max-age=3600' );
+	readfile( $file );
+	exit;
+}
+add_action( 'wp_ajax_oay_upl', 'oay_upl_serve' );
+add_action( 'wp_ajax_nopriv_oay_upl', 'oay_upl_serve' );

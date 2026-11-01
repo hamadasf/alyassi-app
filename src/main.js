@@ -12,6 +12,7 @@ import { initNotifs, notifsPage } from './notifs.js';
 import { initNews, loadNews, renderTicker, newsPage, initNewsPage } from './news.js';
 import { initCalc, calcPage, initCalc2 } from './calc.js';
 import { initPlanView, planViewPage, initPlanView2 } from './planview.js';
+import { initAdgen, adgenPage, initAdgen2, initAdgenPick } from './adgen.js';
 import { track, deviceId } from './track.js';
 import { initContact, contactBar, refLine, callbackSheet, refOf, waText } from './contact.js';
 import { initViews, setBooking, bookPage, initBook, myViewsPage, initMyViews, viewsPage, initViewsAdm } from './views.js';
@@ -697,6 +698,7 @@ function landPage(l) {
         <div class="inst"><div class="r head"><span>الدفعة الأولى</span><b>${money(l.first)} د.إ</b></div>
         ${l.inst.map((x, i) => `<div class="r"><span>القسط ${i + 1} · <bdi>${esc(fmtDate(x[0]))}</bdi></span><b>${money(x[1])} د.إ</b></div>`).join('')}
         <div class="r total"><span>الإجمالي</span><b>${money(l.first + sumInst)} د.إ</b></div></div>` : ''}
+      ${can('listings') && l.poly ? `<button class="btn adgbtn block" data-adgen="${esc(l.id)}">🎨 صمّم منشور إعلان لهذه القطعة</button>` : ''}
       ${l.status === 'av' || l.status === 'res' ? `<button class="btn calcbtn block" data-calc="${esc(l.id)}">🧮 حاسبة الأقساط${l.total ? '' : ' (أدخل السعر)'}</button>` : ''}
       ${l.sketch && l.sketch !== l.img ? `<h2 class="h2">كروكي القطعة</h2><img class="sketch" src="${esc(l.sketch)}" alt="" loading="lazy" data-web="${esc(l.sketch)}">` : ''}
       <button class="btn primary block" data-plan="${esc(landUrl(l))}" data-pview="${esc(l.project + '|' + l.n)}">${I.map} عرض القطعة على المخطط</button>
@@ -753,6 +755,7 @@ function pushPage(kind, id) {
   else if (kind === 'views') { html = viewsPage(); }
   else if (kind === 'staff') { html = staffPage(); }
   else if (kind === 'calc') { l = id ? findLand(id) : null; html = calcPage(l); }
+  else if (kind === 'adgen') { if (id) { l = findLand(id); p = l && d.projects.find((x) => x.slug === l.project); if (!l || !p || !l.poly) return; } html = adgenPage(id ? l : null, d.projects); }
   else if (kind === 'mychat') { html = myChatPage(); }
   else if (kind === 'group') { html = groupPage(); }
   else if (kind === 'aad') { html = admAdPage(id); if (!html) return; }
@@ -760,7 +763,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', adgen: 'مولّد منشورات الإعلانات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -777,6 +780,7 @@ function pushPage(kind, id) {
   if (kind === 'uprof') initProf(pg, id);
   if (kind === 'news') initNewsPage(pg);
   if (kind === 'calc') { initCalc2(pg, l); track('calc', id || ''); }
+  if (kind === 'adgen') { pg.classList.add('adgpg'); if (id) initAdgen2(pg, l, p); else initAdgenPick(pg, d.projects, (lid) => pushPage('adgen', lid)); }
   if (kind === 'report') initReportPage(pg, 0);
   if (kind === 'wanted') initWanted(pg);
   if (kind === 'wantedadd') initWantedAdd(pg);
@@ -866,6 +870,7 @@ document.addEventListener('click', (e) => {
   if (ds.profile !== undefined) { pushPage('profile'); return; }
   if (ds.news !== undefined) { pushPage('news'); return; }
   if (ds.report !== undefined) { pushPage('report'); return; }
+  if (ds.adgen !== undefined) { pushPage('adgen', ds.adgen); return; }
   if (ds.wanted !== undefined) { pushPage('wanted'); return; }
   if (ds.alerts !== undefined) { pushPage('alerts', ds.alerts); return; }
   if (ds.leads !== undefined) { pushPage('leads'); return; }
@@ -989,6 +994,7 @@ initCalc({ esc, toast, I, money, waLink });
 initContact({ esc, toast, I, waLink, CONTACT });
 initViews({ esc, toast, I, money });
 initPlanView({ esc, toast, I, money });
+initAdgen({ toast });
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
 initCrm({ esc, toast, I, money, waLink, DATA: () => DATA(), pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop() });
 window.__oayPush = push;   // the notification settings page talks to the push service

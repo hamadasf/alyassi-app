@@ -122,7 +122,10 @@ function typeImage(l) {
   return l;
 }
 
+const RAW = new Map();   // slug → every plot of the plan (with outlines), kept for the ad designer's «زاوية / سكة» reading
+export const rawPlots = (slug) => RAW.get(slug) || null;
 function buildProject(p, plan, state) {
+  if (plan && Array.isArray(plan.plots)) RAW.set(p.slug, plan.plots);
   const sp = (state && state.plots) || {};
   const bld = (state && state.bld) || {};
   // Only plots the company lists (present in the live state with a status) are shown — same as the website's «الأراضي» page.

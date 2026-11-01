@@ -33,6 +33,7 @@ export function renderMore(el) {
     </div>
     ${isOffice() ? `<h3 class="msec">${u.admin ? 'الإدارة' : 'أدوات الموظف'}</h3><div class="mbox">
       ${can('listings') ? row(I.shield, 'لوحة الإدارة', 'data-admin') : ''}
+      ${can('listings') ? row(I.image || I.doc, 'مولّد منشورات الإعلانات', 'data-adgen=""', '<small>قوالب الشركة</small>') : ''}
       ${can('viewings') ? row(I.calendar || I.bell, 'مواعيد المعاينة (الإدارة)', 'data-views') : ''}
       ${can('leads') ? row(I.user, 'متابعة العملاء', 'data-leads') : ''}
       ${can('leads') ? row(I.phone, 'سجل التواصل', 'data-contacts') : ''}

@@ -206,6 +206,11 @@ export function drawPlanView(c, P, lands, map, { x = 0, y = 0, w, h, radius = 0,
   }
   c.restore();
 }
+/** Only the plan itself (aerial photo + line drawing), in plan units, into the current transform of `c`. */
+export function drawPlanBase(c, P, map, x0, y0, x1, y1, ppu) {
+  if (P && P.img) { c.imageSmoothingQuality = 'high'; c.drawImage(P.img, 0, 0, map.w, map.h); }
+  if (P && P.V) drawVec(c, P.V, P.VS, x0, y0, x1, y1, ppu);
+}
 /** Which listed plot is under plan point (px, py)? */
 export function plotAt(lands, px, py) {
   for (const l of lands) {
