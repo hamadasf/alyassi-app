@@ -132,7 +132,7 @@ function oay_acc_new_user( $email, $name, $pass ) {
 }
 
 /* ---------------- account API ---------------- */
-$oay_acc_actions = array( 'register', 'login', 'google', 'me', 'profile', 'logout', 'meta', 'upload', 'submit', 'mine', 'public', 'delete', 'plotcheck', 'feature',
+$oay_acc_actions = array( 'register', 'reg_code', 'login', 'google', 'me', 'profile', 'logout', 'meta', 'upload', 'submit', 'mine', 'public', 'delete', 'plotcheck', 'feature',
 	'forgot', 'delete_account', 'avatar', 'verify_request', 'adm_verifs', 'adm_verify', 'chat_get', 'chat_send', 'chat_unread', 'adm_chats', 'adm_chat', 'adm_chat_send', 'notif_get', 'notif_save', 'group_get', 'group_send', 'group_delete', 'chat_file', 'user_get', 'news', 'rate_send', 'rate_delete', 'track', 'adm_report', 'adm_staff', 'adm_staff_list', 'adm_news_add', 'adm_news_delete', 'adm_news_move', 'adm_news_edit', 'adm_news_speed',
 	'adm_ads', 'adm_review', 'adm_save', 'adm_delete', 'adm_feature', 'adm_users', 'adm_user', 'adm_points', 'adm_ban' );
 foreach ( $oay_acc_actions as $a ) {
@@ -143,17 +143,41 @@ add_action( 'admin_init', function () {
 	if ( wp_doing_ajax() && isset( $_REQUEST['action'] ) && 0 === strpos( (string) $_REQUEST['action'], 'oay_acc_' ) ) { oay_acc_cors(); }
 }, 0 );
 
+/** The sign-up form's fields, checked (the same for asking the e-mail code and for creating the account). */
+function oay_acc_reg_fields() {
+	$f = array( 'name' => sanitize_text_field( oay_acc_arg( 'name', 80 ) ), 'email' => strtolower( sanitize_email( oay_acc_arg( 'email', 120 ) ) ),
+		'phone' => preg_replace( '/[^\d+]/', '', oay_acc_arg( 'phone', 20 ) ), 'pass' => oay_acc_arg( 'password', 200 ) );
+	if ( mb_strlen( $f['name'] ) < 2 ) { oay_acc_err( 'اكتب الاسم' ); }
+	if ( ! is_email( $f['email'] ) ) { oay_acc_err( 'البريد الإلكتروني غير صحيح' ); }
+	if ( strlen( $f['pass'] ) < 8 ) { oay_acc_err( 'كلمة المرور 8 أحرف على الأقل' ); }
+	if ( email_exists( $f['email'] ) ) { oay_acc_err( 'هذا البريد مسجّل من قبل — سجّل الدخول' ); }
+	return $f;
+}
+/** Step 1 of signing up: a 6-digit code sent to the e-mail (valid 15 minutes, 5 tries), so only real addresses get accounts. */
+function oay_acc_reg_code() {
+	oay_acc_limit( 'regcode', 6 );
+	$f = oay_acc_reg_fields(); $key = 'oay_regc_' . md5( $f['email'] );
+	$old = get_transient( $key );
+	if ( is_array( $old ) && time() - (int) $old['t'] < 55 ) { oay_acc_err( 'انتظر دقيقة قبل طلب كود جديد' ); }
+	$code = (string) wp_rand( 100000, 999999 );
+	set_transient( $key, array( 'h' => wp_hash_password( $code ), 't' => time(), 'n' => 0 ), 15 * MINUTE_IN_SECONDS );
+	$sent = wp_mail( $f['email'], 'كود تفعيل حسابك: ' . $code,
+		"مرحباً {$f['name']}،\n\nكود تفعيل حسابك في تطبيق عمر الياسي للعقارات:\n\n    $code\n\nاكتب الكود في التطبيق لإكمال التسجيل. الكود صالح لمدة 15 دقيقة.\nإذا لم تطلب إنشاء حساب فتجاهل هذه الرسالة.\n\nعمر الياسي للعقارات" );
+	if ( ! $sent ) { delete_transient( $key ); oay_acc_err( 'تعذّر إرسال الكود — تأكد من البريد وحاول مرة أخرى' ); }
+	oay_acc_ok( array( 'sent' => true ) );
+}
 function oay_acc_register() {
 	oay_acc_limit( 'reg', 8 );
-	$name  = sanitize_text_field( oay_acc_arg( 'name', 80 ) );
-	$email = sanitize_email( oay_acc_arg( 'email', 120 ) );
-	$phone = preg_replace( '/[^\d+]/', '', oay_acc_arg( 'phone', 20 ) );
-	$pass  = oay_acc_arg( 'password', 200 );
-	if ( mb_strlen( $name ) < 2 ) { oay_acc_err( 'اكتب الاسم' ); }
-	if ( ! is_email( $email ) ) { oay_acc_err( 'البريد الإلكتروني غير صحيح' ); }
-	if ( strlen( $pass ) < 8 ) { oay_acc_err( 'كلمة المرور 8 أحرف على الأقل' ); }
-	if ( email_exists( $email ) ) { oay_acc_err( 'هذا البريد مسجّل من قبل — سجّل الدخول' ); }
+	$f = oay_acc_reg_fields(); $name = $f['name']; $email = $f['email']; $phone = $f['phone']; $pass = $f['pass'];
+	// step 2: the e-mail code
+	$key = 'oay_regc_' . md5( $email ); $c = get_transient( $key ); $code = preg_replace( '/\D/', '', oay_acc_arg( 'code', 10 ) );
+	if ( '' === $code ) { oay_acc_err( 'أدخل كود التفعيل المرسل إلى بريدك (حدّث التطبيق إذا لم تظهر خانة الكود)' ); }
+	if ( ! is_array( $c ) ) { oay_acc_err( 'انتهت صلاحية الكود — اطلب كوداً جديداً' ); }
+	if ( (int) $c['n'] >= 5 ) { delete_transient( $key ); oay_acc_err( 'محاولات كثيرة — اطلب كوداً جديداً' ); }
+	if ( ! wp_check_password( $code, $c['h'] ) ) { $c['n'] = (int) $c['n'] + 1; set_transient( $key, $c, 15 * MINUTE_IN_SECONDS ); oay_acc_err( 'الكود غير صحيح' ); }
+	delete_transient( $key );
 	$uid = oay_acc_new_user( $email, $name, $pass );
+	update_user_meta( $uid, 'oay_email_verified', 1 );
 	if ( $phone ) { update_user_meta( $uid, 'oay_phone', $phone ); }
 	oay_acc_ok( array( 'token' => oay_acc_issue_token( $uid ), 'user' => oay_acc_userdata( get_userdata( $uid ) ) ) );
 }

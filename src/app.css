@@ -929,3 +929,7 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .advnote b { font-size: 14.5px; } .advnote span { font-size: 12.5px; } .advnote.bad { background: #fdecec; border-color: #f3b4b4; color: #9b1c1c; } .advnote.wait { background: #eef4ff; border-color: #c7d7f5; color: #1e3a8a; }
 .advreq .advpair { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; } .advreq .adv-ph { margin-top: 0; width: 64px; height: 64px; } .adv-logo.big { width: 96px; height: 64px; margin: 0; }
 .advkind { display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: 14px; } .advkind .seg button { font-size: 13.5px; padding: 10px 6px; }
+.codebox { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: #eef4ff; border: 1.5px solid #c7d7f5; } .codebox[hidden] { display: none; }
+.codebox b { font-size: 14px; color: #1e3a8a; } .codebox span { font-size: 13px; color: #334155; text-align: start; }
+.codebox input { font-size: 26px !important; letter-spacing: 10px; text-align: center; font-weight: 800; padding: 10px; border-radius: 12px; border: 1px solid #c7d7f5; }
+.codebox small { font-size: 12px; color: #475569; } .codebox .linkbtn { display: inline; padding: 0; font-size: 12px; }

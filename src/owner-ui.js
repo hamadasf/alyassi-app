@@ -38,6 +38,11 @@ export function accountPage() {
       <label data-only="register">رقم الجوال<input name="phone" type="tel" dir="ltr" autocomplete="tel" inputmode="tel" placeholder="05xxxxxxxx" maxlength="20"></label>
       <label>كلمة المرور<input name="password" type="password" dir="ltr" autocomplete="current-password" maxlength="200"></label>
       ${pickersHTML({}, 'register')}
+      <div class="codebox" id="codeBox" hidden>
+        <b>📧 أرسلنا كود تفعيل من 6 أرقام إلى بريدك</b><span id="codeTo" dir="ltr"></span>
+        <input name="code" id="regCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" placeholder="••••••">
+        <small>لم يصلك؟ تحقق من مجلد الرسائل غير المرغوبة (Spam)، أو <button type="button" class="linkbtn" id="resend">أعد الإرسال</button></small>
+      </div>
       <p class="ferr" id="accErr" hidden></p>
       <button class="btn primary block" type="submit" id="accGo">دخول</button>
       <button class="linkbtn" type="button" id="forgot" data-only="login">نسيت كلمة المرور؟</button>
@@ -81,8 +86,10 @@ export async function initAccount(pg, next) {
   // login / register
   let mode = 'login';
   const form = pg.querySelector('#accForm'), err = pg.querySelector('#accErr'), go = pg.querySelector('#accGo');
+  const codeBox = pg.querySelector('#codeBox'); let codeFor = '';   // the e-mail the code was sent to
+  const resetCode = () => { codeFor = ''; codeBox.hidden = true; form.code.value = ''; };
   const setMode = (m) => {
-    mode = m;
+    mode = m; resetCode();
     pg.querySelectorAll('[data-accmode]').forEach((b) => b.classList.toggle('on', b.dataset.accmode === m));
     form.querySelectorAll('[data-only]').forEach((el) => { el.hidden = el.dataset.only !== m; });
     form.password.autocomplete = m === 'login' ? 'current-password' : 'new-password';
@@ -95,6 +102,17 @@ export async function initAccount(pg, next) {
     try { const j = await api('forgot', { email }); H.toast(j.message); } catch (ex) { err.textContent = ex.message; err.hidden = false; }
   };
   setMode('login');
+  form.email.addEventListener('input', () => { if (codeFor && form.email.value.trim().toLowerCase() !== codeFor) { resetCode(); go.textContent = 'إنشاء الحساب'; } });
+  let resendAt = 0;
+  const askCode = async (f) => {
+    await api('reg_code', { name: f.name, email: f.email, phone: f.phone, password: f.password });
+    codeFor = f.email.trim().toLowerCase(); codeBox.hidden = false; pg.querySelector('#codeTo').textContent = f.email.trim();
+    resendAt = Date.now() + 60000; form.code.focus(); go.textContent = 'تأكيد وإنشاء الحساب';
+  };
+  pg.querySelector('#resend').onclick = async () => {
+    const left = Math.ceil((resendAt - Date.now()) / 1000); if (left > 0) { toast(`أعد المحاولة بعد ${left} ثانية`); return; }
+    try { await askCode(Object.fromEntries(new FormData(form))); toast('تم إرسال كود جديد'); } catch (ex) { err.textContent = ex.message; err.hidden = false; }
+  };
   const readPics = bindPickers(form);
   form.onsubmit = async (e) => {
     e.preventDefault(); err.hidden = true;
@@ -103,13 +121,19 @@ export async function initAccount(pg, next) {
     const bad = mode === 'register' ? pickersError(pics) : null;
     if (bad) { err.textContent = bad; err.hidden = false; return; }
     go.disabled = true; go.textContent = '…';
+    if (mode === 'register' && !codeFor) {   // step 1: the code to the e-mail
+      try { await askCode(f); } catch (ex) { err.textContent = ex.message; err.hidden = false; go.textContent = 'إنشاء الحساب'; }
+      go.disabled = false; return;
+    }
+    if (mode === 'register' && !/^\d{6}$/.test(String(f.code || '').replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)))) { err.textContent = 'اكتب كود التفعيل (6 أرقام)'; err.hidden = false; go.disabled = false; go.textContent = 'تأكيد وإنشاء الحساب'; return; }
+    if (mode === 'register') f.code = String(f.code).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
     try {
       const j = await api(mode, mode === 'login' ? { email: f.email, password: f.password } : f);
       session.set(j.token, j.user);
       if (mode === 'register') { try { await submitAdv(pics); toast(pics.logo ? 'أُرسلت صورتك وشعار الشركة للاعتماد' : 'أُرسلت صورتك للاعتماد'); } catch { /* can be sent again from the account page */ } }
       done(session.user() || j.user);
-    } catch (ex) { err.textContent = ex.message; err.hidden = false; }
-    go.disabled = false; go.textContent = mode === 'login' ? 'دخول' : 'إنشاء الحساب';
+    } catch (ex) { err.textContent = ex.message; err.hidden = false; if (/انتهت|اطلب كود/.test(ex.message)) resetCode(); }
+    go.disabled = false; go.textContent = mode === 'login' ? 'دخول' : codeFor ? 'تأكيد وإنشاء الحساب' : 'إنشاء الحساب';
   };
   // Google (shown once the office has switched it on)
   try {
