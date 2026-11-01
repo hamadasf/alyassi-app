@@ -361,7 +361,10 @@ async function fetchAppFile(path) {
   if (native) {
     const r = await CapacitorHttp.request({ url, method: 'GET', responseType: 'arraybuffer', readTimeout: 60000, connectTimeout: 15000 });
     if (r.status >= 300) throw new Error('HTTP ' + r.status);
-    return typeof r.data === 'string' ? Uint8Array.from(atob(r.data), (c) => c.charCodeAt(0)) : new Uint8Array(r.data);
+    // the phone's HTTP layer hands JSON files back already parsed, whatever responseType asked for
+    if (r.data && typeof r.data === 'object' && !(r.data instanceof ArrayBuffer) && !ArrayBuffer.isView(r.data)) return new TextEncoder().encode(JSON.stringify(r.data));
+    if (typeof r.data === 'string') { try { return Uint8Array.from(atob(r.data), (c) => c.charCodeAt(0)); } catch { return new TextEncoder().encode(r.data); } }
+    return new Uint8Array(r.data);
   }
   const r = await fetch(url, { cache: 'no-store' });
   if (!r.ok) throw new Error('HTTP ' + r.status);
