@@ -452,7 +452,7 @@ function landCard(l) {
   const fav = favs.has(l.id);
   const o = offerFor(l);
   return `<article class="card land${o ? ' has-ofr' : ''}" data-land="${esc(l.id)}">
-    <div class="ph${l.poly || l.pc ? ' loc' : ''}">${l.poly || l.pc ? `<canvas class="cardloc" data-loc="${esc(l.id)}"></canvas>` : `<img loading="lazy" decoding="async" src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">`}
+    <div class="ph${l.poly || l.pc ? ' loc' : ''}"${l.poly || l.pc ? ` data-plan="${esc(landUrl(l))}" data-pview="${esc(l.project + '|' + l.n)}"` : ''}>${l.poly || l.pc ? `<canvas class="cardloc" data-loc="${esc(l.id)}"></canvas>` : `<img loading="lazy" decoding="async" src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">`}
       <span class="badge ${st.cls}">${st.label}</span>
       ${o ? `<span class="badge ofr">🔥 عرض</span>` : l.featured && l.status === 'av' ? `<span class="badge star">${I.star} مميزة</span>` : ''}
       ${changeBadge(l)}

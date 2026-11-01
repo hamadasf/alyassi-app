@@ -26,6 +26,10 @@ export async function initPlanView2(pg, p, focusN) {
   let W = 0, Hh = 0, P = null;
   const view = { x0: 0, y0: 0, ppu: 1 };
   let sel = focusN ? lands.find((l) => l.n === String(focusN)) || null : null;
+  if (focusN && !sel) {   // a plot the company does not list (from the search): only its centre is known
+    const na = (p.na || []).find((x) => String(x[0]) === String(focusN));
+    if (na && na[3]) sel = { id: p.slug + ':' + na[0], n: String(na[0]), ft: na[2], pc: na[3], poly: null, status: 'na', use: ((p.types || {})[na[1]] || {}).use || '' };
+  }
   let snap = null, snapView = null, idleT = 0;
 
   const resize = () => { const r = box.getBoundingClientRect(); W = Math.round(r.width * dpr); Hh = Math.round(r.height * dpr); cv.width = W; cv.height = Hh; };
@@ -63,7 +67,7 @@ export async function initPlanView2(pg, p, focusN) {
   const showCard = () => {
     card.hidden = !sel;
     if (!sel) return;
-    const st = { av: 'متاحة', res: 'محجوزة', sold: 'مباعة' }[sel.status] || '';
+    const st = { av: 'متاحة', res: 'محجوزة', sold: 'مباعة', na: 'غير متوفرة' }[sel.status] || '';
     card.innerHTML = `<button class="pvx" aria-label="إغلاق">✕</button>
       <div class="pvc1"><b>قطعة رقم ${esc(sel.n)}</b><span class="pvst ${sel.status}">${st}</span></div>
       <div class="pvc2"><span>${esc(sel.use || '')}</span><span>${sel.ft ? money(sel.ft) + ' قدم²' : ''}</span>${sel.status !== 'sold' && sel.total ? `<b>${money(sel.total)} د.إ</b>` : ''}</div>
