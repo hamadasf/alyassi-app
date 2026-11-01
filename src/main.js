@@ -825,11 +825,29 @@ function popPage() {
 }
 window.addEventListener('popstate', () => { if (stack.length) popPage(); });
 
+/* the phone's back button: closes what is open on top, then goes back one page, then to the home tab;
+   on the home tab it asks «خروج / إلغاء» before leaving the app */
+function closeOverlay() {
+  const exit = document.querySelector('.exitdlg'); if (exit) { exit.remove(); return true; }
+  const crop = document.querySelector('.adg-crop:not([hidden])'); if (crop) { crop.querySelector('#pzCropNo')?.click(); return true; }
+  const viewer = document.querySelector('.viewer'); if (viewer) { viewer.remove(); return true; }
+  const ss = [...document.querySelectorAll('.ssheet.open')].pop(); if (ss) { ss.querySelector('[data-ssclose]')?.click(); return true; }
+  const pk = [...document.querySelectorAll('.pkgsheet')].pop(); if (pk) { pk.dispatchEvent(new MouseEvent('click', { bubbles: true })); if (document.body.contains(pk) && !pk.classList.contains('closing')) pk.remove(); return true; }
+  if ($('#sheet').classList.contains('open')) { closeSheet(); return true; }
+  return false;
+}
+function askExit() {
+  const d = document.createElement('div'); d.className = 'exitdlg';
+  d.innerHTML = `<div class="exitbox"><img src="assets/adv-avatar.jpg" alt=""><b>الخروج من التطبيق؟</b>
+    <div class="exitbtns"><button class="btn primary" data-exit="1">خروج</button><button class="btn ghost" data-exit="0">إلغاء</button></div></div>`;
+  d.onclick = (e) => { const b = e.target.closest('[data-exit]'); if (e.target === d || b) { d.remove(); if (b && b.dataset.exit === '1') App.exitApp(); } };
+  document.body.appendChild(d); requestAnimationFrame(() => d.classList.add('in'));
+}
 function goBack() {
-  if ($('#sheet').classList.contains('open')) { closeSheet(); return; }
+  if (closeOverlay()) return;
   if (stack.length) { history.back(); return; }
   if (current !== 'home') { showTab('home'); return; }
-  App.exitApp();
+  askExit();
 }
 
 /* ---- filter sheet ---- */
