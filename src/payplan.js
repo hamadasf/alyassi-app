@@ -3,6 +3,7 @@
 import { PDFDocument } from 'pdf-lib';
 
 const W = 1224, HH = 1584;   // US Letter at 2× (612 × 792 pt)
+const OFFICE = { phone: '06 744 2027', insta: 'omaralyassi.uae3' };   // the footer's contact: the office number only, and the company's Instagram
 const NAVY = '#24305E', SLATE = '#3B4C66', GOLD = '#A88B57', INK = '#1E2A3A', MUTED = '#6B7280', LINE = '#E6E0D4', SOFT = '#F7F3EC', TOT = '#F1ECDF';
 const F = (w, px) => `${w} ${px}px Tajawal, "Segoe UI", Tahoma, sans-serif`;
 const nf = new Intl.NumberFormat('en-US');
@@ -51,7 +52,14 @@ async function drawPage(l, client) {
   // the big faint emblem behind everything, as in the letterhead
   if (A.emblem) { c.save(); c.globalAlpha = 0.11; c.globalCompositeOperation = 'multiply'; const eh = 1000, ew = eh * A.emblem.width / A.emblem.height; c.drawImage(A.emblem, (W - ew) / 2, 300, ew, eh); c.restore(); }
   if (A.head) c.drawImage(A.head, 0, 0, W, W * A.head.height / A.head.width);
-  if (A.foot) { const fh = W * A.foot.height / A.foot.width; c.drawImage(A.foot, 0, HH - fh, W, fh); }
+  if (A.foot) {   // the letterhead's footer, with the office number and the Instagram account written in
+    const fh = W * A.foot.height / A.foot.width, fy = HH - fh, k = W / 1224;
+    c.drawImage(A.foot, 0, fy, W, fh);
+    c.save(); c.direction = 'ltr';
+    text(c, OFFICE.phone, 1138 * k, fy + 55 * k, F(800, 27 * k), NAVY, 'right');
+    text(c, OFFICE.insta, 369 * k, fy + 54 * k, F(800, 27 * k), NAVY, 'left');
+    c.restore();
+  }
 
   const L = 108, R = 1116;
   text(c, 'خطة السداد', R, 310, F(800, 44), INK);
