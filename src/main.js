@@ -38,7 +38,7 @@ const waLink = (text) => `https://wa.me/${CONTACT.whatsapp}?text=${encodeURIComp
 const landUrl = (l) => `${SITE}/${l.project}/#p${l.n}`;
 /** Link for messages: its WhatsApp preview shows the plot highlighted on the plan (the website page then opens the plan). */
 // switched on once the website has the share page (alyassi-app-crm.php §8)
-const SHARE_PAGE = false;
+const SHARE_PAGE = true;
 const shareUrl = (l) => (SHARE_PAGE ? `${SITE}/?oay_p=${encodeURIComponent(l.project + '-' + l.n)}` : landUrl(l));
 const landMsg = (l) => waText(`قطعة رقم ${l.n} · ${l.projectName}`, shareUrl(l), refOf(l));
 
