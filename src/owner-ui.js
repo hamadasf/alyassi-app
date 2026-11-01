@@ -1,4 +1,5 @@
 // Screens for accounts and user-submitted lands. Plugged into main.js's page stack.
+import { advStrip } from './adv.js';
 import { Capacitor } from '@capacitor/core';
 import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands } from './owner.js';
 import { contactBar, refLine } from './contact.js';
@@ -438,6 +439,7 @@ export function oLandCard(x) {
     <div class="ph">${x.photos[0] ? `<img loading="lazy" decoding="async" src="${esc(x.photos[0])}" alt="" onerror="this.style.opacity=0">` : ''}
       <span class="badge av">للبيع</span>${x.featured ? `<span class="badge star">⭐ مميز</span>` : ''}${x.slider ? '<span class="badge slid">🎞️ مختار</span>' : ''}</div>
     <div class="body">
+      ${advStrip()}
       <div class="row between"><h3 class="notr">${esc(x.title)}</h3>${x.price ? `<div class="price">${money(x.price)} <small>د.إ</small></div>` : ''}</div>
       ${x.project || x.location ? `<div class="meta">${I.pin}<span>${esc(x.project || x.location)}</span></div>` : ''}
       ${x.seller ? `<div class="seller">${I.verified}<span class="notr">${esc(x.seller)}</span>${x.rating && x.rating.n ? `<span class="srate">★ ${x.rating.avg.toFixed(1)} <small>(${x.rating.n})</small></span>` : ''}</div>` : ''}

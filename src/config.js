@@ -39,3 +39,6 @@ export const DEFAULT_TYPES = {
   darkred: { use: 'تجاري مكاتب سكني', floors: 'أرضي + اثنين', loc: 'عادية', b: 'reg', c: [178, 34, 34] },
   red:     { use: 'محلات تجارية', floors: 'أرضي فقط', c: [255, 0, 0] },
 };
+
+/* the advertiser shown on every listing card (Property Finder style): photo + name, and the company logo opposite */
+export const ADVERTISER = { name: 'عمر الياسي', role: 'عمر الياسي للعقارات', photo: './assets/adv-avatar.jpg', logo: './assets/adv-logo.jpg' };

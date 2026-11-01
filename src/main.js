@@ -22,6 +22,7 @@ import { initReport, reportPage, initReportPage } from './report.js';
 import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser } from './owner-ui.js';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
+import { advStrip } from './adv.js';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
 import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen, offerFor } from './data.js';
 import { I } from './icons.js';
@@ -453,6 +454,7 @@ function landCard(l) {
       <button class="fav sh" data-share="land:${esc(l.id)}" aria-label="مشاركة">${I.share}</button>
     </div>
     <div class="body">
+      ${advStrip()}
       <div class="row between"><h3>قطعة رقم ${esc(l.n)}</h3>${priceHTML(l)}</div>
       <div class="type">${dot(l.color)}${esc(l.use)}${l.tag ? ` · ${esc(l.tag)}` : ''}</div>
       <div class="meta">${I.pin}<span>${esc(l.projectName)}</span></div>

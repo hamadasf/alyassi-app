@@ -8,6 +8,7 @@ for (const s of ['arabic', 'latin']) for (const w of [400, 500, 700, 800]) {
 }
 copyFileSync('src/app.css', 'www/app.css');
 copyFileSync('src/img/villa-invest.jpg', 'www/assets/villa-invest.jpg');   // photo for investment villas (ground + 2)
+for (const f of ['adv-logo.jpg', 'adv-avatar.jpg']) copyFileSync(`src/img/${f}`, `www/assets/${f}`);   // the advertiser strip on every listing card
 mkdirSync('www/assets/ad', { recursive: true }); mkdirSync('www/pdfjs', { recursive: true });
 for (const f of ['aya-base.jpg', 'aya-icons.png']) copyFileSync(`src/img/ad/${f}`, `www/assets/ad/${f}`);   // the fixed artwork of Aya's ad template
 for (const f of ['pdf.min.js', 'pdf.worker.min.js']) copyFileSync(`node_modules/pdfjs-dist/legacy/build/${f}`, `www/pdfjs/${f}`);   // reading land PDFs in the ad designer
