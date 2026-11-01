@@ -4,7 +4,8 @@
  * Description: The advertiser strip on every listing in the app (Property Finder style): the advertiser's photo and name,
  *              and the company logo opposite. The office's own (عمر الياسي) is set by the admin from the app's settings and
  *              changes on every listing at once. Members send their personal photo and their company logo; the admin
- *              approves them before they appear on the member's listings.
+ *              approves them before they appear on the member's listings. Company logos are only for
+ *              companies / real-estate offices; ordinary accounts send a personal photo only.
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -50,6 +51,13 @@ function oay_acc_adm_brand() {
 	oay_acc_ok( array( 'brand' => oay_brand() ) );
 }
 
+/** 'company' (real-estate company / office: personal photo + company logo) or 'person' (ordinary account: personal photo only) */
+function oay_acct_kind( $uid ) {
+	$k = (string) get_user_meta( $uid, 'oay_acct', true );
+	if ( 'company' === $k || 'person' === $k ) { return $k; }
+	return get_user_meta( $uid, 'oay_verified', true ) || oay_verify_get_safe( $uid ) ? 'company' : 'person';
+}
+function oay_verify_get_safe( $uid ) { return function_exists( 'oay_verify_get' ) ? oay_verify_get( $uid ) : null; }
 /** A member's approved advertiser details, or null (their listings then show the office's). */
 function oay_adv_of( $uid ) {
 	$uid = (int) $uid;
@@ -57,12 +65,13 @@ function oay_adv_of( $uid ) {
 	$ph = (string) get_user_meta( $uid, 'oay_adv_photo', true ); $lg = (string) get_user_meta( $uid, 'oay_adv_logo', true );
 	if ( '' === $ph && '' === $lg ) { return null; }
 	$u = get_userdata( $uid ); if ( ! $u ) { return null; }
-	return array( 'name' => $u->display_name, 'company' => (string) get_user_meta( $uid, 'oay_company', true ), 'photo' => $ph, 'logo' => $lg, 'verified' => (bool) get_user_meta( $uid, 'oay_verified', true ) );
+	$co = 'company' === oay_acct_kind( $uid );
+	return array( 'name' => $u->display_name, 'company' => $co ? (string) get_user_meta( $uid, 'oay_company', true ) : '', 'photo' => $ph, 'logo' => $co ? $lg : '', 'verified' => (bool) get_user_meta( $uid, 'oay_verified', true ) );
 }
 /** What the member sees in their account: approved pictures, the ones waiting, and the admin's note. */
 function oay_adv_state( $uid ) {
 	$p = get_user_meta( $uid, 'oay_adv_pending', true );
-	return array( 'photo' => (string) get_user_meta( $uid, 'oay_adv_photo', true ), 'logo' => (string) get_user_meta( $uid, 'oay_adv_logo', true ),
+	return array( 'kind' => oay_acct_kind( $uid ), 'photo' => (string) get_user_meta( $uid, 'oay_adv_photo', true ), 'logo' => (string) get_user_meta( $uid, 'oay_adv_logo', true ),
 		'status' => (string) get_user_meta( $uid, 'oay_adv_status', true ), 'note' => (string) get_user_meta( $uid, 'oay_adv_note', true ),
 		'pending' => is_array( $p ) ? array( 'photo' => (string) ( $p['photo'] ?? '' ), 'logo' => (string) ( $p['logo'] ?? '' ) ) : null );
 }
@@ -70,10 +79,13 @@ function oay_adv_state( $uid ) {
 /** Member: personal photo + company logo, sent for the admin's approval (both needed the first time). */
 function oay_acc_adv_submit() {
 	$u = oay_acc_need_user(); $in = oay_acc_in();
+	$kind = oay_acc_arg( 'kind', 10 );
+	if ( 'company' === $kind || 'person' === $kind ) { update_user_meta( $u->ID, 'oay_acct', $kind ); } else { $kind = oay_acct_kind( $u->ID ); }
+	if ( 'company' !== $kind ) { unset( $in['logo'] ); }   // ordinary accounts: personal photo only
 	$cur = oay_adv_state( $u->ID ); $old = get_user_meta( $u->ID, 'oay_adv_pending', true ); if ( ! is_array( $old ) ) { $old = array(); }
 	$has = array( 'photo' => ! empty( $in['photo'] ) || $cur['photo'] || ! empty( $old['photo'] ), 'logo' => ! empty( $in['logo'] ) || $cur['logo'] || ! empty( $old['logo'] ) );
 	if ( ! $has['photo'] ) { oay_acc_err( 'أضف صورتك الشخصية' ); }
-	if ( ! $has['logo'] ) { oay_acc_err( 'أضف صورة أو شعار الشركة' ); }
+	if ( 'company' === $kind && ! $has['logo'] ) { oay_acc_err( 'أضف صورة أو شعار الشركة' ); }
 	if ( empty( $in['photo'] ) && empty( $in['logo'] ) ) { oay_acc_err( 'اختر صورة' ); }
 	$p = $old;
 	foreach ( array( 'photo', 'logo' ) as $k ) {
@@ -92,7 +104,7 @@ function oay_acc_adm_advs() {
 	$users = get_users( array( 'meta_key' => 'oay_adv_status', 'meta_value' => 'pending', 'number' => 200 ) );
 	oay_acc_ok( array( 'items' => array_map( function ( $u ) {
 		$p = get_user_meta( $u->ID, 'oay_adv_pending', true ); if ( ! is_array( $p ) ) { $p = array(); }
-		return array( 'id' => $u->ID, 'name' => $u->display_name, 'email' => $u->user_email, 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ),
+		return array( 'id' => $u->ID, 'kind' => oay_acct_kind( $u->ID ), 'name' => $u->display_name, 'email' => $u->user_email, 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ),
 			'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'photo' => (string) ( $p['photo'] ?? '' ), 'logo' => (string) ( $p['logo'] ?? '' ), 't' => (int) ( $p['t'] ?? 0 ),
 			'cur' => array( 'photo' => (string) get_user_meta( $u->ID, 'oay_adv_photo', true ), 'logo' => (string) get_user_meta( $u->ID, 'oay_adv_logo', true ) ) );
 	}, $users ), 'count' => count( $users ) ) );

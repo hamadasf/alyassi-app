@@ -1,6 +1,6 @@
 // Screens for accounts and user-submitted lands. Plugged into main.js's page stack.
 import { advStrip } from './adv.js';
-import { pickersHTML, bindPickers, submitAdv, advMissing, renderAdvReqs, advReqClick } from './advui.js';
+import { pickersHTML, bindPickers, pickersError, submitAdv, advMissing, renderAdvReqs, advReqClick } from './advui.js';
 import { Capacitor } from '@capacitor/core';
 import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands } from './owner.js';
 import { contactBar, refLine } from './contact.js';
@@ -20,7 +20,7 @@ export function accountPage() {
         <div><b>${esc(u.name || '')}</b><span>${esc(u.email || '')}</span>${u.phone ? `<span dir="ltr">${esc(u.phone)}</span>` : ''}</div></div>
       ${u.admin ? `<button class="btn primary block share-big" data-admin>🛡️ لوحة الإدارة</button>` : ''}
       <div class="pts"><b>${u.admin ? '∞' : u.points || 0}</b><span>${u.admin ? 'نقاط غير محدودة للإدارة · تمييز الإعلان يجعله يظهر أولاً في الصفحة الرئيسية' : u.verified ? 'نقطة في رصيدك · تمييز الإعلان بـ 70 نقطة يجعله يظهر أولاً في الصفحة الرئيسية' : 'تمييز الإعلانات متاح للمكاتب الموثّقة — وثّق حسابك واحصل على 500 نقطة'}</span></div>
-      ${advMissing(u) ? `<button class="advnote" data-advmine><b>📷 أضف صورتك وشعار شركتك</b><span>مطلوبة لتظهر على إعلاناتك — تعتمدها الإدارة</span></button>` : u.adv && u.adv.status === 'rejected' ? `<button class="advnote bad" data-advmine><b>لم تُعتمد صورتك</b><span>${esc(u.adv.note || 'اضغط لإرسال صورة أخرى')}</span></button>` : u.adv && u.adv.status === 'pending' ? `<button class="advnote wait" data-advmine><b>⏳ صورتك وشعار شركتك بانتظار اعتماد الإدارة</b></button>` : ''}
+      ${advMissing(u) ? `<button class="advnote" data-advmine><b>📷 أضف صورتك الشخصية</b><span>تظهر على إعلاناتك (والشركات تضيف شعارها) — تعتمدها الإدارة</span></button>` : u.adv && u.adv.status === 'rejected' ? `<button class="advnote bad" data-advmine><b>لم تُعتمد صورتك</b><span>${esc(u.adv.note || 'اضغط لإرسال صورة أخرى')}</span></button>` : u.adv && u.adv.status === 'pending' ? `<button class="advnote wait" data-advmine><b>⏳ صورتك بانتظار اعتماد الإدارة</b></button>` : ''}
       ${!u.admin && !u.verified ? `<button class="btn ghost block" data-verify>${I.verified} توثيق حساب المكتب العقاري</button>` : ''}
       <button class="btn gold block share-big" data-addland>${I.plus || '＋'} أضف أرضاً للبيع</button>
       <h2 class="h2">طلباتي</h2>
@@ -100,13 +100,13 @@ export async function initAccount(pg, next) {
     e.preventDefault(); err.hidden = true;
     const f = Object.fromEntries(new FormData(form));
     const pics = readPics();
-    if (mode === 'register' && !pics.photo) { err.textContent = 'أضف صورتك الشخصية'; err.hidden = false; return; }
-    if (mode === 'register' && !pics.logo) { err.textContent = 'أضف صورة أو شعار الشركة'; err.hidden = false; return; }
+    const bad = mode === 'register' ? pickersError(pics) : null;
+    if (bad) { err.textContent = bad; err.hidden = false; return; }
     go.disabled = true; go.textContent = '…';
     try {
       const j = await api(mode, mode === 'login' ? { email: f.email, password: f.password } : f);
       session.set(j.token, j.user);
-      if (mode === 'register') { try { await submitAdv(pics); toast('أُرسلت صورتك وشعار الشركة للاعتماد'); } catch { /* can be sent again from the account page */ } }
+      if (mode === 'register') { try { await submitAdv(pics); toast(pics.logo ? 'أُرسلت صورتك وشعار الشركة للاعتماد' : 'أُرسلت صورتك للاعتماد'); } catch { /* can be sent again from the account page */ } }
       done(session.user() || j.user);
     } catch (ex) { err.textContent = ex.message; err.hidden = false; }
     go.disabled = false; go.textContent = mode === 'login' ? 'دخول' : 'إنشاء الحساب';

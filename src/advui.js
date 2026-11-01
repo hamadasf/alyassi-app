@@ -24,16 +24,27 @@ export function shrink(file, max = 700) {
     img.src = url;
   });
 }
-/** two picture fields (personal photo · company logo) with previews; read() → { photo, logo } data URLs (or '') */
+/** account type (ordinary · company / office) + the picture fields: personal photo, and the company logo for companies only.
+ *  read() → { kind, photo, logo } (data URLs or '') */
 export function pickersHTML(cur = {}, only = '') {
-  const one = (k, title, hint, src) => `<label class="advpick${k === 'photo' ? ' round' : ''}"${only ? ` data-only="${only}"` : ''}>
+  const kind = cur.kind === 'company' ? 'company' : 'person';
+  const one = (k, title, hint, src) => `<label class="advpick${k === 'photo' ? ' round' : ''}"${k === 'logo' && kind !== 'company' ? ' hidden' : ''}>
       <span class="advpv">${src ? `<img src="${esc(src)}" alt="">` : `<i>${k === 'photo' ? '👤' : '🏢'}</i>`}</span>
       <span class="advtx"><b>${title}</b><small>${hint}</small></span>
       <input type="file" accept="image/*" data-advk="${k}" hidden></label>`;
-  return `<div class="advpicks"${only ? ` data-only="${only}"` : ''}>${one('photo', 'صورتك الشخصية *', 'تظهر بجانب اسمك على إعلاناتك', cur.photo)}${one('logo', 'صورة أو شعار الشركة *', 'يظهر على يسار إعلاناتك', cur.logo)}</div>`;
+  return `<div class="advpicks"${only ? ` data-only="${only}"` : ''}>
+    <div class="advkind"><span>نوع الحساب</span><div class="seg"><button type="button" data-kind="person" class="${kind === 'person' ? 'on' : ''}">حساب فردي</button><button type="button" data-kind="company" class="${kind === 'company' ? 'on' : ''}">شركة / مكتب عقاري</button></div></div>
+    ${one('photo', 'صورتك الشخصية *', 'تظهر بجانب اسمك على إعلاناتك', cur.photo)}${one('logo', 'صورة أو شعار الشركة *', 'للشركات والمكاتب — يظهر على يسار إعلاناتك', cur.logo)}</div>`;
 }
 export function bindPickers(root) {
-  const got = { photo: '', logo: '' };
+  const got = { kind: (root.querySelector('[data-kind].on') || {}).dataset?.kind || 'person', photo: '', logo: '' };
+  root.querySelectorAll('[data-kind]').forEach((b) => {
+    b.onclick = () => {
+      got.kind = b.dataset.kind;
+      root.querySelectorAll('[data-kind]').forEach((x) => x.classList.toggle('on', x === b));
+      const lg = root.querySelector('[data-advk="logo"]'); if (lg) lg.closest('.advpick').hidden = got.kind !== 'company';
+    };
+  });
   root.querySelectorAll('[data-advk]').forEach((inp) => {
     inp.onchange = async () => {
       const f = inp.files[0]; if (!f) return;
@@ -43,7 +54,13 @@ export function bindPickers(root) {
       } catch (e) { H.toast(e.message); }
     };
   });
-  return () => ({ ...got });
+  return () => ({ ...got, logo: got.kind === 'company' ? got.logo : '' });
+}
+/** what is missing before sending (null = ready) */
+export function pickersError(v, cur = {}) {
+  if (!v.photo && !cur.photo) return 'أضف صورتك الشخصية';
+  if (v.kind === 'company' && !v.logo && !cur.logo) return 'أضف صورة أو شعار الشركة';
+  return null;
 }
 
 /* ---------- admin: the office's advertiser ---------- */
@@ -94,31 +111,32 @@ export function advMinePage() {
   const u = session.user() || {}, a = u.adv || {}, p = a.pending || {};
   const st = ST[a.status];
   return `<div class="pad advset">
-    <p class="muted">صورتك الشخصية وشعار شركتك يظهران على إعلاناتك (مثل بروبيرتي فايندر) بعد أن تعتمدهما الإدارة.</p>
+    <p class="muted">صورتك الشخصية تظهر على إعلاناتك (مثل بروبيرتي فايندر)، ومعها شعار الشركة للشركات والمكاتب العقارية — بعد أن تعتمدها الإدارة.</p>
     ${st ? `<p class="advst"><i class="pill ${st[1]}">${st[0]}</i>${a.status === 'rejected' && a.note ? ` <small>السبب: ${esc(a.note)}</small>` : ''}</p>` : ''}
-    ${pickersHTML({ photo: p.photo || a.photo, logo: p.logo || a.logo })}
+    ${pickersHTML({ kind: a.kind || (u.verified ? 'company' : 'person'), photo: p.photo || a.photo, logo: p.logo || a.logo })}
     <button class="btn primary block" id="advSend">إرسال للاعتماد</button>
   </div>`;
 }
 export function initAdvMine(pg) {
   const read = bindPickers(pg);
   pg.querySelector('#advSend').onclick = async (e) => {
-    const b = e.currentTarget, v = read();
-    if (!v.photo && !v.logo) { H.toast('اختر صورتك أو شعار الشركة'); return; }
+    const b = e.currentTarget, v = read(), a = (session.user() || {}).adv || {}, p = a.pending || {};
+    const bad = pickersError(v, { photo: p.photo || a.photo, logo: p.logo || a.logo }); if (bad) { H.toast(bad); return; }
+    if (!v.photo && !v.logo && v.kind === (a.kind || 'person')) { H.toast('اختر صورة'); return; }
     b.disabled = true; b.textContent = 'جارِ الإرسال…';
     try { await submitAdv(v); H.toast('تم الإرسال — تظهر بعد موافقة الإدارة ✓'); H.closeTop(); }
     catch (ex) { H.toast(ex.message); b.disabled = false; b.textContent = 'إرسال للاعتماد'; }
   };
 }
 export async function submitAdv(v) {
-  const body = {}; if (v.photo) body.photo = v.photo; if (v.logo) body.logo = v.logo;
+  const body = { kind: v.kind || 'person' }; if (v.photo) body.photo = v.photo; if (v.logo) body.logo = v.logo;
   await api('adv_submit', body); await refreshMe().catch(() => {});
 }
 /** does the member still need to send their pictures? */
 export function advMissing(u) {
   if (!u || u.admin || (u.staff && u.staff.length)) return false;
   const a = u.adv || {};
-  return !(a.photo || a.logo) && a.status !== 'pending';
+  return !a.photo && a.status !== 'pending';
 }
 
 /* ---------- admin panel tab: pictures waiting for approval ---------- */

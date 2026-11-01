@@ -928,3 +928,4 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .advnote { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 100%; text-align: start; padding: 12px 14px; border-radius: 14px; background: #fff7e6; border: 1.5px solid #f5d38a; color: #7a5200; }
 .advnote b { font-size: 14.5px; } .advnote span { font-size: 12.5px; } .advnote.bad { background: #fdecec; border-color: #f3b4b4; color: #9b1c1c; } .advnote.wait { background: #eef4ff; border-color: #c7d7f5; color: #1e3a8a; }
 .advreq .advpair { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; } .advreq .adv-ph { margin-top: 0; width: 64px; height: 64px; } .adv-logo.big { width: 96px; height: 64px; margin: 0; }
+.advkind { display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: 14px; } .advkind .seg button { font-size: 13.5px; padding: 10px 6px; }

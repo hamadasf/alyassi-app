@@ -104,7 +104,7 @@ export function settingsPage() {
     <h3 class="msec">إعدادات الحساب</h3>
     <div class="mbox">
       ${row(I.user, 'المعلومات الأساسية', 'data-editprofile')}
-      ${session.user() && session.user().admin ? row(I.verified, 'صورة المعلن وشعار الشركة', 'data-brand', '<small>تظهر على كل الإعلانات</small>') : session.user() && !isOffice() ? row(I.user, 'صورتي وشعار شركتي', 'data-advmine', '<small>تظهر على إعلاناتي</small>') : ''}
+      ${session.user() && session.user().admin ? row(I.verified, 'صورة المعلن وشعار الشركة', 'data-brand', '<small>تظهر على كل الإعلانات</small>') : session.user() && !isOffice() ? row(I.user, 'صورتي على الإعلانات', 'data-advmine', '<small>والشعار للشركات</small>') : ''}
       ${row(I.phone, 'رقم الجوال', 'data-editprofile')}
       <button class="mrow danger" data-delacc><span class="mi">${I.trash}</span><b>حذف الحساب</b></button>
     </div>
