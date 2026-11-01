@@ -119,7 +119,7 @@ function oay_acc_userdata( $u ) {
 		'google' => (bool) get_user_meta( $u->ID, 'oay_google_sub', true ), 'points' => (int) get_user_meta( $u->ID, 'oay_points', true ),
 		'admin' => oay_acc_is_admin( $u ), 'banned' => (bool) get_user_meta( $u->ID, 'oay_banned', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ),
 		'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ),
-		'verify' => oay_verify_get( $u->ID ), 'staff' => oay_staff_perms( $u->ID ) );
+		'verify' => oay_verify_get( $u->ID ), 'staff' => oay_staff_perms( $u->ID ), 'adv' => function_exists( 'oay_adv_state' ) ? oay_adv_state( $u->ID ) : null );
 }
 function oay_acc_need_admin() { $u = oay_acc_need_user(); if ( ! oay_acc_is_admin( $u ) ) { oay_acc_err( 'غير مسموح', 403 ); } return $u; }
 function oay_acc_new_user( $email, $name, $pass ) {
@@ -440,6 +440,7 @@ function oay_acc_card( $p, $mine = false ) {
 		'plan' => (string) get_post_meta( $p->ID, '_oay_plan_slug', true ), 'onPlan' => (int) get_post_meta( $p->ID, '_oay_plan_added', true ) === 1,
 		'seller' => get_user_meta( $p->post_author, 'oay_verified', true ) ? (string) get_user_meta( $p->post_author, 'oay_company', true ) : '',
 		'byAdmin' => user_can( (int) $p->post_author, 'manage_options' ), 'rating' => oay_rating_summary( (int) $p->post_author ),
+		'adv' => function_exists( 'oay_adv_of' ) ? oay_adv_of( (int) $p->post_author ) : null,   // the member's approved photo + logo (none: the office's)
 	);
 	if ( 'admin' === $mine ) {
 		$o = get_userdata( $p->post_author );

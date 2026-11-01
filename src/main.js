@@ -22,7 +22,8 @@ import { initReport, reportPage, initReportPage } from './report.js';
 import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle } from './more.js';
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser } from './owner-ui.js';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
-import { advStrip } from './adv.js';
+import { advStrip, loadBrand } from './adv.js';
+import { initAdvUI, brandPage, initBrand, advMinePage, initAdvMine } from './advui.js';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
 import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen, offerFor } from './data.js';
 import { I } from './icons.js';
@@ -757,6 +758,8 @@ function pushPage(kind, id) {
   else if (kind === 'views') { html = viewsPage(); }
   else if (kind === 'staff') { html = staffPage(); }
   else if (kind === 'calc') { l = id ? findLand(id) : null; html = calcPage(l); }
+  else if (kind === 'brand') { html = brandPage(); }
+  else if (kind === 'advmine') { html = advMinePage(); }
   else if (kind === 'adgen') { if (id) { l = findLand(id); p = l && d.projects.find((x) => x.slug === l.project); if (!l || !p || !l.poly) return; } html = adgenPage(id ? l : null, d.projects); }
   else if (kind === 'mychat') { html = myChatPage(); }
   else if (kind === 'group') { html = groupPage(); }
@@ -765,7 +768,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', adgen: 'مولّد منشورات الإعلانات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', advmine: 'صورتي وشعار شركتي', adgen: 'مولّد منشورات الإعلانات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -782,6 +785,8 @@ function pushPage(kind, id) {
   if (kind === 'uprof') initProf(pg, id);
   if (kind === 'news') initNewsPage(pg);
   if (kind === 'calc') { initCalc2(pg, l); track('calc', id || ''); }
+  if (kind === 'brand') initBrand(pg);
+  if (kind === 'advmine') initAdvMine(pg);
   if (kind === 'adgen') { pg.classList.add('adgpg'); if (id) initAdgen2(pg, l, p); else initAdgenPick(pg, d.projects, (lid) => pushPage('adgen', lid)); }
   if (kind === 'report') initReportPage(pg, 0);
   if (kind === 'wanted') initWanted(pg);
@@ -897,6 +902,8 @@ document.addEventListener('click', (e) => {
   }
   if (ds.verify !== undefined) { if (session.token()) pushPage('verify'); else pushPage('account'); return; }
   if (ds.editprofile !== undefined) { pushPage('editprofile'); return; }
+  if (ds.brand !== undefined) { pushPage('brand'); return; }
+  if (ds.advmine !== undefined) { if (session.token()) pushPage('advmine'); else pushPage('account'); return; }
   if (ds.settings !== undefined) { pushPage('settings'); return; }
   if (ds.notifs !== undefined) { pushPage('notifs'); return; }
   if (ds.contactpg !== undefined) { pushPage('contactpg'); return; }
@@ -989,6 +996,8 @@ function refresh(force) {
   return loading;
 }
 
+initAdvUI({ toast, closeTop: () => closeTop() });
+loadBrand(accApi);
 initOwnerUI({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), waLink, CONTACT });
 initChat({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id) });
 initNews({ esc, toast, I });

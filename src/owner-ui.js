@@ -1,5 +1,6 @@
 // Screens for accounts and user-submitted lands. Plugged into main.js's page stack.
 import { advStrip } from './adv.js';
+import { pickersHTML, bindPickers, submitAdv, advMissing, renderAdvReqs, advReqClick } from './advui.js';
 import { Capacitor } from '@capacitor/core';
 import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands } from './owner.js';
 import { contactBar, refLine } from './contact.js';
@@ -19,6 +20,7 @@ export function accountPage() {
         <div><b>${esc(u.name || '')}</b><span>${esc(u.email || '')}</span>${u.phone ? `<span dir="ltr">${esc(u.phone)}</span>` : ''}</div></div>
       ${u.admin ? `<button class="btn primary block share-big" data-admin>🛡️ لوحة الإدارة</button>` : ''}
       <div class="pts"><b>${u.admin ? '∞' : u.points || 0}</b><span>${u.admin ? 'نقاط غير محدودة للإدارة · تمييز الإعلان يجعله يظهر أولاً في الصفحة الرئيسية' : u.verified ? 'نقطة في رصيدك · تمييز الإعلان بـ 70 نقطة يجعله يظهر أولاً في الصفحة الرئيسية' : 'تمييز الإعلانات متاح للمكاتب الموثّقة — وثّق حسابك واحصل على 500 نقطة'}</span></div>
+      ${advMissing(u) ? `<button class="advnote" data-advmine><b>📷 أضف صورتك وشعار شركتك</b><span>مطلوبة لتظهر على إعلاناتك — تعتمدها الإدارة</span></button>` : u.adv && u.adv.status === 'rejected' ? `<button class="advnote bad" data-advmine><b>لم تُعتمد صورتك</b><span>${esc(u.adv.note || 'اضغط لإرسال صورة أخرى')}</span></button>` : u.adv && u.adv.status === 'pending' ? `<button class="advnote wait" data-advmine><b>⏳ صورتك وشعار شركتك بانتظار اعتماد الإدارة</b></button>` : ''}
       ${!u.admin && !u.verified ? `<button class="btn ghost block" data-verify>${I.verified} توثيق حساب المكتب العقاري</button>` : ''}
       <button class="btn gold block share-big" data-addland>${I.plus || '＋'} أضف أرضاً للبيع</button>
       <h2 class="h2">طلباتي</h2>
@@ -35,6 +37,7 @@ export function accountPage() {
       <label>البريد الإلكتروني<input name="email" type="email" dir="ltr" autocomplete="email" inputmode="email" maxlength="120"></label>
       <label data-only="register">رقم الجوال<input name="phone" type="tel" dir="ltr" autocomplete="tel" inputmode="tel" placeholder="05xxxxxxxx" maxlength="20"></label>
       <label>كلمة المرور<input name="password" type="password" dir="ltr" autocomplete="current-password" maxlength="200"></label>
+      ${pickersHTML({}, 'register')}
       <p class="ferr" id="accErr" hidden></p>
       <button class="btn primary block" type="submit" id="accGo">دخول</button>
       <button class="linkbtn" type="button" id="forgot" data-only="login">نسيت كلمة المرور؟</button>
@@ -92,12 +95,19 @@ export async function initAccount(pg, next) {
     try { const j = await api('forgot', { email }); H.toast(j.message); } catch (ex) { err.textContent = ex.message; err.hidden = false; }
   };
   setMode('login');
+  const readPics = bindPickers(form);
   form.onsubmit = async (e) => {
-    e.preventDefault(); err.hidden = true; go.disabled = true; go.textContent = '…';
+    e.preventDefault(); err.hidden = true;
     const f = Object.fromEntries(new FormData(form));
+    const pics = readPics();
+    if (mode === 'register' && !pics.photo) { err.textContent = 'أضف صورتك الشخصية'; err.hidden = false; return; }
+    if (mode === 'register' && !pics.logo) { err.textContent = 'أضف صورة أو شعار الشركة'; err.hidden = false; return; }
+    go.disabled = true; go.textContent = '…';
     try {
       const j = await api(mode, mode === 'login' ? { email: f.email, password: f.password } : f);
-      session.set(j.token, j.user); done(j.user);
+      session.set(j.token, j.user);
+      if (mode === 'register') { try { await submitAdv(pics); toast('أُرسلت صورتك وشعار الشركة للاعتماد'); } catch { /* can be sent again from the account page */ } }
+      done(session.user() || j.user);
     } catch (ex) { err.textContent = ex.message; err.hidden = false; }
     go.disabled = false; go.textContent = mode === 'login' ? 'دخول' : 'إنشاء الحساب';
   };
@@ -237,7 +247,7 @@ function admCard(x) {
 }
 export function adminPage() {
   return `<div class="pad acc">
-    <div class="seg four"><button data-atab="pending">الطلبات <em id="cPending"></em></button><button data-atab="publish">المعروضة</button><button data-atab="draft">المرفوضة</button>${(session.user() || {}).admin ? '<button data-atab="verify">التوثيق <em id="cVerify"></em></button>' : ''}<button data-atab="users">المستخدمون</button></div>
+    <div class="seg four"><button data-atab="pending">الطلبات <em id="cPending"></em></button><button data-atab="publish">المعروضة</button><button data-atab="draft">المرفوضة</button>${(session.user() || {}).admin ? '<button data-atab="verify">التوثيق <em id="cVerify"></em></button>' : ''}<button data-atab="advs">الصور <em id="cAdv"></em></button><button data-atab="users">المستخدمون</button></div>
     <div id="admSearch" hidden><input class="srch" id="admQ" placeholder="ابحث بالاسم أو البريد…"></div>
     <div id="admList"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>
   </div>`;
@@ -250,7 +260,8 @@ export function initAdmin(pg) {
     pg.querySelector('#admSearch').hidden = ADM.tab !== 'users';
     list.innerHTML = '<div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div>';
     try {
-      if (ADM.tab === 'verify') {
+      if (ADM.tab === 'advs') { await renderAdvReqs(list, pg.querySelector('#cAdv')); }
+      else if (ADM.tab === 'verify') {
         const j = await api('adm_verifs', { status: 'pending' });
         const c = pg.querySelector('#cVerify'); if (c) c.textContent = j.pending ? `(${j.pending})` : '';
         list.innerHTML = j.items.length ? j.items.map((u) => `<div class="vreq" data-uid="${u.id}">
@@ -273,6 +284,7 @@ export function initAdmin(pg) {
   };
   pg.querySelectorAll('[data-atab]').forEach((b) => { b.onclick = () => { ADM.tab = b.dataset.atab; load(); }; });
   list.addEventListener('click', async (e) => {
+    if (await advReqClick(e, load)) return;
     const ok = e.target.closest('[data-vok]'), no = e.target.closest('[data-vno]'); if (!ok && !no) return;
     e.stopPropagation();
     const id = (ok || no).dataset.vok || (ok || no).dataset.vno;
@@ -439,7 +451,7 @@ export function oLandCard(x) {
     <div class="ph">${x.photos[0] ? `<img loading="lazy" decoding="async" src="${esc(x.photos[0])}" alt="" onerror="this.style.opacity=0">` : ''}
       <span class="badge av">للبيع</span>${x.featured ? `<span class="badge star">⭐ مميز</span>` : ''}${x.slider ? '<span class="badge slid">🎞️ مختار</span>' : ''}</div>
     <div class="body">
-      ${advStrip()}
+      ${advStrip(x.adv)}
       <div class="row between"><h3 class="notr">${esc(x.title)}</h3>${x.price ? `<div class="price">${money(x.price)} <small>د.إ</small></div>` : ''}</div>
       ${x.project || x.location ? `<div class="meta">${I.pin}<span>${esc(x.project || x.location)}</span></div>` : ''}
       ${x.seller ? `<div class="seller">${I.verified}<span class="notr">${esc(x.seller)}</span>${x.rating && x.rating.n ? `<span class="srate">★ ${x.rating.avg.toFixed(1)} <small>(${x.rating.n})</small></span>` : ''}</div>` : ''}
