@@ -1077,7 +1077,7 @@ async function boot() {
     App.addListener('appUrlOpen', ({ url }) => widgetLink(url));
     App.getLaunchUrl().then((r) => r && widgetLink(r.url)).catch(() => {});
     App.addListener('resume', () => { if (Date.now() - (DATA().at || 0) > 5 * 60e3) refresh(false); checkUpdate(openExternal); });
-    setTimeout(() => checkUpdate(openExternal), 4000);   // a newer version out? (at most every 6 hours)
+    setTimeout(() => checkUpdate(openExternal), 4000);   // a newer version out? (at most every 30 minutes)
     setTimeout(() => SplashScreen.hide({ fadeOutDuration: 250 }).catch(() => {}), 150);
   }
   if (!native) setupWebApp();

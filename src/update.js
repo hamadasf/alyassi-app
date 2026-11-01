@@ -1,5 +1,5 @@
 // Android: tells the user when a newer version of the app is out (the newest GitHub release), with a button that
-// downloads it. Checked when the app opens and when it comes back to the front (at most every 6 hours).
+// downloads it. Checked when the app opens and when it comes back to the front (at most every 30 minutes).
 import { Capacitor } from '@capacitor/core';
 
 const REPO = 'hamadasf/alyassi-app';
@@ -14,7 +14,7 @@ export const canCheckUpdate = () => Capacitor.isNativePlatform() && Capacitor.ge
 export async function checkUpdate(openExternal, force = false) {
   if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android' || !num(VER) || open) return '';
   const last = +get('oay:upd:t') || 0;
-  if (!force && Date.now() - last < 6 * 3600e3) return '';
+  if (!force && Date.now() - last < 30 * 60e3) return '';
   set('oay:upd:t', String(Date.now()));
   let rel;
   try {
