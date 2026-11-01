@@ -1033,7 +1033,7 @@ function oay_acc_track() {
 	$ev = isset( $in['ev'] ) && is_array( $in['ev'] ) ? array_slice( $in['ev'], 0, 40 ) : array();
 	if ( ! $dev || ! $ev ) { oay_acc_ok(); }
 	$k = oay_day_key(); $d = get_option( $k, array() ); if ( ! is_array( $d ) ) { $d = array(); }
-	$d += array( 'dev' => array(), 'c' => array(), 'view' => array(), 'share' => array(), 'wa' => array(), 'call' => array() );
+	$d += array( 'dev' => array(), 'c' => array(), 'view' => array(), 'share' => array(), 'wa' => array(), 'call' => array(), 'form' => array() );
 	$h = substr( md5( $dev ), 0, 12 ); if ( count( $d['dev'] ) < 30000 ) { $d['dev'][ $h ] = 1; }
 	foreach ( $ev as $e ) {
 		if ( ! is_array( $e ) ) { continue; }

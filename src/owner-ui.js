@@ -2,7 +2,7 @@
 import { advStrip } from './adv.js';
 import { pickersHTML, bindPickers, pickersError, submitAdv, advMissing, renderAdvReqs, advReqClick } from './advui.js';
 import { Capacitor } from '@capacitor/core';
-import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands } from './owner.js';
+import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands, can } from './owner.js';
 import { contactBar, refLine } from './contact.js';
 
 const native = Capacitor.isNativePlatform();
@@ -23,6 +23,7 @@ export function accountPage() {
       ${advMissing(u) ? `<button class="advnote" data-advmine><b>📷 أضف صورتك الشخصية</b><span>تظهر على إعلاناتك (والشركات تضيف شعارها) — تعتمدها الإدارة</span></button>` : u.adv && u.adv.status === 'rejected' ? `<button class="advnote bad" data-advmine><b>لم تُعتمد صورتك</b><span>${esc(u.adv.note || 'اضغط لإرسال صورة أخرى')}</span></button>` : u.adv && u.adv.status === 'pending' ? `<button class="advnote wait" data-advmine><b>⏳ صورتك بانتظار اعتماد الإدارة</b></button>` : ''}
       ${!u.admin && !u.verified ? `<button class="btn ghost block" data-verify>${I.verified} توثيق حساب المكتب العقاري</button>` : ''}
       <button class="btn gold block share-big" data-addland>${I.plus || '＋'} أضف أرضاً للبيع</button>
+      ${!u.admin ? `<button class="btn ghost block stbtn" data-mystats>📊 إحصائيات إعلاناتي</button>` : ''}
       <h2 class="h2">طلباتي</h2>
       <div id="myList"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>
       <button class="btn ghost block" data-logout>تسجيل الخروج</button>
@@ -494,6 +495,7 @@ export function oLandPage(x) {
     <div class="pad">
       <h1 class="notr">${esc(x.title)}</h1>
       ${refLine(String(x.id))}
+      ${can('listings') || can('report') ? `<button class="btn ghost block stbtn" data-stats="${x.id}">📊 إحصائيات الإعلان</button>` : ''}
       ${x.seller ? `<div class="seller big">${I.verified}<span>${esc(x.seller)} · مكتب عقاري موثّق</span></div>` : ''}
       ${x.price ? `<div class="pricebox"><div class="price big">${money(x.price)} <small>د.إ</small></div></div>` : ''}
       <div class="inst">${rows.map((r) => `<div class="r"><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}</div>

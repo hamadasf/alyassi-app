@@ -23,6 +23,8 @@ import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfileP
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser } from './owner-ui.js';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { advStrip, loadBrand } from './adv.js';
+import { checkUpdate } from './update.js';
+import { initStats, statsPage, initStatsPage, myStatsPage, initMyStats } from './stats.js';
 import { initAdvUI, brandPage, initBrand, advMinePage, initAdvMine } from './advui.js';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
 import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen, offerFor } from './data.js';
@@ -704,6 +706,7 @@ function landPage(l) {
         <div class="inst"><div class="r head"><span>الدفعة الأولى</span><b>${money(l.first)} د.إ</b></div>
         ${l.inst.map((x, i) => `<div class="r"><span>القسط ${i + 1} · <bdi>${esc(fmtDate(x[0]))}</bdi></span><b>${money(x[1])} د.إ</b></div>`).join('')}
         <div class="r total"><span>الإجمالي</span><b>${money(l.first + sumInst)} د.إ</b></div></div>` : ''}
+      ${can('listings') || can('report') ? `<button class="btn ghost block stbtn" data-stats="${esc(l.id)}">📊 إحصائيات الإعلان</button>` : ''}
       ${ADGEN_ON && can('listings') && l.poly ? `<button class="btn adgbtn block" data-adgen="${esc(l.id)}">🎨 صمّم منشور إعلان لهذه القطعة</button>` : ''}
       ${l.status === 'av' || l.status === 'res' ? `<button class="btn calcbtn block" data-calc="${esc(l.id)}">🧮 حاسبة الأقساط${l.total ? '' : ' (أدخل السعر)'}</button>` : ''}
       ${l.sketch && l.sketch !== l.img ? `<h2 class="h2">كروكي القطعة</h2><img class="sketch" src="${esc(l.sketch)}" alt="" loading="lazy" data-web="${esc(l.sketch)}">` : ''}
@@ -762,6 +765,8 @@ function pushPage(kind, id) {
   else if (kind === 'staff') { html = staffPage(); }
   else if (kind === 'calc') { l = id ? findLand(id) : null; html = calcPage(l); }
   else if (kind === 'brand') { html = brandPage(); }
+  else if (kind === 'stats') { html = statsPage(); }
+  else if (kind === 'mystats') { html = myStatsPage(); }
   else if (kind === 'advmine') { html = advMinePage(); }
   else if (kind === 'adgen') { if (id) { l = findLand(id); p = l && d.projects.find((x) => x.slug === l.project); if (!l || !p || !l.poly) return; } html = adgenPage(id ? l : null, d.projects); }
   else if (kind === 'mychat') { html = myChatPage(); }
@@ -771,7 +776,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', advmine: 'صورتي على الإعلانات', adgen: 'مولّد منشورات الإعلانات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'مولّد منشورات الإعلانات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -789,6 +794,8 @@ function pushPage(kind, id) {
   if (kind === 'news') initNewsPage(pg);
   if (kind === 'calc') { initCalc2(pg, l); track('calc', id || ''); }
   if (kind === 'brand') initBrand(pg);
+  if (kind === 'stats') initStatsPage(pg, id);
+  if (kind === 'mystats') initMyStats(pg);
   if (kind === 'advmine') initAdvMine(pg);
   if (kind === 'adgen') { pg.classList.add('adgpg'); if (id) initAdgen2(pg, l, p); else initAdgenPick(pg, d.projects, (lid) => pushPage('adgen', lid)); }
   if (kind === 'report') initReportPage(pg, 0);
@@ -831,6 +838,7 @@ window.addEventListener('popstate', () => { if (stack.length) popPage(); });
 /* the phone's back button: closes what is open on top, then goes back one page, then to the home tab;
    on the home tab it asks «خروج / إلغاء» before leaving the app */
 function closeOverlay() {
+  const upd = document.querySelector('.upddlg [data-upd="0"]'); if (upd) { upd.click(); return true; }
   const exit = document.querySelector('.exitdlg'); if (exit) { exit.remove(); return true; }
   const crop = document.querySelector('.adg-crop:not([hidden])'); if (crop) { crop.querySelector('#pzCropNo')?.click(); return true; }
   const viewer = document.querySelector('.viewer'); if (viewer) { viewer.remove(); return true; }
@@ -924,6 +932,9 @@ document.addEventListener('click', (e) => {
   if (ds.verify !== undefined) { if (session.token()) pushPage('verify'); else pushPage('account'); return; }
   if (ds.editprofile !== undefined) { pushPage('editprofile'); return; }
   if (ds.brand !== undefined) { pushPage('brand'); return; }
+  if (ds.stats) { pushPage('stats', ds.stats); return; }
+  if (ds.mystats !== undefined) { pushPage('mystats'); return; }
+  if (ds.chkupd !== undefined) { checkUpdate(openExternal, true).then((r) => { if (r === 'latest') toast('أنت على آخر نسخة ✓'); else if (!r) toast('تعذّر التحقق — تأكد من الإنترنت'); }); return; }
   if (ds.advmine !== undefined) { if (session.token()) pushPage('advmine'); else pushPage('account'); return; }
   if (ds.settings !== undefined) { pushPage('settings'); return; }
   if (ds.notifs !== undefined) { pushPage('notifs'); return; }
@@ -1018,6 +1029,7 @@ function refresh(force) {
 }
 
 initAdvUI({ toast, closeTop: () => closeTop() });
+initStats({ toast });
 loadBrand(accApi);
 initOwnerUI({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), waLink, CONTACT });
 initChat({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id) });
@@ -1064,7 +1076,8 @@ async function boot() {
     };
     App.addListener('appUrlOpen', ({ url }) => widgetLink(url));
     App.getLaunchUrl().then((r) => r && widgetLink(r.url)).catch(() => {});
-    App.addListener('resume', () => { if (Date.now() - (DATA().at || 0) > 5 * 60e3) refresh(false); });
+    App.addListener('resume', () => { if (Date.now() - (DATA().at || 0) > 5 * 60e3) refresh(false); checkUpdate(openExternal); });
+    setTimeout(() => checkUpdate(openExternal), 4000);   // a newer version out? (at most every 6 hours)
     setTimeout(() => SplashScreen.hide({ fadeOutDuration: 250 }).catch(() => {}), 150);
   }
   if (!native) setupWebApp();

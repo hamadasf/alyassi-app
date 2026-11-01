@@ -1,4 +1,5 @@
 import { ADGEN_ON } from './adgen.js';
+import { canCheckUpdate } from './update.js';
 // «المزيد» tab: profile, my activity, account & settings, support, terms & privacy.
 import { api, session, refreshMe, logout, resizePhoto, can, isOffice } from './owner.js';
 
@@ -31,6 +32,7 @@ export function renderMore(el) {
       ${row(I.doc, 'دليل الإجراءات العقارية', 'data-guide')}
       ${row(I.doc, 'الأخبار العقارية', 'data-news', can('news') ? '<small>إدارة الشريط</small>' : '')}
       ${u ? row(I.calendar || I.bell, 'مواعيد المعاينة', 'data-myviews') : ''}
+      ${u && !isOffice() ? row(I.grid, 'إحصائيات إعلاناتي', 'data-mystats') : ''}
     </div>
     ${isOffice() ? `<h3 class="msec">${u.admin ? 'الإدارة' : 'أدوات الموظف'}</h3><div class="mbox">
       ${can('listings') ? row(I.shield, 'لوحة الإدارة', 'data-admin') : ''}
@@ -41,6 +43,7 @@ export function renderMore(el) {
       ${can('chats') ? row(I.chat, 'المحادثات الخاصة', 'data-tab="chats"') : ''}
       ${can('push') ? row(I.bell, 'إشعار موجّه', 'data-pushc') : ''}
       ${can('report') ? row(I.grid, 'التقرير الأسبوعي', 'data-report') : ''}
+      ${can('listings') || can('report') ? row(I.grid, 'إحصائيات الإعلانات', 'data-mystats', '<small>مشاهدات وتواصل لكل إعلان</small>') : ''}
       ${u.admin ? row(I.verified, 'الموظفون', 'data-staff') : ''}
     </div>` : ''}
     <h3 class="msec">الحساب والإعدادات</h3>
@@ -57,7 +60,7 @@ export function renderMore(el) {
       ${u ? `<button class="mrow danger" data-logout><span class="mi">${I.logout}</span><b>تسجيل الخروج</b></button>` : ''}
     </div>
     <p class="mfoot">باستخدامك تطبيق عمر الياسي للعقارات فأنت توافق على <button data-legal="terms">شروط الاستخدام</button> و<button data-legal="privacy">سياسة الخصوصية</button></p>
-    <p class="ver">الإصدار ${esc(VER || '1.0')}</p>`;
+    <p class="ver">الإصدار ${esc(VER || '1.0')}${canCheckUpdate() ? ` · <button class="linkbtn" data-chkupd>التحقق من التحديثات</button>` : ''}</p>`;
 }
 
 /* ================= profile ================= */
