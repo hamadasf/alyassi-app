@@ -12,7 +12,9 @@ jobs:
           curl -fsSL -A "$UA" -o app.js "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/app.js?t=$(date +%s)"
           curl -fsSL -A "$UA" -o plan.html "https://omaralyassirealestate.com/dabdaba-north/?t=$(date +%s)"
           curl -fsSL -A "$UA" -o app.css "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/app.css" || true
-          ls -la
+          mkdir -p ad
+          for f in aya-base.jpg aya-icons.png; do curl -fsSL -A "$UA" -o ad/$f "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/ad/$f" || echo "::warning::missing $f"; done
+          ls -la . ad
           git init -q && git checkout -q -b site-ref && git add -A
           git -c user.name=ci -c user.email=ci@localhost commit -qm "site reference $(date -u +%F)"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" site-ref
