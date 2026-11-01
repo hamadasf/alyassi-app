@@ -12,7 +12,7 @@ import { initNotifs, notifsPage } from './notifs.js';
 import { initNews, loadNews, renderTicker, newsPage, initNewsPage } from './news.js';
 import { initCalc, calcPage, initCalc2 } from './calc.js';
 import { initPlanView, planViewPage, initPlanView2 } from './planview.js';
-import { initAdgen, adgenPage, initAdgen2, initAdgenPick } from './adgen.js';
+import { initAdgen, adgenPage, initAdgen2, initAdgenPick, ADGEN_ON } from './adgen.js';
 import { track, deviceId } from './track.js';
 import { initContact, contactBar, refLine, callbackSheet, refOf, waText } from './contact.js';
 import { initViews, setBooking, bookPage, initBook, myViewsPage, initMyViews, viewsPage, initViewsAdm } from './views.js';
@@ -698,7 +698,7 @@ function landPage(l) {
         <div class="inst"><div class="r head"><span>الدفعة الأولى</span><b>${money(l.first)} د.إ</b></div>
         ${l.inst.map((x, i) => `<div class="r"><span>القسط ${i + 1} · <bdi>${esc(fmtDate(x[0]))}</bdi></span><b>${money(x[1])} د.إ</b></div>`).join('')}
         <div class="r total"><span>الإجمالي</span><b>${money(l.first + sumInst)} د.إ</b></div></div>` : ''}
-      ${can('listings') && l.poly ? `<button class="btn adgbtn block" data-adgen="${esc(l.id)}">🎨 صمّم منشور إعلان لهذه القطعة</button>` : ''}
+      ${ADGEN_ON && can('listings') && l.poly ? `<button class="btn adgbtn block" data-adgen="${esc(l.id)}">🎨 صمّم منشور إعلان لهذه القطعة</button>` : ''}
       ${l.status === 'av' || l.status === 'res' ? `<button class="btn calcbtn block" data-calc="${esc(l.id)}">🧮 حاسبة الأقساط${l.total ? '' : ' (أدخل السعر)'}</button>` : ''}
       ${l.sketch && l.sketch !== l.img ? `<h2 class="h2">كروكي القطعة</h2><img class="sketch" src="${esc(l.sketch)}" alt="" loading="lazy" data-web="${esc(l.sketch)}">` : ''}
       <button class="btn primary block" data-plan="${esc(landUrl(l))}" data-pview="${esc(l.project + '|' + l.n)}">${I.map} عرض القطعة على المخطط</button>
@@ -870,7 +870,7 @@ document.addEventListener('click', (e) => {
   if (ds.profile !== undefined) { pushPage('profile'); return; }
   if (ds.news !== undefined) { pushPage('news'); return; }
   if (ds.report !== undefined) { pushPage('report'); return; }
-  if (ds.adgen !== undefined) { pushPage('adgen', ds.adgen); return; }
+  if (ds.adgen !== undefined && ADGEN_ON) { pushPage('adgen', ds.adgen); return; }
   if (ds.wanted !== undefined) { pushPage('wanted'); return; }
   if (ds.alerts !== undefined) { pushPage('alerts', ds.alerts); return; }
   if (ds.leads !== undefined) { pushPage('leads'); return; }

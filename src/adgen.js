@@ -11,6 +11,8 @@ import { rawPlots } from './data.js';
 import { AD_LOGOS } from './adlogos.js';
 
 const native = Capacitor.isNativePlatform();
+/** hidden for now (the owner will turn it on later): false hides every entry to the designer */
+export const ADGEN_ON = false;
 let H = null;
 export function initAdgen(h) { H = h; }
 
