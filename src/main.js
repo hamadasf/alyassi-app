@@ -24,6 +24,7 @@ import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLands
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { advStrip, loadBrand } from './adv.js';
 import { checkUpdate } from './update.js';
+import { buildPayPlan } from './payplan.js';
 import { initStats, statsPage, initStatsPage, myStatsPage, initMyStats } from './stats.js';
 import { initAdvUI, brandPage, initBrand, advMinePage, initAdvMine } from './advui.js';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
@@ -412,6 +413,35 @@ function openProjectShare(p) {
     catch (e) { if (!(e && (e.name === 'AbortError' || /cancel/i.test(e.message || '')))) toast('تعذّر فتح المشاركة'); }
   };
 }
+/* ---- «خطة السداد» PDF in the company letterhead (client's name optional) ---- */
+function openPayPlan(l) {
+  document.querySelector('.ssheet')?.remove();
+  const el = document.createElement('div'); el.className = 'ssheet';
+  el.innerHTML = `<div class="ss-scrim" data-ssclose></div><div class="ss-box">
+    <div class="ss-grip"></div>
+    <h3>خطة السداد · قطعة ${esc(l.n)}</h3>
+    <p class="ss-sub">ملف PDF بترويسة الشركة: السعر والدفعة المقدمة وجدول الأقساط بتواريخها</p>
+    <label class="ppname">اسم العميل (اختياري)<input id="ppClient" maxlength="60" placeholder="يظهر في الخطة — اتركه فارغاً إن لم يلزم"></label>
+    <button class="btn wa block" data-ppgo>${I.wa} إنشاء ومشاركة الخطة PDF</button>
+  </div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('open'));
+  const close = () => { el.classList.remove('open'); setTimeout(() => el.remove(), 250); };
+  el.querySelector('[data-ssclose]').onclick = close;
+  el.querySelector('[data-ppgo]').onclick = async (e) => {
+    const b = e.currentTarget, client = el.querySelector('#ppClient').value.trim();
+    b.disabled = true; b.textContent = 'جارِ تجهيز الملف…';
+    try {
+      const pdf = await buildPayPlan(l, client);
+      const txt = [`*خطة السداد — قطعة رقم ${l.n} · ${l.projectName}*`, client ? `للعميل: ${client}` : '', '', `📎 مرفق: خطة السداد (PDF)`, '', `🗺️ ${shareUrl(l)}`, '', '*عمر الياسي للعقارات*'].filter((x, i, a) => x || a[i - 1]).join('\n');
+      await shareFile(pdf, txt, `خطة السداد · قطعة ${l.n}`);
+      track('share', l.id); close();
+    } catch (ex) {
+      if (!(ex && (ex.name === 'AbortError' || /cancel/i.test(ex.message || '')))) toast('تعذّر تجهيز الملف');
+      b.disabled = false; b.innerHTML = `${I.wa} إنشاء ومشاركة الخطة PDF`;
+    }
+  };
+}
 async function shareText(title, text) {
   try {
     if (native) { await Share.share({ title, text, dialogTitle: 'مشاركة' }); return; }
@@ -708,6 +738,7 @@ function landPage(l) {
         <div class="r total"><span>الإجمالي</span><b>${money(l.first + sumInst)} د.إ</b></div></div>` : ''}
       ${can('listings') || can('report') ? `<button class="btn ghost block stbtn" data-stats="${esc(l.id)}">📊 إحصائيات الإعلان</button>` : ''}
       ${ADGEN_ON && can('listings') && l.poly ? `<button class="btn adgbtn block" data-adgen="${esc(l.id)}">🎨 صمّم منشور إعلان لهذه القطعة</button>` : ''}
+      ${l.total && l.status !== 'sold' ? `<button class="btn ppbtn block" data-payplan="${esc(l.id)}">📄 خطة السداد PDF</button>` : ''}
       ${l.status === 'av' || l.status === 'res' ? `<button class="btn calcbtn block" data-calc="${esc(l.id)}">🧮 حاسبة الأقساط${l.total ? '' : ' (أدخل السعر)'}</button>` : ''}
       ${l.sketch && l.sketch !== l.img ? `<h2 class="h2">كروكي القطعة</h2><img class="sketch" src="${esc(l.sketch)}" alt="" loading="lazy" data-web="${esc(l.sketch)}">` : ''}
       <button class="btn primary block" data-plan="${esc(landUrl(l))}" data-pview="${esc(l.project + '|' + l.n)}">${I.map} عرض القطعة على المخطط</button>
@@ -934,6 +965,7 @@ document.addEventListener('click', (e) => {
   if (ds.brand !== undefined) { pushPage('brand'); return; }
   if (ds.stats) { pushPage('stats', ds.stats); return; }
   if (ds.mystats !== undefined) { pushPage('mystats'); return; }
+  if (ds.payplan) { const pl = findLand(ds.payplan); if (pl) openPayPlan(pl); return; }
   if (ds.chkupd !== undefined) { checkUpdate(openExternal, true).then((r) => { if (r === 'latest') toast('أنت على آخر نسخة ✓'); else if (!r) toast('تعذّر التحقق — تأكد من الإنترنت'); }); return; }
   if (ds.advmine !== undefined) { if (session.token()) pushPage('advmine'); else pushPage('account'); return; }
   if (ds.settings !== undefined) { pushPage('settings'); return; }

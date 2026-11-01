@@ -954,3 +954,5 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .strow b { font-size: 14.5px; } .strow span { grid-row: 2; display: flex; flex-wrap: wrap; gap: 10px; font-size: 12.5px; color: #475569; } .strow span i { font-style: normal; } .strow em { grid-row: 1 / 3; grid-column: 2; font-style: normal; color: #94a3b8; font-size: 20px; }
 .upddlg p { margin: 0; text-align: center; font-size: 14px; color: #334155; line-height: 1.7; } .upddlg small { text-align: center; color: #64748b; font-size: 12px; } .updic { font-size: 40px; }
 .pvst.na { background: #94a3b8; }
+.ppbtn { background: #eef2f8; color: #24305e; border: 1.5px solid #cfd8e8; font-weight: 800; }
+.ppname { display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: 14px; margin: 4px 0 12px; } .ppname input { padding: 12px; border: 1px solid var(--line); border-radius: 12px; font: inherit; font-size: 16px; }
