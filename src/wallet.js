@@ -1,7 +1,7 @@
 // «محفظتي» — the broker / office wallet: their listings, their deals (lands bought → instalments they pay, lands sold →
 // instalments they receive + their commission), the next payment, upcoming instalments, a 12-month cash-flow chart and
 // their earnings. The broker keeps it; the office (permission «listings») can open anyone's wallet and add or edit.
-import { api } from './owner.js';
+import { api, session } from './owner.js';
 
 let H = null;
 export function initWallet(h) { H = h; }
@@ -17,7 +17,9 @@ const num = (v) => +String(v || '').replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧
 export const commOf = (d) => (d.type === 'sell' ? (d.comm || Math.round(d.price * (d.pct || 0) / 100)) : 0);
 
 /** everything the screen shows, from the deals */
-function summary(deals) {
+const okDeal = (d) => (d.st || 'ok') === 'ok';   // waiting / refused deals are listed but not counted
+function summary(all) {
+  const deals = all.filter(okDeal);
   const t = today(), year = t.slice(0, 4), rows = [];
   let inLeft = 0, outLeft = 0, inPaid = 0, outPaid = 0, earn = 0, earnYear = 0, active = 0;
   deals.forEach((d) => {
@@ -47,13 +49,20 @@ function chart(months) {
 
 /* ---------- a deal started from a land's page: the land, its price and the developer's dated plan filled in ---------- */
 let pending = null;
+/** company plot → a request to the office (or, for the company itself, a direct deal) */
 export function dealFromLand(l) {
   const inst = (l.inst || []).map((x) => [String(x[0] || '').slice(0, 10), +x[1] || 0]).filter((x) => x[0] && x[1]);
   const sum = inst.reduce((a, x) => a + x[1], 0), down = inst.length ? Math.max(0, (l.total || 0) - sum) : (l.total || 0);
   const sched = [];
   if (down) sched.push({ d: today(), a: down, p: false, l: inst.length ? 'الدفعة المقدمة' : 'كاش' });
   inst.forEach((x, k) => sched.push({ d: x[0], a: x[1], p: false, l: `القسط ${k + 1}` }));
-  pending = { type: 'sell', title: `قطعة ${l.n} · ${l.projectName}`, project: l.project, plot: l.n, price: l.total || 0, sched };
+  pending = { type: 'sell', title: `قطعة ${l.n} · ${l.projectName}`, project: l.project, plot: l.n, price: l.total || 0, sched, src: 'company', ref: l.id };
+}
+/** the member's own listing → straight into the wallet */
+export function dealFromOwn(x) {
+  const sched = []; const price = +x.price || 0, down = Math.min(price, +x.down || 0);
+  if (price) sched.push({ d: today(), a: down || price, p: false, l: down ? 'الدفعة المقدمة' : 'كاش' });
+  pending = { type: 'sell', title: x.title || ('أرض ' + (x.number || '')), plot: x.number || '', price, sched, src: 'own', ref: String(x.id) };
 }
 /** «محفظتي» card on the home page: this month in / out and the next payment (brokers only) */
 export async function homeWalletCard(el) {
@@ -67,6 +76,20 @@ export async function homeWalletCard(el) {
       ${nx ? `<div class="wh3 ${nx.d < today() ? 'late' : ''}">${nx.d < today() ? '⚠️ متأخرة' : 'الدفعة القادمة'}: <b>${m(nx.a)} د.إ</b> ${nx.deal.type === 'sell' ? 'لك' : 'عليك'} · ${dmy(nx.d)}</div>` : ''}</button>`;
   } catch { el.innerHTML = ''; }
 }
+/** the company's own wallet: all its lands from every project, the buyers' coming instalments, and the brokers' deals */
+function companyHTML(c) {
+  const T = c.total;
+  return `<div class="wco"><h3 class="msec">🏢 أراضي الشركة — كل المشاريع</h3>
+    <div class="wgrid three"><div class="wtile in"><small>متاحة</small><b>${m(T.av)}</b><span>${m(T.avValue)} د.إ</span></div>
+      <div class="wtile"><small>محجوزة</small><b>${m(T.res)}</b><span>&nbsp;</span></div>
+      <div class="wtile out"><small>مباعة</small><b>${m(T.sold)}</b><span>${m(T.soldValue)} د.إ</span></div></div>
+    <div class="wtable">${c.projects.map((p) => `<div><b>${esc(p.name)}</b><span><i class="av">${p.av}</i><i class="res">${p.res}</i><i class="sold">${p.sold}</i></span><em>${m(p.avValue)}</em></div>`).join('')}
+      <small class="muted">متاحة · محجوزة · مباعة — وقيمة المتاح بالدرهم</small></div>
+    ${c.due.length ? `<div class="wtile wide"><small>أقساط المشترين القادمة (أراضٍ محجوزة ومباعة)</small><b>${m(c.dueSum)} د.إ</b>
+      <span>${c.due.slice(0, 3).map((r) => `${dmy(r.d)}: ${m(r.a)} · ${esc(r.title)}`).join('<br>')}</span></div>` : ''}
+    ${c.brokers.length ? `<h3 class="msec">🤝 صفقات الوسطاء المعتمدة</h3><div class="wtable">${c.brokers.map((b) => `<div data-wbroker="${b.id}"><b>${esc(b.name)}</b><span>${b.deals} صفقة</span><em>${m(b.sales)} · عمولة ${m(b.comm)}</em></div>`).join('')}</div>` : ''}
+    <h3 class="msec">💼 صفقاتي</h3></div>`;
+}
 export function walletPage() { return '<div class="pad wallet" id="wBox"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>'; }
 export function initWalletPage(pg, uid) {
   const box = pg.querySelector('#wBox'); let data = null, tab = 'due';
@@ -75,6 +98,7 @@ export function initWalletPage(pg, uid) {
     const s = summary(data.deals), L = data.listings, other = uid && data.who;
     const nx = s.next;
     box.innerHTML = `${other ? `<div class="wwho">💼 محفظة <b>${esc(data.who.name)}</b></div>` : ''}
+      ${data.company ? companyHTML(data.company) : ''}
       <div class="wgrid">
         <div class="wtile"><small>الأراضي المعروضة</small><b>${m(L.live)}</b><span>من ${m(L.all)} إعلان</span></div>
         <div class="wtile"><small>الصفقات النشطة</small><b>${m(s.active)}</b><span>من ${m(data.deals.length)} صفقة</span></div>
@@ -98,6 +122,7 @@ export function initWalletPage(pg, uid) {
   const dealList = (deals) => (deals.length ? [...deals].sort((a, b) => (b.date || '').localeCompare(a.date || '')).map((d) => {
     const tot = d.sched.reduce((a, r) => a + r.a, 0), paid = d.sched.filter((r) => r.p).reduce((a, r) => a + r.a, 0), pc = tot ? Math.round(paid / tot * 100) : 0;
     return `<button class="wdeal" data-wedit="${esc(d.id)}"><div class="wd1"><i class="pill ${d.type === 'sell' ? 'av' : 'sold'}">${d.type === 'sell' ? 'بيع' : 'شراء'}</i><b>${esc(d.title)}</b>${d.done ? '<i class="pill">منتهية</i>' : ''}</div>
+      ${d.st === 'pending' ? '<span class="wst wait">⏳ بانتظار اعتماد الإدارة — لا تُحسب في الأرقام بعد</span>' : d.st === 'rejected' ? `<span class="wst bad">✕ لم تُعتمد${d.rnote ? ': ' + esc(d.rnote) : ''}</span>` : d.src === 'company' || d.okby ? '<span class="wst ok">✓ معتمدة من الشركة</span>' : d.src === 'own' ? '<span class="wst ok">✓ من إعلاناتي</span>' : ''}
       <span>${esc(d.party || '—')} · ${m(d.price)} د.إ${d.type === 'sell' ? ` · عمولة ${m(commOf(d))} د.إ` : ''} · ${dmy(d.date)}</span>
       <div class="wbar"><i style="width:${pc}%"></i></div><small>${d.type === 'sell' ? 'استلمت' : 'دفعت'} ${m(paid)} من ${m(tot)} د.إ (${pc}%)</small></button>`;
   }).join('') : '<p class="muted">لا توجد صفقات بعد.</p>');
@@ -114,6 +139,7 @@ export function initWalletPage(pg, uid) {
       const txt = `السلام عليكم ${d.party || ''}،\nتذكير ودّي: ${r.l || 'القسط'} لـ ${d.title} بقيمة ${m(r.a)} درهم ${r.d < today() ? 'كان مستحقاً بتاريخ' : 'مستحق بتاريخ'} ${dmy(r.d)}.\nشكراً لتعاملكم معنا 🌷\n${data.who ? data.who.name : ''}`;
       H.openUrl(`https://wa.me/${ph}?text=${encodeURIComponent(txt)}`); return;
     }
+    const br = e.target.closest('[data-wbroker]'); if (br) { H.openWallet(br.dataset.wbroker); return; }
     const t = e.target.closest('[data-wtab], [data-wnew], [data-wedit]'); if (!t) return;
     if (t.dataset.wtab) { tab = t.dataset.wtab; draw(); return; }
     if (t.dataset.wnew !== undefined) { editDeal(null); return; }
@@ -126,14 +152,17 @@ export function initWalletPage(pg, uid) {
   });
 
   /* ---------- add / edit a deal (full-screen form over the wallet) ---------- */
+  // the office (or the company's own account) approves as it saves; a member's own listing needs no approval
+  const needsOk = (d) => { const me = session.user() || {}; return !uid && !me.admin && d.src !== 'own'; };
   function editDeal(d0, pre) {
-    const d = d0 ? JSON.parse(JSON.stringify(d0)) : { type: 'sell', title: '', party: '', phone: '', price: 0, pct: 2, comm: 0, date: today(), note: '', sched: [], ...(pre || {}) };
+    const d = d0 ? JSON.parse(JSON.stringify(d0)) : { type: 'sell', title: '', party: '', phone: '', price: 0, pct: 2, comm: 0, date: today(), note: '', sched: [], src: 'manual', ref: '', ...(pre || {}) };
     const ov = document.createElement('div'); ov.className = 'walletf';
     const projects = (H.projects() || []).map((p) => `<option value="${esc(p.slug)}" ${d.project === p.slug ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
     ov.innerHTML = `<div class="wfbox"><header><button class="back" data-wx aria-label="إغلاق">✕</button><b>${d0 ? 'تعديل الصفقة' : 'صفقة جديدة'}</b></header>
       <div class="wfbody">
         <div class="seg"><button type="button" data-ty="sell" class="${d.type === 'sell' ? 'on' : ''}">⬇️ أرض بعتها لعميل</button><button type="button" data-ty="buy" class="${d.type === 'buy' ? 'on' : ''}">⬆️ أرض اشتريتها</button></div>
         <p class="help" id="tyHelp"></p>
+        ${needsOk(d) ? '<p class="wst wait">⏳ ستُرسل الصفقة للإدارة للاعتماد قبل أن تُحسب في محفظتك' + (d.src === 'company' ? ' — أرض من أراضي الشركة' : '') + '.</p>' : ''}
         <label class="fld">الأرض (الاسم أو الوصف) *<input id="fTitle" value="${esc(d.title)}" placeholder="مثال: قطعة 4873 الدبدبة شمال"></label>
         <div class="two"><label class="fld">المشروع<select id="fProj"><option value="">—</option>${projects}</select></label><label class="fld">رقم القطعة<input id="fPlot" value="${esc(d.plot || '')}" dir="ltr"></label></div>
         <div class="two"><label class="fld" id="partyL">اسم العميل<input id="fParty" value="${esc(d.party)}"></label><label class="fld">جواله (للتذكير بالواتساب)<input id="fPhone" type="tel" dir="ltr" inputmode="tel" value="${esc(d.phone || '')}" placeholder="05xxxxxxxx"></label></div>
@@ -192,7 +221,7 @@ export function initWalletPage(pg, uid) {
           date: $('#fDate').value, pct: num($('#fPct').value), comm: num($('#fComm').value), note: $('#fNote').value.trim(), done: $('#fDone').checked,
           sched: d.sched.map((r) => ({ ...r, a: +r.a || 0 })).filter((r) => r.d && r.a) };
         b.disabled = true; b.textContent = 'جارِ الحفظ…';
-        call('wallet_save', { deal }).then((j) => { data = j; draw(); close(); H.toast('تم حفظ الصفقة ✓'); })
+        call('wallet_save', { deal }).then((j) => { data = j; draw(); close(); const sv = j.deals.find((x) => x.id === deal.id) || j.deals[j.deals.length - 1]; H.toast(sv && sv.st === 'pending' ? 'أُرسلت الصفقة للإدارة للاعتماد ✓' : 'تم حفظ الصفقة ✓'); })
           .catch((ex) => { H.toast(ex.message); b.disabled = false; b.textContent = 'حفظ الصفقة'; });
       }
     });
@@ -206,4 +235,28 @@ export function initWalletPage(pg, uid) {
     setType(); drawSched();
   }
   load();
+}
+
+/* ---------- office: deals waiting for approval (a tab of the admin panel) ---------- */
+export async function renderDealReqs(list) {
+  const j = await api('adm_deals');
+  list.innerHTML = j.items.length ? j.items.map((x) => { const d = x.deal; return `<div class="vreq dreq">
+      <b>${esc(d.title)}</b><span>${esc(x.who)} · ${d.type === 'sell' ? 'بيع' : 'شراء'} · ${m(d.price)} د.إ${d.type === 'sell' ? ` · عمولة ${m(commOf(d))}` : ''}</span>
+      <span>${esc(d.party || '—')}${d.phone ? ` · <a href="tel:${esc(d.phone)}" dir="ltr">${esc(d.phone)}</a>` : ''} · ${d.src === 'company' ? 'أرض للشركة' : 'صفقة يدوية'} · ${d.sched.length} دفعات</span>
+      ${x.plot ? `<span class="muted">حالة القطعة الآن: ${{ av: 'متاحة', res: 'محجوزة', sold: 'مباعة' }[x.plot.s] || x.plot.s}${x.plot.total ? ' · سعرها ' + m(x.plot.total) : ''}</span>
+        <label class="fld dmark">عند الاعتماد<select data-mark="${esc(x.uid)}|${esc(d.id)}"><option value="">لا تغيّر حالة القطعة</option><option value="res" ${x.plot.s === 'av' ? 'selected' : ''}>اجعلها محجوزة</option><option value="sold">اجعلها مباعة</option></select></label>` : ''}
+      <div class="admact"><button class="btn wa" data-dok="${esc(x.uid)}|${esc(d.id)}">✓ اعتماد</button><button class="btn ghost" data-dno="${esc(x.uid)}|${esc(d.id)}">✕ رفض</button><button class="btn ghost" data-wbroker2="${esc(x.uid)}">💼 محفظته</button></div></div>`; }).join('')
+    : '<p class="muted">لا توجد صفقات بانتظار الاعتماد.</p>';
+  return j.items.length;
+}
+export async function dealReqClick(e, list, reload) {
+  const w = e.target.closest('[data-wbroker2]'); if (w) { e.stopPropagation(); H.openWallet(w.dataset.wbroker2); return true; }
+  const ok = e.target.closest('[data-dok]'), no = e.target.closest('[data-dno]'); if (!ok && !no) return false;
+  e.stopPropagation();
+  const [uid, id] = (ok ? ok.dataset.dok : no.dataset.dno).split('|'); let note = '';
+  if (no) { note = prompt('سبب الرفض (اختياري):', ''); if (note === null) return true; }
+  const sel = list.querySelector(`[data-mark="${uid}|${id}"]`), mark = ok && sel ? sel.value : '';
+  try { const r = await api('adm_deal_review', { uid, id, approve: ok ? '1' : '0', note, mark }); H.toast(ok ? `تم اعتماد الصفقة ✓${r.marked ? ' — وتغيّرت حالة القطعة' : ''}` : 'تم رفض الصفقة'); reload(); }
+  catch (ex) { H.toast(ex.message); }
+  return true;
 }

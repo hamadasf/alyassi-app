@@ -26,7 +26,7 @@ import { advStrip, loadBrand } from './adv.js';
 import { checkUpdate } from './update.js';
 import { buildPayPlan } from './payplan.js';
 import { initMailAdm, mailAdmPage, initMailAdmPage } from './mailadm.js';
-import { initWallet, walletPage, initWalletPage, dealFromLand, homeWalletCard } from './wallet.js';
+import { initWallet, walletPage, initWalletPage, dealFromLand, dealFromOwn, homeWalletCard } from './wallet.js';
 import { initStats, statsPage, initStatsPage, myStatsPage, initMyStats } from './stats.js';
 import { initAdvUI, brandPage, initBrand, advMinePage, initAdvMine } from './advui.js';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
@@ -743,7 +743,7 @@ function landPage(l) {
         <div class="r total"><span>الإجمالي</span><b>${money(l.first + sumInst)} د.إ</b></div></div>` : ''}
       ${can('listings') || can('report') ? `<button class="btn ghost block stbtn" data-stats="${esc(l.id)}">📊 إحصائيات الإعلان</button>` : ''}
       ${ADGEN_ON && can('listings') && l.poly ? `<button class="btn adgbtn block" data-adgen="${esc(l.id)}">🎨 صمّم منشور إعلان لهذه القطعة</button>` : ''}
-      ${isBroker() && l.total && l.status !== 'sold' ? `<button class="btn wbtn block" data-selldeal="${esc(l.id)}">💼 سجّلها بيعاً في محفظتي</button>` : ''}
+      ${isBroker() && l.total && l.status !== 'sold' ? `<button class="btn wbtn block" data-selldeal="${esc(l.id)}">${(session.user() || {}).admin ? '💼 سجّلها بيعاً في محفظة الشركة' : '💼 طلب تسجيل صفقة على هذه الأرض'}</button>` : ''}
       ${can('payplan') && l.total && l.status !== 'sold' ? `<button class="btn ppbtn block" data-payplan="${esc(l.id)}">📄 خطة السداد PDF</button>` : ''}
       ${l.status === 'av' || l.status === 'res' ? `<button class="btn calcbtn block" data-calc="${esc(l.id)}">🧮 حاسبة الأقساط${l.total ? '' : ' (أدخل السعر)'}</button>` : ''}
       ${l.sketch && l.sketch !== l.img ? `<h2 class="h2">كروكي القطعة</h2><img class="sketch" src="${esc(l.sketch)}" alt="" loading="lazy" data-web="${esc(l.sketch)}">` : ''}
@@ -977,6 +977,7 @@ document.addEventListener('click', (e) => {
   if (ds.stats) { pushPage('stats', ds.stats); return; }
   if (ds.mystats !== undefined) { pushPage('mystats'); return; }
   if (ds.mailadm !== undefined) { pushPage('mailadm'); return; }
+  if (ds.owndeal) { const ox = ownerLands().find((x) => String(x.id) === ds.owndeal); if (ox) { dealFromOwn(ox); pushPage('wallet'); } return; }
   if (ds.selldeal) { const sl = findLand(ds.selldeal); if (sl) { dealFromLand(sl); pushPage('wallet'); } return; }
   if (ds.wallet !== undefined) { if (session.token()) pushPage('wallet', ds.wallet); else pushPage('account'); return; }
   if (ds.payplan) { const pl = findLand(ds.payplan); if (pl && can('payplan')) openPayPlan(pl); return; }
@@ -1077,7 +1078,7 @@ function refresh(force) {
 initAdvUI({ toast, closeTop: () => closeTop() });
 initStats({ toast });
 initMailAdm({ toast, esc });
-initWallet({ toast, projects: () => DATA().projects, openUrl: (u) => openExternal(u) });
+initWallet({ toast, projects: () => DATA().projects, openUrl: (u) => openExternal(u), openWallet: (uid) => pushPage('wallet', String(uid)) });
 loadBrand(accApi);
 initOwnerUI({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), waLink, CONTACT });
 initChat({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id) });

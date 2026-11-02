@@ -5,6 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands, can, isBroker } from './owner.js';
 import { contactBar, refLine } from './contact.js';
 import { APP_URL } from './config.js';
+import { renderDealReqs, dealReqClick } from './wallet.js';
 
 const native = Capacitor.isNativePlatform();
 let H = null;   // helpers from main.js: { esc, toast, I, money, pushPage, closeTop, waLink, CONTACT }
@@ -296,7 +297,7 @@ function admCard(x) {
 }
 export function adminPage() {
   return `<div class="pad acc">
-    <div class="seg four"><button data-atab="pending">الطلبات <em id="cPending"></em></button><button data-atab="publish">المعروضة</button><button data-atab="draft">المرفوضة</button>${(session.user() || {}).admin ? '<button data-atab="verify">التوثيق <em id="cVerify"></em></button>' : ''}<button data-atab="advs">الصور <em id="cAdv"></em></button><button data-atab="users">المستخدمون</button></div>
+    <div class="seg four"><button data-atab="pending">الطلبات <em id="cPending"></em></button><button data-atab="publish">المعروضة</button><button data-atab="draft">المرفوضة</button>${(session.user() || {}).admin ? '<button data-atab="verify">التوثيق <em id="cVerify"></em></button>' : ''}<button data-atab="advs">الصور <em id="cAdv"></em></button><button data-atab="deals">الصفقات <em id="cDeal"></em></button><button data-atab="users">المستخدمون</button></div>
     <div id="admSearch" hidden><input class="srch" id="admQ" placeholder="ابحث بالاسم أو البريد…"></div>
     <div id="admList"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>
   </div>`;
@@ -310,6 +311,7 @@ export function initAdmin(pg) {
     list.innerHTML = '<div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div>';
     try {
       if (ADM.tab === 'advs') { await renderAdvReqs(list, pg.querySelector('#cAdv')); }
+      else if (ADM.tab === 'deals') { const n = await renderDealReqs(list); const c = pg.querySelector('#cDeal'); if (c) c.textContent = n ? `(${n})` : ''; }
       else if (ADM.tab === 'verify') {
         const j = await api('adm_verifs', { status: 'pending' });
         const c = pg.querySelector('#cVerify'); if (c) c.textContent = j.pending ? `(${j.pending})` : '';
@@ -334,6 +336,7 @@ export function initAdmin(pg) {
   pg.querySelectorAll('[data-atab]').forEach((b) => { b.onclick = () => { ADM.tab = b.dataset.atab; load(); }; });
   list.addEventListener('click', async (e) => {
     if (await advReqClick(e, load)) return;
+    if (await dealReqClick(e, list, load)) return;
     const ok = e.target.closest('[data-vok]'), no = e.target.closest('[data-vno]'); if (!ok && !no) return;
     e.stopPropagation();
     const id = (ok || no).dataset.vok || (ok || no).dataset.vno;
@@ -554,6 +557,7 @@ export function oLandPage(x) {
       <h1 class="notr">${esc(x.title)}</h1>
       ${refLine(String(x.id))}
       ${can('listings') || can('report') ? `<button class="btn ghost block stbtn" data-stats="${x.id}">📊 إحصائيات الإعلان</button>` : ''}
+      ${session.user() && x.by && +x.by === +session.user().id ? `<button class="btn wbtn block" data-owndeal="${x.id}">💼 سجّلها بيعاً في محفظتي</button>` : ''}
       ${x.seller ? `<div class="seller big">${I.verified}<span>${esc(x.seller)} · مكتب عقاري موثّق</span></div>` : ''}
       ${x.price ? `<div class="pricebox"><div class="price big">${money(x.price)} <small>د.إ</small></div></div>` : ''}
       <div class="inst">${rows.map((r) => `<div class="r"><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}</div>

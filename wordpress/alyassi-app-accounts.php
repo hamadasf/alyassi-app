@@ -474,7 +474,8 @@ function oay_acc_card( $p, $mine = false ) {
 		'plan' => (string) get_post_meta( $p->ID, '_oay_plan_slug', true ), 'onPlan' => (int) get_post_meta( $p->ID, '_oay_plan_added', true ) === 1,
 		'seller' => get_user_meta( $p->post_author, 'oay_verified', true ) ? (string) get_user_meta( $p->post_author, 'oay_company', true ) : '',
 		'byAdmin' => user_can( (int) $p->post_author, 'manage_options' ), 'rating' => oay_rating_summary( (int) $p->post_author ),
-		'adv' => function_exists( 'oay_adv_of' ) ? oay_adv_of( (int) $p->post_author ) : null,   // the member's approved photo + logo (none: the office's)
+		'adv' => function_exists( 'oay_adv_of' ) ? oay_adv_of( (int) $p->post_author ) : null,
+		'by' => (int) $p->post_author,   // lets the app know the signed-in member's own listings   // the member's approved photo + logo (none: the office's)
 	);
 	if ( 'admin' === $mine ) {
 		$o = get_userdata( $p->post_author );
