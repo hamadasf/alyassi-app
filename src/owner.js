@@ -30,6 +30,8 @@ export const session = {
 };
 /** Office powers: the admin has all of them; staff only those the admin gave them. */
 export function can(perm) { const u = session.user(); return !!u && (!!u.admin || (Array.isArray(u.staff) && u.staff.includes(perm))); }
+/** real-estate offices / brokers (and the company itself) have a wallet */
+export function isBroker(u = session.user()) { return !!u && (!!u.admin || !!u.verified || !!(u.adv && u.adv.kind === 'company')); }
 export function isOffice() { const u = session.user(); return !!u && (!!u.admin || (Array.isArray(u.staff) && u.staff.length > 0)); }
 export async function refreshMe() { if (!session.token()) return null; try { const j = await api('me'); ls.set('acc_user', j.user); return j.user; } catch { return session.user(); } }
 export async function logout() { try { await api('logout'); } catch { /* ignore */ } session.clear(); }

@@ -26,6 +26,7 @@ import { advStrip, loadBrand } from './adv.js';
 import { checkUpdate } from './update.js';
 import { buildPayPlan } from './payplan.js';
 import { initMailAdm, mailAdmPage, initMailAdmPage } from './mailadm.js';
+import { initWallet, walletPage, initWalletPage } from './wallet.js';
 import { initStats, statsPage, initStatsPage, myStatsPage, initMyStats } from './stats.js';
 import { initAdvUI, brandPage, initBrand, advMinePage, initAdvMine } from './advui.js';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
@@ -239,6 +240,7 @@ function openFromPush(ev) {
   if (data.open === 'views') { closeAll(); showTab('contact'); setTimeout(() => pushPage('views'), 300); return; }
   if (data.open === 'myviews') { closeAll(); showTab('contact'); setTimeout(() => pushPage('myviews'), 300); return; }
   if (data.open === 'contacts') { closeAll(); showTab('contact'); setTimeout(() => pushPage('contacts'), 300); return; }
+  if (data.open === 'wallet') { closeAll(); showTab('contact'); setTimeout(() => pushPage('wallet'), 300); return; }
   if (data.open === 'leads') { closeAll(); showTab('contact'); setTimeout(() => pushPage('leads'), 300); return; }
   if (data.open === 'oland' && data.id) { closeAll(); loadOwnerLands().then(() => pushPage('oland', String(data.id))); return; }
   if (data.open === 'project' && data.id) { closeAll(); showTab('projects'); setTimeout(() => pushPage('project', String(data.id)), 300); return; }
@@ -799,6 +801,7 @@ function pushPage(kind, id) {
   else if (kind === 'brand') { html = brandPage(); }
   else if (kind === 'stats') { html = statsPage(); }
   else if (kind === 'mailadm') { html = mailAdmPage(); }
+  else if (kind === 'wallet') { html = walletPage(); }
   else if (kind === 'mystats') { html = myStatsPage(); }
   else if (kind === 'advmine') { html = advMinePage(); }
   else if (kind === 'adgen') { if (id) { l = findLand(id); p = l && d.projects.find((x) => x.slug === l.project); if (!l || !p || !l.poly) return; } html = adgenPage(id ? l : null, d.projects); }
@@ -809,7 +812,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'مولّد منشورات الإعلانات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'مولّد منشورات الإعلانات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -829,6 +832,7 @@ function pushPage(kind, id) {
   if (kind === 'brand') initBrand(pg);
   if (kind === 'stats') initStatsPage(pg, id);
   if (kind === 'mailadm') initMailAdmPage(pg);
+  if (kind === 'wallet') initWalletPage(pg, id || '');
   if (kind === 'mystats') initMyStats(pg);
   if (kind === 'advmine') initAdvMine(pg);
   if (kind === 'adgen') { pg.classList.add('adgpg'); if (id) initAdgen2(pg, l, p); else initAdgenPick(pg, d.projects, (lid) => pushPage('adgen', lid)); }
@@ -874,6 +878,7 @@ window.addEventListener('popstate', () => { if (stack.length) popPage(); });
 function closeOverlay() {
   const upd = document.querySelector('.upddlg [data-upd="0"]'); if (upd) { upd.click(); return true; }
   const exit = document.querySelector('.exitdlg'); if (exit) { exit.remove(); return true; }
+  const wf = document.querySelector('.walletf [data-wx]'); if (wf) { wf.click(); return true; }
   const crop = document.querySelector('.adg-crop:not([hidden])'); if (crop) { crop.querySelector('#pzCropNo')?.click(); return true; }
   const viewer = document.querySelector('.viewer'); if (viewer) { viewer.remove(); return true; }
   const ss = [...document.querySelectorAll('.ssheet.open')].pop(); if (ss) { ss.querySelector('[data-ssclose]')?.click(); return true; }
@@ -969,6 +974,7 @@ document.addEventListener('click', (e) => {
   if (ds.stats) { pushPage('stats', ds.stats); return; }
   if (ds.mystats !== undefined) { pushPage('mystats'); return; }
   if (ds.mailadm !== undefined) { pushPage('mailadm'); return; }
+  if (ds.wallet !== undefined) { if (session.token()) pushPage('wallet', ds.wallet); else pushPage('account'); return; }
   if (ds.payplan) { const pl = findLand(ds.payplan); if (pl && can('payplan')) openPayPlan(pl); return; }
   if (ds.chkupd !== undefined) { checkUpdate(openExternal, true).then((r) => { if (r === 'latest') toast('أنت على آخر نسخة ✓'); else if (!r) toast('تعذّر التحقق — تأكد من الإنترنت'); }); return; }
   if (ds.advmine !== undefined) { if (session.token()) pushPage('advmine'); else pushPage('account'); return; }
@@ -1067,6 +1073,7 @@ function refresh(force) {
 initAdvUI({ toast, closeTop: () => closeTop() });
 initStats({ toast });
 initMailAdm({ toast, esc });
+initWallet({ toast, projects: () => DATA().projects });
 loadBrand(accApi);
 initOwnerUI({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), waLink, CONTACT });
 initChat({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id) });

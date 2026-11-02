@@ -2,7 +2,7 @@ import { ADGEN_ON } from './adgen.js';
 import { canCheckUpdate } from './update.js';
 import { LEGAL, LEGAL_EN } from './legal.js';
 // «المزيد» tab: profile, my activity, account & settings, support, terms & privacy.
-import { api, session, refreshMe, logout, resizePhoto, can, isOffice } from './owner.js';
+import { api, session, refreshMe, logout, resizePhoto, can, isOffice, isBroker } from './owner.js';
 
 let H = null;   // helpers from main.js
 export function initMore(h) { H = h; }
@@ -32,6 +32,7 @@ export function renderMore(el) {
       ${row(I.search, 'مطلوب أرض', 'data-wanted')}
       ${row(I.doc, 'دليل الإجراءات العقارية', 'data-guide')}
       ${row(I.doc, 'الأخبار العقارية', 'data-news', can('news') ? '<small>إدارة الشريط</small>' : '')}
+      ${u && isBroker(u) ? row(I.grid, 'محفظتي', 'data-wallet=""', '<small>صفقاتي وأقساطي وأرباحي</small>') : ''}
       ${u ? row(I.calendar || I.bell, 'مواعيد المعاينة', 'data-myviews') : ''}
       ${u && !isOffice() ? row(I.grid, 'إحصائيات إعلاناتي', 'data-mystats') : ''}
     </div>

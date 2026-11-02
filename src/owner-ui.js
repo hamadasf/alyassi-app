@@ -2,7 +2,7 @@
 import { advStrip } from './adv.js';
 import { pickersHTML, bindPickers, pickersError, submitAdv, advMissing, renderAdvReqs, advReqClick } from './advui.js';
 import { Capacitor } from '@capacitor/core';
-import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands, can } from './owner.js';
+import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands, can, isBroker } from './owner.js';
 import { contactBar, refLine } from './contact.js';
 import { APP_URL } from './config.js';
 
@@ -23,6 +23,7 @@ export function accountPage() {
       <div class="pts"><b>${u.admin ? '∞' : u.points || 0}</b><span>${u.admin ? 'نقاط غير محدودة للإدارة · تمييز الإعلان يجعله يظهر أولاً في الصفحة الرئيسية' : u.verified ? 'نقطة في رصيدك · تمييز الإعلان بـ 70 نقطة يجعله يظهر أولاً في الصفحة الرئيسية' : 'تمييز الإعلانات متاح للمكاتب الموثّقة — وثّق حسابك واحصل على 500 نقطة'}</span></div>
       ${advMissing(u) ? `<button class="advnote" data-advmine><b>📷 أضف صورتك الشخصية</b><span>تظهر على إعلاناتك (والشركات تضيف شعارها) — تعتمدها الإدارة</span></button>` : u.adv && u.adv.status === 'rejected' ? `<button class="advnote bad" data-advmine><b>لم تُعتمد صورتك</b><span>${esc(u.adv.note || 'اضغط لإرسال صورة أخرى')}</span></button>` : u.adv && u.adv.status === 'pending' ? `<button class="advnote wait" data-advmine><b>⏳ صورتك بانتظار اعتماد الإدارة</b></button>` : ''}
       ${!u.admin && !u.verified ? `<button class="btn ghost block" data-verify>${I.verified} توثيق حساب المكتب العقاري</button>` : ''}
+      ${isBroker(u) ? `<button class="btn block wbtn" data-wallet="">💼 محفظتي — صفقاتي وأقساطي وأرباحي</button>` : ''}
       <button class="btn gold block share-big" data-addland>${I.plus || '＋'} أضف أرضاً للبيع</button>
       ${!u.admin ? `<button class="btn ghost block stbtn" data-mystats>📊 إحصائيات إعلاناتي</button>` : ''}
       <h2 class="h2">طلباتي</h2>
@@ -461,6 +462,7 @@ export async function initAdmUser(pg, id) {
       ${u.admin ? '' : `<div class="ccard staffbox"><h4 class="lh">🧑‍💼 موظف في فريق المكتب</h4><p class="muted">اختر ما يستطيع هذا الحساب فعله نيابةً عن الإدارة. الرسائل التي يرسلها للعملاء تظهر باسم «عمر الياسي للعقارات».</p>
         ${Object.entries(STAFF).map(([k, v]) => `<label class="nrow"><span>${v}</span><input type="checkbox" class="nchk" data-perm="${k}" ${(u.staff || []).includes(k) ? 'checked' : ''}></label>`).join('')}
         <button class="btn primary block" data-savestaff>حفظ الصلاحيات</button></div>`}` : ''}
+      ${can('listings') ? `<button class="btn block wbtn" data-wallet="${u.id}">💼 محفظة ${esc(u.verified && u.company ? u.company : u.name || '')}</button>` : ''}
       <h2 class="h2">إعلاناته (${j.ads.length})</h2>
       ${j.ads.length ? j.ads.map(admCard).join('') : '<p class="muted">لا توجد إعلانات.</p>'}`;
   };
