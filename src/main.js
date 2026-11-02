@@ -6,7 +6,7 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { cardModel, buildLandPdf } from './card.js';
 import { paintPlanLoc, paintCardLoc } from './planloc.js';
-import { session, refreshMe, ownerLands, loadOwnerLands, api as accApi, can } from './owner.js';
+import { session, refreshMe, ownerLands, loadOwnerLands, api as accApi, can, isBroker } from './owner.js';
 import { initChat, refreshUnread, renderChatsTab, chatPage, initChatPage, askAbout, myChatPage, initMyChat, groupPage, initGroup, profPage, initProf } from './chat.js';
 import { initNotifs, notifsPage } from './notifs.js';
 import { initNews, loadNews, renderTicker, newsPage, initNewsPage } from './news.js';
@@ -26,7 +26,7 @@ import { advStrip, loadBrand } from './adv.js';
 import { checkUpdate } from './update.js';
 import { buildPayPlan } from './payplan.js';
 import { initMailAdm, mailAdmPage, initMailAdmPage } from './mailadm.js';
-import { initWallet, walletPage, initWalletPage } from './wallet.js';
+import { initWallet, walletPage, initWalletPage, dealFromLand, homeWalletCard } from './wallet.js';
 import { initStats, statsPage, initStatsPage, myStatsPage, initMyStats } from './stats.js';
 import { initAdvUI, brandPage, initBrand, advMinePage, initAdvMine } from './advui.js';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
@@ -564,6 +564,7 @@ function renderHome() {
         <div><b>${lands.filter((l) => l.status === 'sold').length || '—'}</b><span>تم بيعها</span></div>
       </div>
     </section>
+    ${isBroker() ? '<div id="wHome" class="whomebox"></div>' : ''}
     ${bannerHTML(av, projects)}
     <div class="qacts"><button data-alerts=""><span>🔔</span>أرض تناسبني</button><button data-wanted><span>📝</span>مطلوب أرض</button><button data-calc=""><span>🧮</span>حاسبة الأقساط</button><button data-guide><span>📘</span>دليل الإجراءات</button></div>
     ${notifCard()}
@@ -583,6 +584,7 @@ function renderHome() {
       <button class="btn gold" data-addland>أضف أرضك</button>
     </section>`;
   startBanner();
+  if (isBroker()) homeWalletCard($('#wHome'));   // the broker's month at a glance
 }
 
 /* ---- home: the slider under the header ---- */
@@ -741,6 +743,7 @@ function landPage(l) {
         <div class="r total"><span>الإجمالي</span><b>${money(l.first + sumInst)} د.إ</b></div></div>` : ''}
       ${can('listings') || can('report') ? `<button class="btn ghost block stbtn" data-stats="${esc(l.id)}">📊 إحصائيات الإعلان</button>` : ''}
       ${ADGEN_ON && can('listings') && l.poly ? `<button class="btn adgbtn block" data-adgen="${esc(l.id)}">🎨 صمّم منشور إعلان لهذه القطعة</button>` : ''}
+      ${isBroker() && l.total && l.status !== 'sold' ? `<button class="btn wbtn block" data-selldeal="${esc(l.id)}">💼 سجّلها بيعاً في محفظتي</button>` : ''}
       ${can('payplan') && l.total && l.status !== 'sold' ? `<button class="btn ppbtn block" data-payplan="${esc(l.id)}">📄 خطة السداد PDF</button>` : ''}
       ${l.status === 'av' || l.status === 'res' ? `<button class="btn calcbtn block" data-calc="${esc(l.id)}">🧮 حاسبة الأقساط${l.total ? '' : ' (أدخل السعر)'}</button>` : ''}
       ${l.sketch && l.sketch !== l.img ? `<h2 class="h2">كروكي القطعة</h2><img class="sketch" src="${esc(l.sketch)}" alt="" loading="lazy" data-web="${esc(l.sketch)}">` : ''}
@@ -974,6 +977,7 @@ document.addEventListener('click', (e) => {
   if (ds.stats) { pushPage('stats', ds.stats); return; }
   if (ds.mystats !== undefined) { pushPage('mystats'); return; }
   if (ds.mailadm !== undefined) { pushPage('mailadm'); return; }
+  if (ds.selldeal) { const sl = findLand(ds.selldeal); if (sl) { dealFromLand(sl); pushPage('wallet'); } return; }
   if (ds.wallet !== undefined) { if (session.token()) pushPage('wallet', ds.wallet); else pushPage('account'); return; }
   if (ds.payplan) { const pl = findLand(ds.payplan); if (pl && can('payplan')) openPayPlan(pl); return; }
   if (ds.chkupd !== undefined) { checkUpdate(openExternal, true).then((r) => { if (r === 'latest') toast('أنت على آخر نسخة ✓'); else if (!r) toast('تعذّر التحقق — تأكد من الإنترنت'); }); return; }
@@ -1073,7 +1077,7 @@ function refresh(force) {
 initAdvUI({ toast, closeTop: () => closeTop() });
 initStats({ toast });
 initMailAdm({ toast, esc });
-initWallet({ toast, projects: () => DATA().projects });
+initWallet({ toast, projects: () => DATA().projects, openUrl: (u) => openExternal(u) });
 loadBrand(accApi);
 initOwnerUI({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), waLink, CONTACT });
 initChat({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id) });
@@ -1087,7 +1091,9 @@ initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
 initCrm({ esc, toast, I, money, waLink, DATA: () => DATA(), pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop() });
 window.__oayPush = push;   // the notification settings page talks to the push service
 initMore({ isEn, setLang, esc, toast, I, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), closeAll: () => closeAll(), waLink, CONTACT, EMBLEM, SITE });
-session.subs.add(() => { renderContact(); refreshUnread(); push.link(); if (current === 'chats') renderChatsTab($('#chats .content')); });
+const syncNav = () => { const b = document.querySelector('.nwallet'); if (b) b.hidden = !isBroker(); };
+syncNav();
+session.subs.add(() => { syncNav(); renderContact(); refreshUnread(); push.link(); if (current === 'chats') renderChatsTab($('#chats .content')); });
 
 /* offline: a small bar on top; everything shown comes from what the phone saved last time */
 function netState() {

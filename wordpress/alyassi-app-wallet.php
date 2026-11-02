@@ -51,6 +51,7 @@ function oay_wallet_clean( $d, $by ) {
 	return array(
 		'id' => preg_match( '/^[a-z0-9]{6,20}$/', (string) ( $d['id'] ?? '' ) ) ? (string) $d['id'] : strtolower( wp_generate_password( 10, false, false ) ),
 		'type' => $type, 'title' => $title, 'party' => mb_substr( sanitize_text_field( (string) ( $d['party'] ?? '' ) ), 0, 80 ),
+		'phone' => substr( preg_replace( '/[^\d+]/', '', (string) ( $d['phone'] ?? '' ) ), 0, 20 ),
 		'project' => sanitize_key( (string) ( $d['project'] ?? '' ) ), 'plot' => mb_substr( sanitize_text_field( (string) ( $d['plot'] ?? '' ) ), 0, 20 ),
 		'price' => $price, 'pct' => 'sell' === $type ? max( 0, min( 50, round( (float) ( $d['pct'] ?? 0 ), 2 ) ) ) : 0,
 		'comm' => 'sell' === $type ? round( max( 0, (float) ( $d['comm'] ?? 0 ) ) ) : 0,   // a fixed commission instead of a percentage (optional)
