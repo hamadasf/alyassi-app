@@ -1,0 +1,18 @@
+name: Lands report (office market comparison)
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --ignore-scripts
+      - run: node scripts/lands-report.mjs
+      - run: |
+          mkdir out && mv lands-report.* out/ && cd out
+          git init -q && git checkout -q -b reports && git add -A
+          git -c user.name=ci -c user.email=ci@localhost commit -qm "lands report $(date -u +%F)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" reports
