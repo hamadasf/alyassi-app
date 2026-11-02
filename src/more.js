@@ -45,6 +45,7 @@ export function renderMore(el) {
       ${can('chats') ? row(I.chat, 'المحادثات الخاصة', 'data-tab="chats"') : ''}
       ${can('push') ? row(I.bell, 'إشعار موجّه', 'data-pushc') : ''}
       ${can('report') ? row(I.grid, 'التقرير الأسبوعي', 'data-report') : ''}
+      ${can('listings') ? row(I.grid, 'مقارنة بالسوق', 'data-market', '<small>أسعارنا مقابل بيوت وبروبرتي فايندر</small>') : ''}
       ${can('listings') || can('report') ? row(I.grid, 'إحصائيات الإعلانات', 'data-mystats', '<small>مشاهدات وتواصل لكل إعلان</small>') : ''}
       ${u.admin ? row(I.verified, 'الموظفون', 'data-staff') : ''}
       ${u.admin ? row(I.doc, 'النشرة البريدية', 'data-mailadm', '<small>أراضٍ مختارة لك — أسبوعياً</small>') : ''}

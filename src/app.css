@@ -1007,3 +1007,18 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .wtable span { display: flex; gap: 4px; } .wtable span i { font-style: normal; min-width: 26px; text-align: center; border-radius: 6px; padding: 1px 4px; color: #fff; font-weight: 800; font-size: 12px; } .wtable i.av { background: #12243F; } .wtable i.res { background: #00A040; } .wtable i.sold { background: #E10600; }
 .wtable em { font-style: normal; font-weight: 700; color: var(--navy); font-size: 12.5px; } .wtable > small { display: block; padding: 6px 0 2px; }
 [data-wbroker] { cursor: pointer; } .dmark { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; } .dmark select { padding: 9px; border-radius: 10px; border: 1px solid var(--line); font: inherit; }
+/* market comparison (office) */
+.mkcard { background: #fff; border-radius: 14px; padding: 12px 14px; border: 1.5px solid var(--line); display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.mkcard.hi { border-color: #fca5a5; background: #fff7f7; } .mkcard.lo { border-color: #86efac; background: #f6fef9; } .mkcard.ok { border-color: #bfdbfe; }
+.mk1 { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .mk1 span { font-size: 12px; color: #64748b; }
+.mk2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; } .mk2 div { background: rgba(255,255,255,.8); border: 1px solid var(--line); border-radius: 10px; padding: 6px; text-align: center; } .mk2 small { display: block; font-size: 11px; color: #64748b; } .mk2 b { font-size: 17px; color: var(--navy); } .mk2 .us b { color: #9a6b2e; }
+.mkv { margin: 0; font-weight: 800; font-size: 15px; } .mkcard.hi .mkv { color: #b91c1c; } .mkcard.lo .mkv { color: #15803d; } .mkcard.ok .mkv { color: #1e40af; } .mkv small { font-weight: 500; color: #64748b; font-size: 11px; }
+.mks { margin: 0; font-size: 13px; color: #334155; }
+.mkpage { display: flex; flex-direction: column; gap: 10px; } .mkfilter select { width: 100%; padding: 11px; border-radius: 12px; border: 1px solid var(--line); font: inherit; font-size: 16px; background: #fff; }
+.mksum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; } .mksum div { background: #fff; border-radius: 12px; padding: 8px 4px; text-align: center; } .mksum b { display: block; font-size: 20px; } .mksum small { font-size: 11px; color: #64748b; }
+.mksum .hi b { color: #b91c1c; } .mksum .ok b { color: #1e40af; } .mksum .lo b { color: #15803d; }
+.mkrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; width: 100%; text-align: start; background: #fff; border-radius: 12px; padding: 10px 12px; border-inline-start: 4px solid #93c5fd; }
+.mkrow.hi { border-inline-start-color: #ef4444; } .mkrow.lo { border-inline-start-color: #22c55e; } .mkrow b { font-size: 14px; } .mkrow span { display: block; font-size: 12px; color: #64748b; }
+.mkn { text-align: center; } .mkn b { display: block; font-size: 13px; } .mkn em { font-style: normal; font-weight: 800; font-size: 15px; } .mkrow.hi .mkn em { color: #b91c1c; } .mkrow.lo .mkn em { color: #15803d; } .mkn small { display: block; font-size: 10.5px; color: #64748b; }
+.mkcomp { display: flex; justify-content: space-between; gap: 8px; align-items: center; background: #fff; border-radius: 12px; padding: 10px 12px; font-size: 13.5px; } .mkcomp span { display: block; font-size: 12px; color: #64748b; margin-top: 2px; }
+.mkurl { display: flex; gap: 6px; } .mkurl input { flex: 1; }

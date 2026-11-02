@@ -1,5 +1,6 @@
 // Data layer: reads projects, plot sizes/types and live availability straight from the website.
 import { SITE, TTL, DEFAULT_TYPES, CHANGES_URL } from './config.js';
+import { addSides } from './side.js';
 
 const NS = 'oay:';
 const now = () => Date.now();
@@ -148,6 +149,7 @@ function buildProject(p, plan, state) {
       lo: /^https:\/\//.test(s.lo || '') ? s.lo : '', projectLoc: (state && state.loc) || '',
     };
   }).map(typeImage);
+  addSides(lands, plan.plots);   // زاوية / سكة / عادية, read from the plan (used by the market comparison)
   const count = (st) => lands.filter((l) => l.status === st).length;
   // plots on the plan that the company does not list (shown only when searching): [n, type, ft, centre]
   const na = plan.plots.filter(([n]) => !(sp[n] && sp[n].s)).map(([n, t, ft, , , , poly, pc]) => {
