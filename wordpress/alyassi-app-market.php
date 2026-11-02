@@ -67,10 +67,90 @@ function oay_market_seed() {
 	}
 	return $out;
 }
+/* second market check (2 Nov 2026): Al Ruwaidat G+2, Al Sahma, Al Mutraq and Al Qasimia Industrial — merged once into an existing list */
+function oay_market_seed2() {
+	$pf = 'https://www.propertyfinder.ae/en/plp/';
+	$se = $pf . 'buy/land-for-sale-sharjah-al-ruwaidat-suburb-al-sehma-';
+	$sc = $pf . 'commercial-buy/land-for-sale-sharjah-al-ruwaidat-suburb-al-sehma-';
+	$qa = $pf . 'commercial-buy/land-for-sale-sharjah-al-qasimiah-city-';
+	$by = 'https://www.bayut.com/property/details-';
+	$dz = 'https://sharjah.dubizzle.com/property-for-sale/land/';
+	$rows = array(
+		// الرويضات — commercial G+2, 2,422 sq ft
+		array( 'al-ruwaidat', 'تجاري', 'dubizzle', $dz . '2026/6/9/commercial-plot-in-al-ruwaidat-project--12-380909/', 750000, 2422, 'عادية' ),
+		array( 'al-ruwaidat', 'تجاري', 'dubizzle', $dz . '2026/4/15/own-your-commercial-plot-in-al-ruwaidat-12-218381/', 775000, 2422, 'عادية' ),
+		array( 'al-ruwaidat', 'تجاري', 'dubizzle', $dz . '2026/6/22/exceptional-investment-opportunity-comm-12-218909/', 751000, 2422, 'عادية' ),
+		array( 'al-ruwaidat', 'تجاري', 'dubizzle', $dz . '2026/3/25/best-offer-with-payment-plan-2422-sq-ft-12-242460/', 770000, 2422, 'عادية', 1 ),
+		// السحمة — residential / villa plots
+		array( 'al-sahma', 'فلل', 'pf', $se . '155076081.html', 375000, 2564, 'عادية' ),
+		array( 'al-sahma', 'فلل', 'pf', $se . '154182524.html', 375000, 2564, 'عادية' ),
+		array( 'al-sahma', 'فلل', 'pf', $se . '148661371.html', 375000, 2564, 'عادية' ),
+		array( 'al-sahma', 'فلل', 'pf', $se . '163694128.html', 440000, 2966, 'عادية' ),
+		array( 'al-sahma', 'فلل', 'pf', $se . '159641353.html', 500000, 3074, 'عادية' ),
+		array( 'al-sahma', 'فلل', 'pf', $se . '164571080.html', 459999, 3240, 'عادية' ),
+		array( 'al-sahma', 'فلل', 'pf', $sc . '143734280.html', 379999, 2579, 'عادية' ),
+		array( 'al-sahma', 'فلل', 'pf', $se . '154183390.html', 400000, 2533, 'زاوية' ),
+		array( 'al-sahma', 'فلل', 'bayut', '', 330000, 2422, 'عادية' ),
+		array( 'al-sahma', 'فلل', 'bayut', '', 380000, 3000, 'عادية' ),
+		array( 'al-sahma', 'فلل', 'bayut', '', 350000, 2635, 'عادية' ),
+		array( 'al-sahma', 'فلل', 'bayut', '', 410000, 3084, 'عادية' ),
+		array( 'al-sahma', 'فلل', 'bayut', '', 405555, 2960, 'عادية' ),
+		array( 'al-sahma', 'فلل', 'bayut', '', 360000, 2426, 'زاوية' ),
+		array( 'al-sahma', 'فلل', 'bayut', '', 400555, 2498, 'زاوية' ),
+		// السحمة — large commercial plots
+		array( 'al-sahma', 'تجاري', 'pf', $sc . '161414277.html', 3265555, 18163, 'عادية' ),
+		array( 'al-sahma', 'تجاري', 'pf', $sc . '109515420.html', 3260000, 18164, 'عادية' ),
+		array( 'al-sahma', 'تجاري', 'pf', $sc . '128839517.html', 3033555, 17331, 'عادية' ),
+		array( 'al-sahma', 'تجاري', 'pf', $sc . '119599879.html', 3401010, 21942, 'عادية' ),
+		array( 'al-sahma', 'تجاري', 'pf', $sc . '115478760.html', 3450000, 18820, 'زاوية' ),
+		// المطرق — residential G+2
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16747932.html', 380000, 2837, 'عادية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16657789.html', 360000, 2836, 'عادية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16590132.html', 380000, 2660, 'عادية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16580696.html', 385000, 2837, 'عادية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16530347.html', 378000, 2836, 'عادية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16543807.html', 360000, 2845, 'عادية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16459494.html', 460000, 3694, 'عادية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16649735.html', 490000, 3590, 'عادية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16518952.html', 475000, 3590, 'عادية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16492834.html', 460000, 3590, 'عادية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16511749.html', 550000, 3849, 'عادية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16669374.html', 385000, 2836, 'عادية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '15894927.html', 410000, 2837, 'عادية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '10702162.html', 449000, 3600, 'زاوية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16492787.html', 392000, 2852, 'زاوية' ),
+		array( 'al-mutraq', 'سكني', 'bayut', $by . '16647743.html', 382000, 2545, 'زاوية' ),
+		// الصناعية القاسمة 4 — Al Qasimia City industrial plots
+		array( 'industrial4', 'صناعي', 'pf', $qa . '141927522.html', 1080000, 12000, 'عادية' ),
+		array( 'industrial4', 'صناعي', 'pf', $qa . '150036112.html', 1025000, 12000, 'عادية' ),
+		array( 'industrial4', 'صناعي', 'pf', $qa . '144639423.html', 2034480, 19376, 'عادية' ),
+		array( 'industrial4', 'صناعي', 'pf', $qa . '144639453.html', 2198455, 19117, 'عادية' ),
+		array( 'industrial4', 'صناعي', 'bayut', '', 885000, 12000, 'عادية' ),
+		array( 'industrial4', 'صناعي', 'bayut', '', 955840, 11948, 'عادية', 1 ),
+		array( 'industrial4', 'صناعي', 'bayut', '', 1541040, 19263, 'عادية' ),
+		array( 'industrial4', 'صناعي', 'bayut', '', 1406000, 19263, 'عادية' ),
+		array( 'industrial4', 'صناعي', 'bayut', '', 1685000, 19375, 'عادية' ),
+		array( 'industrial4', 'صناعي', 'bayut', '', 1329147, 19263, 'عادية', 1 ),
+		array( 'industrial4', 'صناعي', 'bayut', '', 1356250, 19375, 'عادية' ),
+		array( 'industrial4', 'صناعي', 'bayut', '', 979736, 11948, 'زاوية' ),
+	);
+	$out = array(); $t = strtotime( '2026-11-02 14:30:00' ) * 1000;
+	foreach ( $rows as $i => $r ) {
+		$out[] = array( 'id' => 'b' . $i, 'slug' => $r[0], 'cat' => $r[1], 'src' => $r[2], 'url' => $r[3], 'price' => $r[4], 'ft' => $r[5], 'side' => $r[6], 'inst' => ! empty( $r[7] ),
+			'note' => '', 'seen' => '2026-11-02', 't' => $t, 'by' => 0 );
+	}
+	return $out;
+}
 function oay_market() {
 	$m = get_option( 'oay_market', null );
 	if ( null === $m ) { $m = oay_market_seed(); update_option( 'oay_market', $m, false ); }
-	return is_array( $m ) ? array_values( array_filter( $m, 'is_array' ) ) : array();
+	$m = is_array( $m ) ? array_values( array_filter( $m, 'is_array' ) ) : array();
+	if ( (int) get_option( 'oay_market_v', 1 ) < 2 ) {
+		$have = array(); foreach ( $m as $x ) { $have[ $x['id'] ?? '' ] = 1; }
+		foreach ( oay_market_seed2() as $x ) { if ( empty( $have[ $x['id'] ] ) ) { $m[] = $x; } }
+		update_option( 'oay_market', $m, false ); update_option( 'oay_market_v', 2, false );
+	}
+	return $m;
 }
 function oay_acc_market_list() { oay_acc_need_perm( 'listings' ); oay_acc_ok( array( 'items' => oay_market() ) ); }
 function oay_acc_market_save() {
