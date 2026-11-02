@@ -45,6 +45,7 @@ export function renderMore(el) {
       ${can('report') ? row(I.grid, 'التقرير الأسبوعي', 'data-report') : ''}
       ${can('listings') || can('report') ? row(I.grid, 'إحصائيات الإعلانات', 'data-mystats', '<small>مشاهدات وتواصل لكل إعلان</small>') : ''}
       ${u.admin ? row(I.verified, 'الموظفون', 'data-staff') : ''}
+      ${u.admin ? row(I.doc, 'النشرة البريدية', 'data-mailadm', '<small>أراضٍ مختارة لك — أسبوعياً</small>') : ''}
     </div>` : ''}
     <h3 class="msec">الحساب والإعدادات</h3>
     <div class="mbox">

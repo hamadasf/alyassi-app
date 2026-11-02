@@ -960,3 +960,7 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .invbox { display: flex; flex-direction: column; gap: 8px; } .invrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--line); }
 .invrow b { font-size: 16px; letter-spacing: 1px; } .invrow small { display: block; color: #64748b; font-size: 12px; margin-top: 2px; } .invrow.used b { color: #94a3b8; }
 .invlink { display: block; margin: 6px auto; font-size: 13px; }
+.mailadm { display: flex; flex-direction: column; gap: 12px; } .mailadm .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mailadm .fld { display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: 14px; } .mailadm select { padding: 11px; border: 1px solid var(--line); border-radius: 12px; font: inherit; font-size: 16px; background: #fff; }
+.nrow.big span small { display: block; font-size: 12px; color: #64748b; font-weight: 500; }
+.mlstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; } .mlstats div { background: #fff; border-radius: 12px; padding: 10px 4px; text-align: center; } .mlstats b { display: block; font-size: 18px; color: var(--navy); } .mlstats small { font-size: 11px; color: #64748b; }

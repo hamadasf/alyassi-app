@@ -785,7 +785,7 @@ add_action( 'pre_get_comments', function ( $q ) {
 
 /* ================= notification preferences ================= */
 function oay_notif_prefs( $uid ) {
-	$d = array( 'chat_first' => true, 'chat_all' => true, 'group' => false, 'reqs' => true );
+	$d = array( 'chat_first' => true, 'chat_all' => true, 'group' => false, 'reqs' => true, 'mail' => true );
 	$p = get_user_meta( $uid, 'oay_notif', true );
 	return is_array( $p ) ? array_merge( $d, array_intersect_key( array_map( 'boolval', $p ), $d ) ) : $d;
 }

@@ -21,6 +21,8 @@ export function notifsPage() {
       ${chk('chat_all', 'أخبرني عندما أتلقى كل رسالة خاصة', true)}</div>
     <div class="ncard"><h4>المجموعة العامة</h4>
       ${chk('group', 'أعلمني بكل رسالة جديدة في المجموعة العامة', false)}</div>
+    <div class="ncard"><h4>البريد الإلكتروني</h4>
+      ${chk('mail', 'أرسل لي «أراضٍ مختارة لك» على الإيميل مرة في الأسبوع', true)}</div>
     <div class="ncard"><h4>الطلبات</h4>
       ${chk('reqs', u.admin ? 'أعلمني عند وصول طلب عرض أرض أو طلب توثيق جديد' : 'أعلمني عند الموافقة على إعلاناتي أو رفضها، وعند توثيق حسابي', true)}</div>`
     : '<p class="muted">سجّل الدخول لاختيار إشعارات الرسائل والطلبات</p>'}
@@ -55,7 +57,7 @@ export async function initNotifs(pg) {
     try { localStorage.setItem(LS, JSON.stringify(tags)); } catch { /* ignore */ }
     try { if (push && push.os) push.os.User.addTags({ prices: tags.prices ? '1' : '0', offers: tags.offers ? '1' : '0', news: tags.news ? '1' : '0' }); } catch { /* ignore */ }
     try {
-      if (session.token()) await api('notif_save', { chat_first: v('chat_first'), chat_all: v('chat_all'), group: v('group'), reqs: v('reqs') });
+      if (session.token()) await api('notif_save', { chat_first: v('chat_first'), chat_all: v('chat_all'), group: v('group'), reqs: v('reqs'), mail: v('mail') });
       H.toast('تم حفظ إعدادات الإشعارات ✓');
     } catch (ex) { H.toast(ex.message); }
     b.disabled = false;
