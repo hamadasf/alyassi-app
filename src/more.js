@@ -1,5 +1,6 @@
 import { ADGEN_ON } from './adgen.js';
 import { canCheckUpdate } from './update.js';
+import { LEGAL, LEGAL_EN } from './legal.js';
 // «المزيد» tab: profile, my activity, account & settings, support, terms & privacy.
 import { api, session, refreshMe, logout, resizePhoto, can, isOffice } from './owner.js';
 
@@ -113,7 +114,7 @@ export function settingsPage() {
       <button class="mrow danger" data-delacc><span class="mi">${I.trash}</span><b>حذف الحساب</b></button>
     </div>
     <h3 class="msec">الخصوصية</h3>
-    <div class="mbox">${row(I.shield, 'سياسة الخصوصية', 'data-legal="privacy"')}${row(I.doc, 'شروط الاستخدام', 'data-legal="terms"')}</div>
+    <div class="mbox">${row(I.shield, 'سياسة الخصوصية', 'data-legal="privacy"')}${row(I.doc, 'شروط الاستخدام', 'data-legal="terms"')}${row(I.trash || I.doc, 'حذف الحساب والبيانات', 'data-legal="delete"')}</div>
   </div>`;
 }
 export async function deleteAccount() {
@@ -156,56 +157,6 @@ export function savedPage() {
 }
 
 /* ================= terms & privacy ================= */
-const LEGAL = {
-  privacy: ['سياسة الخصوصية', `
-<p>تطبيق «عمر الياسي للعقارات» (الشارقة، الإمارات العربية المتحدة) يحترم خصوصيتك. توضح هذه السياسة البيانات التي نجمعها وكيف نستخدمها.</p>
-<h3>البيانات التي نجمعها</h3>
-<ul><li>عند إنشاء حساب: الاسم، البريد الإلكتروني، رقم الجوال، وكلمة مرور محفوظة بشكل مشفّر. عند الدخول بحساب جوجل: الاسم والبريد وصورة الحساب التي يشاركها جوجل.</li>
-<li>عند إضافة أرض: تفاصيل الإعلان والصور التي ترفعها ورقم التواصل.</li>
-<li>عند تفعيل الإشعارات: معرّف جهاز لإرسال الإشعارات (عبر خدمة OneSignal).</li>
-<li>رسائل المحادثة التي ترسلها للشركة.</li>
-<li>المفضلة وعمليات البحث المحفوظة تُحفظ على جهازك فقط.</li></ul>
-<h3>كيف نستخدمها</h3>
-<ul><li>لإدارة حسابك ومراجعة إعلاناتك وعرضها بعد الموافقة.</li><li>للتواصل معك بخصوص أرضك أو استفسارك.</li><li>لإرسال إشعارات الأسعار والعروض إذا فعّلتها.</li></ul>
-<p>لا نبيع بياناتك ولا نشاركها مع أي طرف لأغراض تسويقية. رقم جوالك لا يظهر للمستخدمين الآخرين؛ التواصل حول الإعلانات يتم عبر الشركة.</p>
-<h3>حذف البيانات</h3>
-<p>يمكنك حذف حسابك وكل إعلاناتك في أي وقت من «المزيد ← إعدادات ← حذف الحساب»، أو بمراسلتنا على البريد الإلكتروني.</p>
-<h3>التواصل</h3><p>لأي سؤال حول الخصوصية: ${'omaralyassi.realestate@gmail.com'}</p>`],
-  terms: ['شروط الاستخدام', `
-<p>باستخدامك تطبيق «عمر الياسي للعقارات» فأنت توافق على الشروط التالية.</p>
-<h3>الحساب</h3><ul><li>تلتزم بإدخال بيانات صحيحة، وأنت مسؤول عن الحفاظ على سرية كلمة المرور.</li><li>يحق للإدارة إيقاف أي حساب يخالف هذه الشروط.</li></ul>
-<h3>الإعلانات</h3><ul><li>يجب أن تكون مالكاً للأرض أو مخوّلاً بعرضها، وأن تكون البيانات والأسعار والصور صحيحة.</li>
-<li>تُراجع الإدارة كل إعلان قبل عرضه، ويحق لها تعديله أو رفضه أو حذفه دون إبداء أسباب.</li>
-<li>عند ذكر رقم القطعة ضمن أحد مشاريعنا قد تُعرض الأرض على المخطط التفاعلي للمشروع بعد الموافقة.</li>
-<li>النقاط تُمنح من الإدارة وتُستخدم لتمييز الإعلانات، ولا تُسترد نقداً.</li></ul>
-<h3>المعلومات</h3><p>نسعى لدقة الأسعار والحالات المعروضة، لكنها قابلة للتغيير، والمرجع النهائي هو التأكيد من الشركة قبل أي حجز أو دفع.</p>
-<h3>التواصل</h3><p>الهاتف: 06 744 2027 · واتساب: 056 808 0655</p>`],
-};
-const LEGAL_EN = {
-  privacy: ['Privacy policy', `<div class="notr" dir="ltr">
-<p>The Omar Al Yassi Real Estate app (Sharjah, United Arab Emirates) respects your privacy. This policy explains what data we collect and how we use it.</p>
-<h3>Data we collect</h3>
-<ul><li>When you create an account: name, email, mobile number and a password stored encrypted. With Google sign-in: the name, email and account photo Google shares.</li>
-<li>When you add a land: the listing details, the photos you upload and your contact number.</li>
-<li>When you turn on notifications: a device identifier used to send them (through OneSignal).</li>
-<li>Chat messages you send to the office.</li>
-<li>Favourites and saved searches are stored on your device only.</li></ul>
-<h3>How we use it</h3>
-<ul><li>To manage your account and review, approve and show your listings.</li><li>To contact you about your land or your enquiry.</li><li>To send price and offer alerts if you turn them on.</li></ul>
-<p>We do not sell your data or share it with anyone for marketing. Your mobile number is not shown to other users; contact about listings goes through the company.</p>
-<h3>Deleting your data</h3><p>You can delete your account and all your listings at any time from «More → Settings → Delete account», or by emailing us.</p>
-<h3>Contact</h3><p>For any privacy question: omaralyassi.realestate@gmail.com</p></div>`],
-  terms: ['Terms of use', `<div class="notr" dir="ltr">
-<p>By using the Omar Al Yassi Real Estate app you agree to the following terms.</p>
-<h3>Account</h3><ul><li>You must enter correct details and keep your password confidential.</li><li>The office may suspend any account that breaks these terms.</li></ul>
-<h3>Listings</h3><ul><li>You must own the land or be authorised to offer it, and its details, prices and photos must be correct.</li>
-<li>The office reviews every listing before it is shown, and may edit, reject or delete it without giving reasons.</li>
-<li>If you give a plot number in one of our projects, the land may be shown on that project's interactive plan after approval.</li>
-<li>Enquiries about listings by other offices go through our office, which puts the client in touch with the advertiser.</li>
-<li>Points are granted by the office to feature listings and cannot be exchanged for cash.</li></ul>
-<h3>Information</h3><p>We aim to keep prices and statuses accurate, but they can change; the final reference is the company's confirmation before any booking or payment.</p>
-<h3>Contact</h3><p>Phone: 06 744 2027 · WhatsApp: 056 808 0655</p></div>`],
-};
 export function legalPage(k) { const L = (H.isEn() ? LEGAL_EN : LEGAL)[k] || LEGAL.privacy; return `<div class="pad legal"><h2>${L[0]}</h2>${L[1]}</div>`; }
 export const legalTitle = (k) => ((H && H.isEn() ? LEGAL_EN : LEGAL)[k] || LEGAL.privacy)[0];
 

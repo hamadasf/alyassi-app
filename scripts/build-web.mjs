@@ -23,6 +23,24 @@ html = html.replace('<title>', `<link rel="manifest" href="manifest.webmanifest"
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <title>`).replace('app.css"', `app.css?v=${V}"`).replace('app.js"', `app.js?v=${V}"`);
 writeFileSync('web/index.html', html);
+// public legal pages (Google Play: privacy policy and account-deletion links)
+{
+  const { LEGAL, RAW_EN } = await import('../src/legal.js');
+  const page = (k, file) => {
+    const fix = (h) => h.replace(/href="#" data-legal="privacy"/g, 'href="privacy.html"');
+    writeFileSync('web/' + file, `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${LEGAL[k][0]} — عمر الياسي للعقارات</title><link rel="icon" href="icons/icon-192.png">
+<style>body{margin:0;background:#f4f5f8;color:#1e293b;font:16px/1.85 Tahoma,"Segoe UI",Arial,sans-serif}main{max-width:780px;margin:0 auto;padding:24px 18px 60px}
+header{background:#0e1c36;color:#fff;padding:18px;text-align:center}header b{font-size:20px}header span{display:block;color:#cbd5e1;font-size:13px}
+.card{background:#fff;border-radius:14px;padding:20px 22px;margin-top:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}h1{font-size:24px;color:#0e1c36;margin:0 0 6px}h3{color:#0e1c36;margin:22px 0 6px;font-size:17px}
+.upd{color:#64748b;font-size:13px}a{color:#9a6b2e}nav{text-align:center;margin-top:18px;font-size:14px}nav a{margin:0 8px}[dir=ltr]{text-align:left}</style></head>
+<body><header><b>عمر الياسي للعقارات</b><span>Omar Al Yassi Real Estate</span></header><main>
+<div class="card"><h1>${LEGAL[k][0]}</h1>${fix(LEGAL[k][1])}</div>
+<div class="card" dir="ltr" lang="en"><h1>${{ privacy: 'Privacy policy', terms: 'Terms of use', delete: 'Delete your account and data' }[k]}</h1>${fix(RAW_EN[k])}</div>
+<nav><a href="privacy.html">سياسة الخصوصية</a>·<a href="terms.html">شروط الاستخدام</a>·<a href="delete-account.html">حذف الحساب</a></nav></main></body></html>`);
+  };
+  page('privacy', 'privacy.html'); page('terms', 'terms.html'); page('delete', 'delete-account.html');
+}
 writeFileSync('web/manifest.webmanifest', JSON.stringify({
   name: 'عمر الياسي للعقارات', short_name: 'عمر الياسي', lang: 'ar', dir: 'rtl',
   start_url: './', scope: './', display: 'standalone', background_color: '#ffffff', theme_color: '#0e1c36',

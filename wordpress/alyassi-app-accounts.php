@@ -246,7 +246,13 @@ function oay_acc_forgot() {
 function oay_acc_delete_account() {
 	$u = oay_acc_need_user();
 	if ( oay_acc_is_admin( $u ) || user_can( $u, 'edit_others_posts' ) ) { oay_acc_err( 'لا يمكن حذف حساب إداري من التطبيق' ); }
-	foreach ( get_posts( array( 'post_type' => 'lands', 'author' => $u->ID, 'post_status' => array( 'publish', 'pending', 'draft' ), 'numberposts' => -1 ) ) as $p ) { wp_trash_post( $p->ID ); }
+	foreach ( get_posts( array( 'post_type' => 'lands', 'author' => $u->ID, 'post_status' => array( 'publish', 'pending', 'draft' ), 'numberposts' => -1 ) ) as $p ) { wp_trash_post( $p->ID ); }   // emptied by WordPress within 30 days
+	// everything else of this account goes now: wanted-land requests, the private chat, public-group messages, and the pictures sent
+	foreach ( get_posts( array( 'post_type' => array( 'oay_wanted', 'oay_chat' ), 'author' => $u->ID, 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids' ) ) as $pid ) { wp_delete_post( $pid, true ); }
+	foreach ( get_comments( array( 'user_id' => $u->ID, 'status' => 'all', 'fields' => 'ids', 'number' => 5000 ) ) as $cid ) { wp_delete_comment( $cid, true ); }
+	$up = wp_get_upload_dir();
+	foreach ( array( 'oay_avatar_file', 'oay_adv_photo_file', 'oay_adv_logo_file' ) as $mk ) { $f = (string) get_user_meta( $u->ID, $mk, true ); if ( $f && 0 === strpos( $f, $up['basedir'] ) && file_exists( $f ) ) { @unlink( $f ); } }
+	$pend = get_user_meta( $u->ID, 'oay_adv_pending', true ); if ( is_array( $pend ) ) { foreach ( array( 'photo_file', 'logo_file' ) as $mk ) { $f = (string) ( $pend[ $mk ] ?? '' ); if ( $f && 0 === strpos( $f, $up['basedir'] ) && file_exists( $f ) ) { @unlink( $f ); } } }
 	require_once ABSPATH . 'wp-admin/includes/user.php';
 	wp_delete_user( $u->ID );
 	oay_acc_ok();
