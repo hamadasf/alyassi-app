@@ -84,9 +84,19 @@ export function editProfilePage() {
     <form class="accf" id="profForm" novalidate>
       <label>الاسم<input name="name" maxlength="80" value="${esc(u.name || '')}"></label>
       <label>رقم الجوال<input name="phone" type="tel" dir="ltr" inputmode="tel" value="${esc(u.phone || '')}" placeholder="05xxxxxxxx"></label>
-      <label>البريد الإلكتروني<input value="${esc(u.email || '')}" disabled dir="ltr"></label>
       <p class="ferr" id="profErr" hidden></p>
       <button class="btn gold block share-big" type="submit" id="profGo">حفظ</button>
+    </form>
+    <form class="accf emchg" id="emForm" novalidate>
+      <label>البريد الإلكتروني<div class="emrow"><input value="${esc(u.email || '')}" disabled dir="ltr"><button type="button" class="btn ghost" id="emOpen">تغيير</button></div></label>
+      <div id="emBox" hidden>
+        <label>البريد الجديد<input name="email" type="email" dir="ltr" inputmode="email" autocomplete="email" placeholder="name@example.com"></label>
+        ${u.google ? '' : '<label>كلمة المرور الحالية<input name="password" type="password" autocomplete="current-password"></label>'}
+        <div id="emCode" hidden><p class="muted">أرسلنا كوداً من 6 أرقام إلى بريدك الجديد.</p>
+          <label>كود التأكيد<input name="code" inputmode="numeric" maxlength="6" dir="ltr" autocomplete="one-time-code"></label></div>
+        <p class="ferr" id="emErr" hidden></p>
+        <button class="btn primary block" type="submit" id="emGo">إرسال الكود</button>
+      </div>
     </form></div>`;
 }
 export function initEditProfile(pg) {
@@ -102,6 +112,21 @@ export function initEditProfile(pg) {
     catch (ex) { err.textContent = ex.message; err.hidden = false; }
     go.disabled = false;
   };
+  const ef = pg.querySelector('#emForm'), eb = pg.querySelector('#emBox'), ee = pg.querySelector('#emErr'), eg = pg.querySelector('#emGo'), ec = pg.querySelector('#emCode');
+  pg.querySelector('#emOpen').onclick = () => { eb.hidden = !eb.hidden; if (!eb.hidden) ef.email.focus(); };
+  ef.onsubmit = async (e) => {
+    e.preventDefault(); ee.hidden = true; eg.disabled = true;
+    try {
+      if (ec.hidden) {
+        await api('email_code', { email: ef.email.value.trim(), password: ef.password ? ef.password.value : '' });
+        ec.hidden = false; ef.email.disabled = true; if (ef.password) ef.password.disabled = true; eg.textContent = 'تأكيد التغيير'; ef.code.focus();
+      } else {
+        const j = await api('email_change', { code: ef.code.value.trim() });
+        session.set(session.token(), j.user); toast('تم تغيير البريد ✓'); H.closeTop();
+      }
+    } catch (ex) { ee.textContent = ex.message; ee.hidden = false; }
+    eg.disabled = false;
+  };
 }
 
 /* ================= settings ================= */
@@ -112,7 +137,7 @@ export function settingsPage() {
     <div class="mbox">
       ${row(I.user, 'المعلومات الأساسية', 'data-editprofile')}
       ${session.user() && session.user().admin ? row(I.verified, 'صورة المعلن وشعار الشركة', 'data-brand', '<small>تظهر على كل الإعلانات</small>') : session.user() && !isOffice() ? row(I.user, 'صورتي على الإعلانات', 'data-advmine', '<small>والشعار للشركات</small>') : ''}
-      ${row(I.phone, 'رقم الجوال', 'data-editprofile')}
+      ${row(I.phone, 'رقم الجوال والبريد الإلكتروني', 'data-editprofile')}
       <button class="mrow danger" data-delacc><span class="mi">${I.trash}</span><b>حذف الحساب</b></button>
     </div>
     <h3 class="msec">الخصوصية</h3>

@@ -1022,3 +1022,5 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .mkn { text-align: center; } .mkn b { display: block; font-size: 13px; } .mkn em { font-style: normal; font-weight: 800; font-size: 15px; } .mkrow.hi .mkn em { color: #b91c1c; } .mkrow.lo .mkn em { color: #15803d; } .mkn small { display: block; font-size: 10.5px; color: #64748b; }
 .mkcomp { display: flex; justify-content: space-between; gap: 8px; align-items: center; background: #fff; border-radius: 12px; padding: 10px 12px; font-size: 13.5px; } .mkcomp span { display: block; font-size: 12px; color: #64748b; margin-top: 2px; }
 .mkurl { display: flex; gap: 6px; } .mkurl input { flex: 1; }
+.emchg{margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#e5e7eb)}
+.emrow{display:flex;gap:8px;align-items:center}.emrow input{flex:1;min-width:0}.emrow .btn{flex:none;padding:10px 14px}

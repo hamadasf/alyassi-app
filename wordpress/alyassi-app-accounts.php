@@ -132,7 +132,7 @@ function oay_acc_new_user( $email, $name, $pass ) {
 }
 
 /* ---------------- account API ---------------- */
-$oay_acc_actions = array( 'register', 'reg_code', 'login', 'google', 'me', 'profile', 'logout', 'meta', 'upload', 'submit', 'mine', 'public', 'delete', 'plotcheck', 'feature',
+$oay_acc_actions = array( 'register', 'reg_code', 'login', 'google', 'me', 'profile', 'email_code', 'email_change', 'logout', 'meta', 'upload', 'submit', 'mine', 'public', 'delete', 'plotcheck', 'feature',
 	'forgot', 'delete_account', 'avatar', 'verify_request', 'adm_verifs', 'adm_verify', 'chat_get', 'chat_send', 'chat_unread', 'adm_chats', 'adm_chat', 'adm_chat_send', 'notif_get', 'notif_save', 'group_get', 'group_send', 'group_delete', 'chat_file', 'user_get', 'news', 'rate_send', 'rate_delete', 'track', 'adm_report', 'adm_staff', 'adm_staff_list', 'adm_news_add', 'adm_news_delete', 'adm_news_move', 'adm_news_edit', 'adm_news_speed',
 	'adm_ads', 'adm_review', 'adm_save', 'adm_delete', 'adm_feature', 'adm_users', 'adm_user', 'adm_points', 'adm_ban' );
 foreach ( $oay_acc_actions as $a ) {
@@ -222,7 +222,42 @@ function oay_acc_profile() {
 	$u = oay_acc_need_user();
 	$name = sanitize_text_field( oay_acc_arg( 'name', 80 ) ); $phone = preg_replace( '/[^\d+]/', '', oay_acc_arg( 'phone', 20 ) );
 	if ( $name ) { wp_update_user( array( 'ID' => $u->ID, 'display_name' => $name, 'first_name' => $name ) ); }
+	if ( '' !== $phone && ! preg_match( '/^(\+?\d{8,15})$/', $phone ) ) { oay_acc_err( 'رقم الجوال غير صحيح' ); }
+	if ( preg_match( '/^5\d{8}$/', $phone ) ) { $phone = '0' . $phone; }
 	update_user_meta( $u->ID, 'oay_phone', $phone );
+	oay_acc_ok( array( 'user' => oay_acc_userdata( get_userdata( $u->ID ) ) ) );
+}
+/** Changing the sign-in e-mail, step 1: the current password (not for Google-only accounts), then a 6-digit code to the NEW address. */
+function oay_acc_email_code() {
+	$u = oay_acc_need_user(); oay_acc_limit( 'emcode', 6 );
+	$new = strtolower( sanitize_email( oay_acc_arg( 'email', 120 ) ) );
+	if ( ! is_email( $new ) ) { oay_acc_err( 'البريد الإلكتروني غير صحيح' ); }
+	if ( strtolower( $u->user_email ) === $new ) { oay_acc_err( 'هذا هو بريدك الحالي' ); }
+	if ( email_exists( $new ) ) { oay_acc_err( 'هذا البريد مسجّل لحساب آخر' ); }
+	if ( ! get_user_meta( $u->ID, 'oay_google_sub', true ) && ! wp_check_password( oay_acc_arg( 'password', 200 ), $u->user_pass, $u->ID ) ) { oay_acc_err( 'كلمة المرور الحالية غير صحيحة' ); }
+	$key = 'oay_emc_' . $u->ID; $old = get_transient( $key );
+	if ( is_array( $old ) && time() - (int) $old['t'] < 55 ) { oay_acc_err( 'انتظر دقيقة قبل طلب كود جديد' ); }
+	$code = (string) wp_rand( 100000, 999999 );
+	set_transient( $key, array( 'h' => wp_hash_password( $code ), 'e' => $new, 't' => time(), 'n' => 0 ), 15 * MINUTE_IN_SECONDS );
+	$sent = wp_mail( $new, 'كود تغيير البريد: ' . $code,
+		"مرحباً {$u->display_name}،\n\nكود تأكيد بريدك الجديد في تطبيق عمر الياسي للعقارات:\n\n    $code\n\nاكتب الكود في التطبيق لإكمال التغيير. الكود صالح لمدة 15 دقيقة.\nإذا لم تطلب ذلك فتجاهل هذه الرسالة.\n\nعمر الياسي للعقارات" );
+	if ( ! $sent ) { delete_transient( $key ); oay_acc_err( 'تعذّر إرسال الكود — تأكد من البريد وحاول مرة أخرى' ); }
+	oay_acc_ok( array( 'sent' => true ) );
+}
+/** Step 2: the code — the e-mail changes and the old address gets a notice. */
+function oay_acc_email_change() {
+	$u = oay_acc_need_user(); oay_acc_limit( 'emchg', 10 );
+	$key = 'oay_emc_' . $u->ID; $c = get_transient( $key ); $code = preg_replace( '/\D/', '', oay_acc_arg( 'code', 10 ) );
+	if ( ! is_array( $c ) ) { oay_acc_err( 'انتهت صلاحية الكود — اطلب كوداً جديداً' ); }
+	if ( (int) $c['n'] >= 5 ) { delete_transient( $key ); oay_acc_err( 'محاولات كثيرة — اطلب كوداً جديداً' ); }
+	if ( ! wp_check_password( $code, $c['h'] ) ) { $c['n'] = (int) $c['n'] + 1; set_transient( $key, $c, 15 * MINUTE_IN_SECONDS ); oay_acc_err( 'الكود غير صحيح' ); }
+	delete_transient( $key );
+	if ( email_exists( $c['e'] ) ) { oay_acc_err( 'هذا البريد مسجّل لحساب آخر' ); }
+	$was = $u->user_email;
+	$r = wp_update_user( array( 'ID' => $u->ID, 'user_email' => $c['e'] ) );
+	if ( is_wp_error( $r ) ) { oay_acc_err( 'تعذّر تغيير البريد' ); }
+	update_user_meta( $u->ID, 'oay_email_verified', 1 );
+	wp_mail( $was, 'تم تغيير بريد حسابك', "تم تغيير البريد الإلكتروني لحسابك في تطبيق عمر الياسي للعقارات إلى: {$c['e']}\n\nإذا لم تقم بذلك، تواصل معنا فوراً على 06 744 2027.\n\nعمر الياسي للعقارات" );
 	oay_acc_ok( array( 'user' => oay_acc_userdata( get_userdata( $u->ID ) ) ) );
 }
 function oay_acc_logout() {
