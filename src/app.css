@@ -1024,3 +1024,22 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .mkurl { display: flex; gap: 6px; } .mkurl input { flex: 1; }
 .emchg{margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#e5e7eb)}
 .emrow{display:flex;gap:8px;align-items:center}.emrow input{flex:1;min-width:0}.emrow .btn{flex:none;padding:10px 14px}
+/* favourites: updates notice, compare */
+.favtop { padding: 12px 16px 0; } .favtop:empty { display: none; }
+.favnote { background: #FFF7E8; border: 1px solid #F0D9A8; border-radius: 16px; padding: 12px; margin-bottom: 10px; display: grid; gap: 8px; }
+.favnote > b { color: var(--navy); font-size: 15px; }
+.favnote button { text-align: right; background: #fff; border: 1px solid #F0D9A8; border-radius: 12px; padding: 10px 12px; font: inherit; font-weight: 800; color: var(--navy); display: grid; gap: 2px; }
+.favnote button span { font-weight: 600; color: #0F7B4E; font-size: 13px; }
+.cmpbtn { margin-top: 8px; }
+.cmpchips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; }
+.cmpchips button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 8px 12px; font: inherit; font-size: 13px; font-weight: 700; color: var(--navy); }
+.cmpchips button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.cmptbl { overflow-x: auto; } .cmptbl table { width: 100%; border-collapse: separate; border-spacing: 0; background: #fff; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); font-size: 13px; }
+.cmptbl th, .cmptbl td { padding: 10px 8px; border-bottom: 1px solid var(--line); text-align: center; vertical-align: middle; }
+.cmptbl tbody th { text-align: right; color: #6B7280; font-weight: 700; white-space: nowrap; background: #FAFAF7; }
+.cmptbl thead th { background: var(--navy); } .cmptbl thead th button { background: none; border: 0; color: #fff; font: inherit; font-weight: 800; text-decoration: underline; }
+.cmptbl tr:last-child td, .cmptbl tr:last-child th { border-bottom: 0; }
+.cmptbl b.best { color: #0F7B4E; background: #E7F6EE; padding: 2px 6px; border-radius: 6px; }
+.cmptbl .badge.inline { position: static; }
+.small { font-size: 12px; }
+.cmptbl table { table-layout: fixed; } .cmptbl tbody th, .cmptbl thead th:first-child { width: 78px; }

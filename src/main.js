@@ -25,6 +25,8 @@ import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor
 import { advStrip, loadBrand } from './adv.js';
 import { checkUpdate } from './update.js';
 import { buildPayPlan } from './payplan.js';
+import { buildLandImage } from './landimg.js';
+import { initFavx, syncFavs, syncFavsDaily, snapOne, favNoticeHTML, favSeen, favToast, comparePage, initComparePage } from './favx.js';
 import { initMarket, marketPage, initMarketPage, marketCardHTML, fillMarketCard, editComp } from './market.js';
 import { initMailAdm, mailAdmPage, initMailAdmPage } from './mailadm.js';
 import { initWallet, walletPage, initWalletPage, dealFromLand, dealFromOwn, homeWalletCard } from './wallet.js';
@@ -307,7 +309,7 @@ async function shareFile(pdf, text, title) {
     await Share.share({ title, text, files: [w.uri], dialogTitle: 'إرسال عبر واتساب' });
     return;
   }
-  const file = new File([pdf.bytes], pdf.name, { type: 'application/pdf' });
+  const file = new File([pdf.bytes], pdf.name, { type: pdf.type || 'application/pdf' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     // WhatsApp on iPhone keeps only the file, so the details are also put on the clipboard to paste as a message
     let copied = false; try { await navigator.clipboard.writeText(text); copied = true; } catch { /* ignore */ }
@@ -328,12 +330,25 @@ function openShareSheet(l) {
     <p class="ss-sub">بطاقة كاملة: التفاصيل، شروط التخطيط، السعر والدفعات مع تواريخها${l.doc ? '، ومخطط الأرض PDF' : ''} — في ملف واحد</p>
     <div class="ss-state"><i class="spin"></i><span>جارِ تجهيز الملف…</span></div>
     <button class="btn wa block" data-sspdf disabled>${I.wa} إرسال البطاقة + المخطط PDF</button>
+    ${l.status !== 'sold' ? `<button class="btn gold block" data-ssimg>🖼️ إرسال صورة إعلان للأرض</button>` : ''}
     <button class="btn ghost block" data-sstext>${I.share} إرسال النص فقط</button>
   </div>`;
   document.body.appendChild(el);
   requestAnimationFrame(() => el.classList.add('open'));
   const close = () => { el.classList.remove('open'); setTimeout(() => el.remove(), 250); };
   el.querySelector('[data-ssclose]').onclick = close;
+  const ib = el.querySelector('[data-ssimg]');
+  if (ib) ib.onclick = async () => {
+    ib.disabled = true; ib.textContent = 'جارِ تجهيز الصورة…';
+    try {
+      const proj = DATA().projects.find((p) => p.slug === l.project);
+      const pic = await buildLandImage(l, proj, offerPrice(l, offerFor(l)));
+      await shareFile(pic, landShareText(l, false), `قطعة رقم ${l.n}`); close();
+    } catch (e) {
+      if (!(e && (e.name === 'AbortError' || /cancel/i.test(e.message || '')))) toast('تعذّر تجهيز الصورة');
+      ib.disabled = false; ib.textContent = '🖼️ إرسال صورة إعلان للأرض';
+    }
+  };
   el.querySelector('[data-sstext]').onclick = () => { close(); shareText(`قطعة رقم ${l.n}`, landShareText(l, false)); };
   const btn = el.querySelector('[data-sspdf]'), st = el.querySelector('.ss-state');
   let ready = null;
@@ -687,6 +702,9 @@ function renderFavs() {
   const ids = favs.all(); const map = new Map(DATA().lands.map((l) => [l.id, l]));
   const items = ids.map((id) => map.get(id)).filter(Boolean);
   renderList($('#favs .list'), items, landCard, `${I.heart}<p>لم تضف أي أرض للمفضلة بعد</p><button class="btn ghost" data-go="lands">تصفح الأراضي</button>`);
+  const top = $('#favs .favtop');
+  if (top) top.innerHTML = favNoticeHTML() + (items.length >= 2 ? `<button class="btn ghost block cmpbtn" data-compare="">⚖️ قارن بين أراضي المفضلة</button>` : '');
+  favSeen();
 }
 
 function renderContact() { renderMore($('#contact .content')); }
@@ -747,6 +765,7 @@ function landPage(l) {
       ${can('listings') && l.total && l.status === 'av' ? marketCardHTML(l) : ''}
       ${isBroker() && l.total && l.status !== 'sold' ? `<button class="btn wbtn block" data-selldeal="${esc(l.id)}">${(session.user() || {}).admin ? '💼 سجّلها بيعاً في محفظة الشركة' : '💼 طلب تسجيل صفقة على هذه الأرض'}</button>` : ''}
       ${can('payplan') && l.total && l.status !== 'sold' ? `<button class="btn ppbtn block" data-payplan="${esc(l.id)}">📄 خطة السداد PDF</button>` : ''}
+      ${favs.all().filter((x) => x !== l.id).length >= 1 ? `<button class="btn ghost block cmpbtn" data-compare="${esc(l.id)}">⚖️ قارنها مع أراضي المفضلة</button>` : ''}
       ${l.status === 'av' || l.status === 'res' ? `<button class="btn calcbtn block" data-calc="${esc(l.id)}">🧮 حاسبة الأقساط${l.total ? '' : ' (أدخل السعر)'}</button>` : ''}
       ${l.sketch && l.sketch !== l.img ? `<h2 class="h2">كروكي القطعة</h2><img class="sketch" src="${esc(l.sketch)}" alt="" loading="lazy" data-web="${esc(l.sketch)}">` : ''}
       <button class="btn primary block" data-plan="${esc(landUrl(l))}" data-pview="${esc(l.project + '|' + l.n)}">${I.map} عرض القطعة على المخطط</button>
@@ -808,6 +827,7 @@ function pushPage(kind, id) {
   else if (kind === 'mailadm') { html = mailAdmPage(); }
   else if (kind === 'wallet') { html = walletPage(); }
   else if (kind === 'market') { html = marketPage(); }
+  else if (kind === 'compare') { html = comparePage(id || ''); }
   else if (kind === 'mystats') { html = myStatsPage(); }
   else if (kind === 'advmine') { html = advMinePage(); }
   else if (kind === 'adgen') { if (id) { l = findLand(id); p = l && d.projects.find((x) => x.slug === l.project); if (!l || !p || !l.poly) return; } html = adgenPage(id ? l : null, d.projects); }
@@ -818,7 +838,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'مولّد منشورات الإعلانات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'مولّد منشورات الإعلانات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -840,6 +860,7 @@ function pushPage(kind, id) {
   if (kind === 'mailadm') initMailAdmPage(pg);
   if (kind === 'wallet') initWalletPage(pg, id || '');
   if (kind === 'market') initMarketPage(pg, id || '');
+  if (kind === 'compare') initComparePage(pg);
   if (kind === 'land' && can('listings') && l) fillMarketCard(pg, l);
   if (kind === 'mystats') initMyStats(pg);
   if (kind === 'advmine') initAdvMine(pg);
@@ -928,7 +949,7 @@ document.addEventListener('click', (e) => {
   const t = e.target.closest('button, a, [data-land], [data-oland], [data-aad], [data-auser], [data-chat], [data-group], [data-mychat], [data-prof], [data-news], [data-calc], [data-report], [data-lead], [data-project], [data-plan], [data-web]');
   if (!t) return;
   const ds = t.dataset;
-  if (ds.fav) { e.stopPropagation(); const on = favs.toggle(ds.fav); document.querySelectorAll(`[data-fav="${CSS.escape(ds.fav)}"]`).forEach((b) => b.classList.toggle('on', on)); toast(on ? 'أضيفت إلى المفضلة' : 'أزيلت من المفضلة'); if (current === 'favs' && !stack.length) renderFavs(); return; }
+  if (ds.fav) { e.stopPropagation(); const on = favs.toggle(ds.fav); { const fl = findLand(ds.fav); if (on && fl) snapOne(fl); } syncFavs(); document.querySelectorAll(`[data-fav="${CSS.escape(ds.fav)}"]`).forEach((b) => b.classList.toggle('on', on)); toast(on ? 'أضيفت إلى المفضلة' : 'أزيلت من المفضلة'); if (current === 'favs' && !stack.length) renderFavs(); return; }
   if (t.tagName === 'A') {
     const href = t.getAttribute('href') || '';
     const top = stack[stack.length - 1], here = ds.tid || (top && top._id) || '';
@@ -1021,6 +1042,7 @@ document.addEventListener('click', (e) => {
   if (ds.cat !== undefined && !ds.fcat) { resetFilters(); F.cat = ds.cat; renderLands(); closeAll(); return showTab('lands'); }
   if (ds.foffers !== undefined) { F.offers = !F.offers; renderLands(); return; }
   if (ds.fcat !== undefined) { F.cat = ds.fcat; F.offers = false; renderLands(); return; }
+  if (ds.compare !== undefined) { e.stopPropagation(); pushPage('compare', ds.compare); return; }
   if (ds.land) return pushPage('land', ds.land);
   if (ds.project) return pushPage('project', ds.project);
 });
@@ -1077,7 +1099,7 @@ function refresh(force) {
   let raf = 0;
   loading = loadAll({ force, onPartial: hadData ? null : () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(renderAll); } })
     .then(() => Promise.all([loadChanges().catch(() => {}), loadOwnerLands(), refreshUnread(), loadNews()]))
-    .then(() => { renderAll(); })
+    .then(() => { renderAll(); favToast(); syncFavsDaily(); })
     .catch(() => { if (!DATA().lands.length) { $('#home .content').innerHTML = `<div class="empty">${I.wifi}<p>تعذّر الاتصال بالإنترنت</p><button class="btn ghost" id="retry">إعادة المحاولة</button></div>`; $('#retry').onclick = () => refresh(true); } else toast('تعذّر التحديث — تُعرض آخر بيانات محفوظة'); })
     .finally(() => { loading = null; });
   return loading;
@@ -1087,6 +1109,7 @@ initAdvUI({ toast, closeTop: () => closeTop() });
 initStats({ toast });
 initMailAdm({ toast, esc });
 initMarket({ toast, projects: () => DATA().projects });
+initFavx({ DATA, esc, money, toast, findLand: (id) => findLand(id) });
 initWallet({ toast, projects: () => DATA().projects, openUrl: (u) => openExternal(u), openWallet: (uid) => pushPage('wallet', String(uid)) });
 loadBrand(accApi);
 initOwnerUI({ esc, toast, I, money, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), waLink, CONTACT });
