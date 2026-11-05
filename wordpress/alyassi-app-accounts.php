@@ -96,7 +96,7 @@ function oay_no_phones( $t ) {
 }
 function oay_acc_is_admin( $u ) { return $u && user_can( $u, 'manage_options' ); }
 /* ---------------- staff: members the office gives some of its powers ---------------- */
-const OAY_STAFF_PERMS = array( 'chats' => 'الرد على المحادثات', 'leads' => 'متابعة العملاء وسجل التواصل', 'viewings' => 'مواعيد المعاينة', 'listings' => 'مراجعة الإعلانات وطلبات الشراء', 'news' => 'الأخبار والدليل', 'push' => 'الإشعارات الموجّهة', 'report' => 'التقرير الأسبوعي', 'payplan' => 'إرسال خطة السداد' );
+const OAY_STAFF_PERMS = array( 'chats' => 'الرد على المحادثات', 'leads' => 'متابعة العملاء وسجل التواصل', 'viewings' => 'مواعيد المعاينة', 'listings' => 'مراجعة الإعلانات وطلبات الشراء', 'news' => 'الأخبار والدليل', 'push' => 'الإشعارات الموجّهة', 'report' => 'التقرير الأسبوعي', 'payplan' => 'إرسال خطة السداد', 'design' => 'تصميم البوستات' );
 function oay_staff_perms( $uid ) { $p = get_user_meta( $uid, 'oay_staff', true ); return is_array( $p ) ? array_values( array_intersect( $p, array_keys( OAY_STAFF_PERMS ) ) ) : array(); }
 /** Admins can do everything; staff only what they were given. */
 function oay_acc_can( $u, $perm ) { return $u && ( oay_acc_is_admin( $u ) || in_array( $perm, oay_staff_perms( $u->ID ), true ) ); }

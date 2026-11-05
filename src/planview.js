@@ -45,6 +45,7 @@ export async function initPlanView2(pg, p, focusN) {
   };
   // full drawing (aerial photo + line drawing + plots); while the finger moves, the last drawing is just moved/scaled
   const full = () => {
+    if (!(W > 0 && Hh > 0) || !cv.width || !cv.height) return;   // the page is closing (no size)
     drawPlanView(ctx, P, lands, map, { w: W, h: Hh, ...view, sel });
     snap = snap || document.createElement('canvas'); snap.width = W; snap.height = Hh; snap.getContext('2d').drawImage(cv, 0, 0); snapView = { ...view };
   };
@@ -71,7 +72,8 @@ export async function initPlanView2(pg, p, focusN) {
     card.innerHTML = `<button class="pvx" aria-label="إغلاق">✕</button>
       <div class="pvc1"><b>قطعة رقم ${esc(sel.n)}</b><span class="pvst ${sel.status}">${st}</span></div>
       <div class="pvc2"><span>${esc(sel.use || '')}</span><span>${sel.ft ? money(sel.ft) + ' قدم²' : ''}</span>${sel.status !== 'sold' && sel.total ? `<b>${money(sel.total)} د.إ</b>` : ''}</div>
-      <button class="btn primary block" data-land="${esc(sel.id)}">تفاصيل الأرض</button>`;
+      <button class="btn primary block" data-land="${esc(sel.id)}">تفاصيل الأرض</button>
+      ${H.canDesign && H.canDesign() && sel.poly ? `<button class="btn adgbtn block" data-adgen="${esc(sel.id)}">🖼️ تصميم بوست</button>` : ''}`;
     card.querySelector('.pvx').onclick = (e) => { e.stopPropagation(); sel = null; showCard(); full(); };
   };
 
@@ -117,7 +119,7 @@ export async function initPlanView2(pg, p, focusN) {
     if (z.dataset.z === 'fit') { fit(); clamp(); full(); return; }
     zoomAt(W / 2, Hh / 2, z.dataset.z === 'in' ? 1.6 : 1 / 1.6);
   });
-  new ResizeObserver(() => { const old = { w: W, h: Hh }; resize(); if (!P || !old.w) return; view.x0 += (old.w - W) / 2 / view.ppu; view.y0 += (old.h - Hh) / 2 / view.ppu; clamp(); full(); }).observe(box);
+  new ResizeObserver(() => { const old = { w: W, h: Hh }; resize(); if (!P || !old.w || !W || !Hh) return; view.x0 += (old.w - W) / 2 / view.ppu; view.y0 += (old.h - Hh) / 2 / view.ppu; clamp(); full(); }).observe(box);
 
   resize();
   try {

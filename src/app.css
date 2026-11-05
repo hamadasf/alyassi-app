@@ -1043,3 +1043,13 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .cmptbl .badge.inline { position: static; }
 .small { font-size: 12px; }
 .cmptbl table { table-layout: fixed; } .cmptbl tbody th, .cmptbl thead th:first-child { width: 78px; }
+/* post designer: steps and sections */
+.adg-steps { margin: 0; padding: 12px 30px 12px 14px; background: #F4F1EA; border-radius: 14px; font-size: 13.5px; font-weight: 700; color: var(--navy); line-height: 1.9; }
+.adg-or { display: flex; align-items: center; gap: 10px; color: #94a3b8; font-size: 13px; font-weight: 700; } .adg-or::before, .adg-or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.pz-tip { margin: 6px 0 0; padding: 10px 12px; background: #EEF4FF; border-radius: 12px; font-size: 12.5px; font-weight: 700; color: #1e3a8a; line-height: 1.7; }
+.pz-sec { border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.pz-sec > summary { list-style: none; cursor: pointer; padding: 14px; font-weight: 800; font-size: 15px; color: var(--navy); display: flex; justify-content: space-between; align-items: center; }
+.pz-sec > summary::-webkit-details-marker { display: none; }
+.pz-sec > summary::after { content: '▾'; color: #94a3b8; transition: transform .2s; } .pz-sec[open] > summary::after { transform: rotate(180deg); }
+.pz-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.pz-body h3 { margin: 6px 2px 0; }

@@ -11,8 +11,6 @@ import { rawPlots } from './data.js';
 import { AD_LOGOS } from './adlogos.js';
 
 const native = Capacitor.isNativePlatform();
-/** hidden for now (the owner will turn it on later): false hides every entry to the designer */
-export const ADGEN_ON = false;
 let H = null;
 export function initAdgen(h) { H = h; }
 
@@ -217,7 +215,7 @@ function adDefaults(p) {
   let side = ''; if (ad.rawOk) { try { side = adSide(p); } catch { side = ''; } }   // only with the whole plan's plots (the phone app), never guessed from the listed ones alone
   const v = {
     mode: inst.length ? 'inst' : 'cash', side, title: 'أرض ' + T.use, proj: PROJECT, sub: 'تملك حر لجميع الجنسيات العربية',
-    area: fmt(p.ft), pay: 'كاش', until: last ? 'حتى ' + last : '', down: pr && inst.length ? fmt(Math.max(0, pr.down)) : '',
+    area: p.ft ? fmt(p.ft) : '', pay: 'كاش', until: last ? 'حتى ' + last : '', down: pr && inst.length ? fmt(Math.max(0, pr.down)) : '',
     each: inst.length ? fmt(inst[0].a) : '', every: adEvery(inst.length > 1 ? monthsBetween(inst[0].d, inst[1].d) : 0),
     price: pr ? fmt(pr.total) : '', feat: 'موقع مميز في مشروع ' + PROJECT + '\nقطعة رقم ' + p.n,
     label1: T.use, label2: fl ? '(' + fl + ')' : '', cap1: T.use, cap2: fl,
@@ -508,11 +506,12 @@ const AD_FIELDS = [
 export function adgenPage(l, projects) {
   if (!l) {   // opened from «المزيد»: choose the plot first
     return `<div class="pad adg-pick">
-      <p class="muted">اختر المشروع ورقم القطعة، ثم صمّم منشور الإعلان بقوالب الشركة واحفظه صورة أو شاركه.</p>
-      <label class="fld">المشروع<select id="adgProj">${projects.filter((p) => p.map).map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join('')}</select></label>
-      <label class="fld">رقم القطعة<input id="adgN" inputmode="numeric" placeholder="مثلًا 125"></label>
+      <ol class="adg-steps"><li>اختر المشروع</li><li>اختر القطعة من المخطط أو من القائمة</li><li>عدّل الكتابة إن أردت، ثم شارك البوست أو احفظه</li></ol>
+      <label class="fld">١. المشروع<select id="adgProj">${projects.filter((p) => p.map).map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join('')}</select></label>
+      <button class="btn primary block" id="adgPlan">🗺️ اختر القطعة من المخطط</button>
+      <div class="adg-or"><span>أو</span></div>
+      <label class="fld">٢. رقم القطعة<input id="adgN" inputmode="numeric" placeholder="اكتب الرقم أو اختر من القائمة"></label>
       <div id="adgList" class="adg-chips"></div>
-      <button class="btn primary block" id="adgGo">🎨 صمّم المنشور</button>
     </div>`;
   }
   return `<div class="adg">
@@ -547,29 +546,31 @@ function pzForm() {
       <span class="rowbtns"><button type="button" class="btn sm" data-picreset="${i}">إرجاع</button><button type="button" class="btn sm" data-slotcut="${i}">✂️ قصّ يدوي</button></span></div>` : '';
     return `<div class="pz-slot"><div class="pz-sh"><span><b>${t}</b><small>${s ? esc(s.name) : 'بدون صورة'}</small></span><span class="rowbtns"><button type="button" class="btn sm" data-pzup="${i}">${s ? 'تغيير' : 'إضافة'}</button>${s && s.fit !== 'crop' ? `<button type="button" class="btn sm" data-pzfit="${i}">${s.fit === 'cover' ? 'ملء الإطار' : 'الصورة كاملة'}</button>` : ''}${s ? `<button type="button" class="btn sm danger" data-pzrm="${i}">حذف</button>` : ''}</span></div>${crop}</div>`;
   }).join('');
-  $('pzForm').innerHTML = `<h3>القالب</h3><div class="pz-th">${Object.entries(PZ_THEMES).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
-    <div class="seg"><button type="button" data-pzmode="cash" class="${v.mode === 'cash' ? 'on' : ''}">قالب الكاش</button><button type="button" data-pzmode="inst" class="${v.mode === 'inst' ? 'on' : ''}">قالب الأقساط</button></div>
-    <h3>النصوص</h3>
-    ${(aya ? AYA_FIELDS : AD_FIELDS).map(f).join('')}
+  const was = new Set([...$('pzForm').querySelectorAll('details[open]')].map((d) => d.dataset.sec));
+  const fresh = !$('pzForm').querySelector('details');
+  const sec = (k, t, body, open) => `<details class="pz-sec" data-sec="${k}"${(fresh ? open : was.has(k)) ? ' open' : ''}><summary>${t}</summary><div class="pz-body">${body}</div></details>`;
+  $('pzForm').innerHTML = `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', '١. القالب ونوع الدفع', `<div class="pz-th">${Object.entries(PZ_THEMES).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
+    <div class="seg"><button type="button" data-pzmode="cash" class="${v.mode === 'cash' ? 'on' : ''}">قالب الكاش</button><button type="button" data-pzmode="inst" class="${v.mode === 'inst' ? 'on' : ''}">قالب الأقساط</button></div>`, true)
+    + sec('tx', '٢. الكتابة والأسعار', `${(aya ? AYA_FIELDS : AD_FIELDS).map(f).join('')}
     <h3>موقع القطعة في العنوان</h3>
     <div class="seg pz-side">${[['', 'عادية'], ['زاوية', 'زاوية'], ['سكة', 'سكة']].map(([k, l]) => `<button type="button" data-pzside="${k}" class="${(v.side || '') === k ? 'on' : ''}">${l}${ad.rawOk && (v.auto || '') === k ? ' ✓' : ''}</button>`).join('')}</div>
-    <p class="help">${ad.rawOk ? `✓ = ما قرأته من المخطط${v.auto ? ': ' + v.auto : ': ليست زاوية ولا على سكة'}. ` : ''}الاختيار يضيف الكلمة إلى آخر العنوان.</p>
-    ${aya ? '' : `<h3>الصور</h3>${slots}<p class="help">الصور التي تضيفها هنا للإعلان فقط ولا تُرفع إلى الموقع. يمكنك اختيار صورة أو ملف PDF.</p>`}
-    <h3>الخريطة والدبوس</h3>
+    <p class="help">${ad.rawOk ? `✓ = ما قرأته من المخطط${v.auto ? ': ' + v.auto : ': ليست زاوية ولا على سكة'}. ` : ''}الاختيار يضيف الكلمة إلى آخر العنوان.</p>`, false)
+    + (aya ? '' : sec('im', '٣. الصور', `${slots}<p class="help">الصور التي تضيفها هنا للبوست فقط ولا تُرفع إلى الموقع. يمكنك اختيار صورة أو ملف PDF.</p>`, false))
+    + sec('mp', (aya ? '٣' : '٤') + '. الخريطة والدبوس', `
     <label>تكبير الخريطة<input type="range" data-k="zoom" min="0.5" max="3" step="0.1" value="${v.zoom}"></label>
     <label>حجم الدبوس <b class="num" data-fsv="pinK">${Math.round((v.pinK || 1) * 100)}%</b><input type="range" data-k="pinK" min="0.4" max="2.5" step="0.05" value="${v.pinK || 1}"></label>
     <label class="chk"><input type="checkbox" data-k="pin"${v.pin ? ' checked' : ''}> الدبوس</label>
     <label class="chk"><input type="checkbox" data-k="lab"${v.lab ? ' checked' : ''}> بطاقة الموقع على الخريطة</label>
-    <button type="button" class="btn sm" data-mapcenter>إرجاع الخريطة إلى القطعة</button>
-    <h3>حجم الخط</h3>
+    <button type="button" class="btn sm" data-mapcenter>إرجاع الخريطة إلى القطعة</button>`, false)
+    + sec('fs', (aya ? '٤' : '٥') + '. حجم الخط وأماكن العناصر', `<h3>حجم الخط</h3>
     ${[['fsT', 'العنوان واسم المشروع'], ['fsN', 'الأرقام والأسعار'], ['fsL', 'النصوص والعناوين الصغيرة'], ['fsC', 'سطر وشريط التواصل']].map(([k, l]) => `<label>${l} <b class="num" data-fsv="${k}">${Math.round(v[k] * 100)}%</b><input type="range" data-k="${k}" min="0.6" max="1.6" step="0.05" value="${v[k]}"></label>`).join('')}
     <button type="button" class="btn sm" data-fsreset>إرجاع أحجام الخط الأصلية</button>
     <h3>تحريك العناصر</h3>
     <p class="help">اسحب أي نص أو بطاقة على المعاينة مباشرة، أو اختر العنصر وحرّكه بالأسهم. السحب داخل الخريطة أو داخل صورة يحرّك ما بداخلها.</p>
     <div class="pz-move"><select id="pzPart">${(aya ? AYA_PARTS : AD_PARTS).map(([k, l]) => `<option value="${k}"${ad.sel === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
       <div class="pz-arrows"><button type="button" class="btn" data-mv="0,-1" aria-label="فوق">▲</button><button type="button" class="btn" data-mv="1,0" aria-label="يمين">▶</button><button type="button" class="btn" data-mv="-1,0" aria-label="يسار">◀</button><button type="button" class="btn" data-mv="0,1" aria-label="تحت">▼</button></div>
-      <span class="rowbtns"><button type="button" class="btn sm" data-mvreset>إرجاع مكانه</button><button type="button" class="btn sm" data-mvall>إرجاع كل الأماكن</button></span></div>
-    <p class="help">يُحفظ على هذا الجهاز: القالب المختار، رقم كل قالب، والسطر تحت اسم المشروع وسطر التواصل والعنوان.</p>`;
+      <span class="rowbtns"><button type="button" class="btn sm" data-mvreset>إرجاع مكانه</button><button type="button" class="btn sm" data-mvall>إرجاع كل الأماكن</button></span></div>`, false)
+    + `<p class="help">يُحفظ على هذا الجهاز: القالب المختار، رقم كل قالب، والسطر تحت اسم المشروع وسطر التواصل والعنوان.</p>`;
 }
 
 /* ---------- cutting a part out of a picture or a PDF page: a frame of the post's shape, dragged over the page ---------- */
@@ -647,9 +648,11 @@ export function initAdgenPick(pg, projects, open) {
     const ls = p.lands.filter((l) => l.poly && (!q || l.n.startsWith(q))).sort((a, b) => (a.status === 'av' ? 0 : 1) - (b.status === 'av' ? 0 : 1) || (+a.n || 0) - (+b.n || 0)).slice(0, 40);
     list.innerHTML = ls.map((l) => `<button type="button" class="chip ${l.status}" data-adg="${esc(l.id)}">${esc(l.n)}<small>${l.status === 'av' ? 'متاحة' : l.status === 'res' ? 'محجوزة' : 'مباعة'}</small></button>`).join('') || '<p class="muted">لا توجد قطعة بهذا الرقم في القطع المعروضة.</p>';
   };
-  sel.onchange = show; inp.oninput = show; show();
+  try { const last = localStorage.getItem('oay:adgproj'); if (last && projects.some((p) => p.slug === last && p.map)) sel.value = last; } catch { /* ignore */ }
+  sel.onchange = () => { try { localStorage.setItem('oay:adgproj', sel.value); } catch { /* ignore */ } show(); }; inp.oninput = show; show();
   list.onclick = (e) => { const b = e.target.closest('[data-adg]'); if (b) open(b.dataset.adg); };
-  pg.querySelector('#adgGo').onclick = () => { const p = proj(), q = inp.value.trim().replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)); const l = p && p.lands.find((x) => x.n === q && x.poly); if (l) open(l.id); else H.toast('اكتب رقم قطعة معروضة أو اختر من القائمة'); };
+  pg.querySelector('#adgPlan').onclick = () => { const p = proj(); if (p && H.openPlan) H.openPlan(p.slug); };
+  inp.onkeydown = (e) => { if (e.key !== 'Enter') return; const p = proj(), q = inp.value.trim().replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)); const l = p && p.lands.find((x) => x.n === q && x.poly); if (l) open(l.id); else H.toast('لا توجد قطعة بهذا الرقم — اختر من القائمة'); };
 }
 
 export async function initAdgen2(pg, l, proj) {
