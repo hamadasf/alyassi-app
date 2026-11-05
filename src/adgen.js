@@ -535,6 +535,10 @@ async function adPictures(p) {
   const l = p.l, out = [null, null, null];
   const bld = l.img && l.img !== l.sketch && l.img !== (ad.proj && ad.proj.poster) ? l.img : '';
   if (bld) { const im = await imageOf(bld); if (im) out[0] = { im, fit: 'cover', name: l.ownImg ? 'صورة المبنى' : 'صورة تخيلية (يمكن تغييرها)' }; }
+  if (!out[0]) {   // no picture for this kind: the website's own villa or building picture
+    const villa = /فلل|فيلا/.test(l.use || ''), u = `${SITE}/wp-content/plugins/alyassi-dabdaba-plan/assets/p/${villa ? 'houshi-marwan/b-villa.jpg' : 'al-ruwaidat/b-reg.jpg'}`;
+    const im = await imageOf(u); if (im) out[0] = { im, fit: 'cover', name: 'صورة تخيلية (يمكن تغييرها)' };
+  }
   const pageSlot = (pages, k, kind, name) => (pages[k] ? { im: pages[k], fit: 'crop', page: k, kind, crop: pzFind(pages[k], kind), name } : null);
   if (l.doc || l.docId) {
     try {
@@ -1060,11 +1064,13 @@ export async function initAdgen2(pg, l, proj) {
   if (!l.poly) {   // a plot the company does not list: its outline from the whole plan, or a square of its size around its centre
     const q = raw && raw.find((r) => String(r[0]) === String(l.n));
     if (q && q[6] && q[6].length > 2) l = { ...l, poly: q[6], pc: q[7] || l.pc || centreOf(q[6]), pr: q[8] || 0 };
-    else if (l.pc) {
-      const ref = proj.lands.find((x) => x.poly && x.poly.length > 2 && x.m2 > 0);
-      const u = ref ? Math.sqrt(Math.abs(ref.poly.reduce((s, a, i) => { const b = ref.poly[(i + 1) % ref.poly.length]; return s + a[0] * b[1] - b[0] * a[1]; }, 0)) / 2 / ref.m2) : 0.3;
-      const h = Math.max(2, Math.sqrt(l.m2 || 230) * u / 2), [cx, cy] = l.pc;
-      l = { ...l, poly: [[cx - h, cy - h], [cx + h, cy - h], [cx + h, cy + h], [cx - h, cy + h]] };
+    else if (l.pc) {   // the shape of the nearest offered plot of its kind (same block, same turn), moved onto it and sized to its area
+      const refs = proj.lands.filter((x) => x.poly && x.poly.length > 2), d2 = (x) => { const c = plotCentre(x); return (c[0] - l.pc[0]) ** 2 + (c[1] - l.pc[1]) ** 2; };
+      const same = refs.filter((x) => x.t === l.t), ref = (same.length ? same : refs).sort((a, b) => d2(a) - d2(b))[0];
+      if (ref) {
+        const [rx, ry] = plotCentre(ref), k = ref.ft > 0 && l.ft > 0 ? Math.max(0.6, Math.min(1.6, Math.sqrt(l.ft / ref.ft))) : 1;
+        l = { ...l, poly: ref.poly.map(([x, y]) => [l.pc[0] + (x - rx) * k, l.pc[1] + (y - ry) * k]), pr: ref.pr || 0 };
+      } else { const h = 6, [cx, cy] = l.pc; l = { ...l, poly: [[cx - h, cy - h], [cx + h, cy - h], [cx + h, cy + h], [cx - h, cy + h]] }; }
     }
   }
   ad = { p: plotOf(l), proj, P, plots: proj.lands.filter((x) => x.poly).map(plotOf), all, rawOk: !!raw, img: [null, null, null], hits: [] };
