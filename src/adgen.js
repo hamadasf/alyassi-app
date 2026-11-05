@@ -507,7 +507,7 @@ function exForm(v) {
         <label>حجم الخط<input type="range" min="30" max="140" step="2" data-exk="${i}|s" value="${e.s || 64}"></label>`
       : e.t === 'arrow' ? `<label>الاتجاه<input type="range" min="0" max="359" step="5" data-exk="${i}|r" value="${e.r || 0}"></label><label>الحجم<input type="range" min="30" max="250" step="5" data-exk="${i}|s" value="${e.s || 100}"></label>`
       : `${sw(i, e.bg || '#E3060C')}<label>الحجم<input type="range" min="20" max="300" step="2" data-exk="${i}|s" value="${e.s || 60}"></label>`}</div>`).join('')}
-    <p class="help">${ex.length ? 'اسحب الشكل على الصورة لتحريكه.' : 'أضف مربع نص (مثل «143 بالقدم 💥») أو سهماً أو دائرة، ثم اسحبه على الصورة.'}</p>`;
+    <p class="help">${ex.length ? 'اسحب الشكل على الصورة لتحريكه، وكبّره أو صغّره بإصبعين، و«✕» على الشكل تحذفه.' : 'أضف مربع نص (مثل «143 بالقدم 💥») أو سهماً أو دائرة، ثم اسحبه على الصورة.'}</p>`;
 }
 /* ---------- drawing the post (the website's code) ---------- */
 function adFit(c, s, x, y, w, px, weight, color, align, fam) {
@@ -618,7 +618,11 @@ function drawAd(cv) {
   if (!cv || !ad) return;
   const c = cv.getContext('2d'), v = ad.v, p = ad.p; TH = PZ_THEMES[v.theme] || PZ_THEMES.co; v.o = v.o || {}; ad.hits = [];
   c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = TH.bg; c.fillRect(0, 0, AD_W, AD_H); c.direction = 'rtl'; c.textBaseline = 'alphabetic';
-  const at = (k, x, y, w, h, f) => { const o = v.o[k] || [0, 0]; c.save(); c.translate(o[0], o[1]); f(); c.restore(); ad.hits.push({ k, x: x + o[0], y: y + o[1], w, h }); };
+  const at = (k, x, y, w, h, f) => {   // a part of the post: moved by v.o[k], enlarged by v.sc[k] (two fingers) around its centre
+    const o = v.o[k] || [0, 0], sc = (v.sc && v.sc[k]) || 1, cx = x + w / 2, cy = y + h / 2;
+    c.save(); c.translate(o[0], o[1]); if (sc !== 1) { c.translate(cx, cy); c.scale(sc, sc); c.translate(-cx, -cy); } f(); c.restore();
+    ad.hits.push({ k, x: cx - w * sc / 2 + o[0], y: cy - h * sc / 2 + o[1], w: w * sc, h: h * sc });
+  };
   if (TH.layout === 'aya') { ayaDraw(c, v, p, at); PZS = 1; drawExtras(c, v, at); adSel(c); return; }
   if (TH.layout === 'oy') { oyDraw(c, v, p, at); PZS = 1; drawExtras(c, v, at); adSel(c); return; }
   if (TH.layout === 'ar') { arDraw(c, v, p, at); PZS = 1; drawExtras(c, v, at); adSel(c); return; }
@@ -678,7 +682,25 @@ function drawAd(cv) {
   });
   PZS = 1; drawExtras(c, v, at); adSel(c);
 }
-function adSel(c) { if (ad.sel && !ad.export) { const t = [...ad.hits].reverse().find((h) => h.k === ad.sel && h.pic == null); if (t) { c.save(); c.setLineDash([14, 10]); c.lineWidth = 4; c.strokeStyle = '#1E88E5'; c.strokeRect(t.x - 6, t.y - 6, t.w + 12, t.h + 12); c.restore(); } } }
+function adSel(c) {
+  ad.xBtn = null;
+  if (!ad.sel || ad.export) return;
+  const t = [...ad.hits].reverse().find((h) => h.k === ad.sel && h.pic == null); if (!t) return;
+  c.save(); c.setLineDash([14, 10]); c.lineWidth = 4; c.strokeStyle = '#1E88E5'; c.strokeRect(t.x - 6, t.y - 6, t.w + 12, t.h + 12); c.restore();
+  if (/^ex\d+$/.test(t.k)) {   // the added shapes: an × on the corner removes them
+    const r = 46, x = Math.min(AD_W - r - 4, Math.max(r + 4, t.x + t.w + 6)), y = Math.min(AD_H - r - 4, Math.max(r + 4, t.y - 6));
+    c.save(); c.shadowColor = 'rgba(0,0,0,.3)'; c.shadowBlur = 10; c.fillStyle = '#E11D2E'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.restore();
+    c.save(); c.strokeStyle = '#fff'; c.lineWidth = 9; c.lineCap = 'round'; const d = r * 0.42;
+    c.beginPath(); c.moveTo(x - d, y - d); c.lineTo(x + d, y + d); c.moveTo(x + d, y - d); c.lineTo(x - d, y + d); c.stroke(); c.restore();
+    ad.xBtn = { i: +t.k.slice(2), x, y, r };
+  }
+}
+/** removes added shape i; the moves and sizes of the shapes after it follow them down */
+function exDelete(i) {
+  const ex = ad.v.ex || []; if (!ex[i]) return; ex.splice(i, 1);
+  for (const m of [ad.v.o, ad.v.sc || {}]) for (let j = i; j <= ex.length; j++) { if (m['ex' + (j + 1)]) m['ex' + j] = m['ex' + (j + 1)]; else delete m['ex' + j]; }
+  ad.sel = null;
+}
 function adRedraw() { cancelAnimationFrame(adRaf); adRaf = requestAnimationFrame(() => { if (ad) drawAd($('pzCv')); }); }
 
 const AD_FIELDS = [
@@ -736,7 +758,7 @@ function pzForm() {
   const was = new Set([...$('pzForm').querySelectorAll('details[open]')].map((d) => d.dataset.sec));
   const fresh = !$('pzForm').querySelector('details');
   const sec = (k, t, body, open) => `<details class="pz-sec" data-sec="${k}"${(fresh ? open : was.has(k)) ? ' open' : ''}><summary>${t}</summary><div class="pz-body">${body}</div></details>`;
-  $('pzForm').innerHTML = `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', only ? '١. نوع الدفع' : '١. القالب ونوع الدفع', `<div class="pz-th"${only ? ' hidden' : ''}>${Object.entries(PZ_THEMES).filter(([k]) => okT.includes(k)).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
+  $('pzForm').innerHTML = `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · إصبعان لتكبيره أو تصغيره · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', only ? '١. نوع الدفع' : '١. القالب ونوع الدفع', `<div class="pz-th"${only ? ' hidden' : ''}>${Object.entries(PZ_THEMES).filter(([k]) => okT.includes(k)).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
     <div class="seg"><button type="button" data-pzmode="cash" class="${v.mode === 'cash' ? 'on' : ''}">قالب الكاش</button><button type="button" data-pzmode="inst" class="${v.mode === 'inst' ? 'on' : ''}">قالب الأقساط</button></div>`, true)
     + sec('tx', '٢. الكتابة والأسعار', `${(aya ? AYA_FIELDS : oy ? OY_FIELDS : ar ? AR_FIELDS : AD_FIELDS).map(f).join('')}
     <h3>موقع القطعة في العنوان</h3>
@@ -754,7 +776,7 @@ function pzForm() {
     ${[['fsT', 'العنوان واسم المشروع'], ['fsN', 'الأرقام والأسعار'], ['fsL', 'النصوص والعناوين الصغيرة'], ['fsC', 'سطر وشريط التواصل']].map(([k, l]) => `<label>${l} <b class="num" data-fsv="${k}">${Math.round(v[k] * 100)}%</b><input type="range" data-k="${k}" min="0.6" max="1.6" step="0.05" value="${v[k]}"></label>`).join('')}
     <button type="button" class="btn sm" data-fsreset>إرجاع أحجام الخط الأصلية</button>
     <h3>تحريك العناصر</h3>
-    <p class="help">اسحب أي نص أو بطاقة على المعاينة مباشرة، أو اختر العنصر وحرّكه بالأسهم. السحب داخل الخريطة أو داخل صورة يحرّك ما بداخلها.</p>
+    <p class="help">اسحب أي نص أو بطاقة على المعاينة مباشرة، وكبّره أو صغّره بإصبعين، أو اختر العنصر وحرّكه بالأسهم. السحب داخل الخريطة أو داخل صورة يحرّك ما بداخلها.</p>
     <div class="pz-move"><select id="pzPart">${(aya ? AYA_PARTS : oy ? OY_PARTS : ar ? AR_PARTS : AD_PARTS).concat((v.ex || []).map((e, i) => ['ex' + i, (e.t === 'box' ? 'مربع نص ' : e.t === 'arrow' ? 'سهم ' : 'دائرة ') + (i + 1)])).map(([k, l]) => `<option value="${k}"${ad.sel === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
       <div class="pz-arrows"><button type="button" class="btn" data-mv="0,-1" aria-label="فوق">▲</button><button type="button" class="btn" data-mv="1,0" aria-label="يمين">▶</button><button type="button" class="btn" data-mv="-1,0" aria-label="يسار">◀</button><button type="button" class="btn" data-mv="0,1" aria-label="تحت">▼</button></div>
       <span class="rowbtns"><button type="button" class="btn sm" data-mvreset>إرجاع مكانه</button><button type="button" class="btn sm" data-mvall>إرجاع كل الأماكن</button></span></div>`, false)
@@ -892,8 +914,8 @@ export async function initAdgen2(pg, l, proj) {
       pzForm(); adRedraw(); return;
     }
     if (d.mv) { const k = $('pzPart').value, [dx, dy] = d.mv.split(',').map(Number), o = ad.v.o[k] || [0, 0]; ad.sel = k; ad.v.o[k] = [o[0] + dx * 10, o[1] + dy * 10]; adRedraw(); return; }
-    if (d.mvreset !== undefined) { delete ad.v.o[$('pzPart').value]; ad.sel = $('pzPart').value; adRedraw(); return; }
-    if (d.mvall !== undefined) { ad.v.o = {}; adRedraw(); return; }
+    if (d.mvreset !== undefined) { delete ad.v.o[$('pzPart').value]; if (ad.v.sc) delete ad.v.sc[$('pzPart').value]; ad.sel = $('pzPart').value; adRedraw(); return; }
+    if (d.mvall !== undefined) { ad.v.o = {}; ad.v.sc = {}; adRedraw(); return; }
     if (d.mapcenter !== undefined) { ad.v.mx = ad.v.my = 0; adRedraw(); return; }
     if (d.picreset !== undefined) { const s = ad.img[+d.picreset]; if (s) { delete s.z; delete s.cx; delete s.cy; pzForm(); adRedraw(); } return; }
     if (d.slotcut !== undefined) { pzCut(+d.slotcut); return; }
@@ -901,7 +923,7 @@ export async function initAdgen2(pg, l, proj) {
     if (d.pzth) {
       if (!allowed().includes(d.pzth)) return;
       const was = layoutOf(ad.v.theme), now = layoutOf(d.pzth);
-      if (was !== now) { ad.v.o = {}; ad.v.mx = ad.v.my = 0; ad.v.lab = now !== 'aya'; ad.sel = null; }
+      if (was !== now) { ad.v.o = {}; ad.v.sc = {}; ad.v.mx = ad.v.my = 0; ad.v.lab = now !== 'aya'; ad.sel = null; }
       ad.v.theme = d.pzth; ad.v.phone = pzPhone(ad.v.theme); pzKeep((s) => { s.theme = ad.v.theme; }); pzForm(); adRedraw(); return;
     }
     if (d.pzmode) { ad.v.mode = d.pzmode; pzForm(); adRedraw(); return; }
@@ -910,11 +932,7 @@ export async function initAdgen2(pg, l, proj) {
       ex.push(d.exadd === 'box' ? { t: 'box', text: 'اكتب هنا', bg: EX_COLS[4], s: 64, x, y } : d.exadd === 'arrow' ? { t: 'arrow', r: 45, s: 100, x, y } : { t: 'ring', bg: '#E3060C', s: 60, x, y });
       ad.sel = 'ex' + n; pzForm(); adRedraw(); return;
     }
-    if (d.exdel !== undefined) {   // the offsets of the following shapes move down with them
-      const i = +d.exdel, ex = ad.v.ex || []; ex.splice(i, 1);
-      for (let j = i; j <= ex.length; j++) { if (ad.v.o['ex' + (j + 1)]) ad.v.o['ex' + j] = ad.v.o['ex' + (j + 1)]; else delete ad.v.o['ex' + j]; }
-      ad.sel = null; pzForm(); adRedraw(); return;
-    }
+    if (d.exdel !== undefined) { exDelete(+d.exdel); pzForm(); adRedraw(); return; }
     if (d.exc) { const [i, col] = d.exc.split('|'), e = (ad.v.ex || [])[+i]; if (e) { e.bg = col; pzForm(); adRedraw(); } return; }
     if (d.pzup !== undefined) { ad.slot = +d.pzup; $('pzFile').value = ''; $('pzFile').click(); return; }
     if (d.slotauto !== undefined) { const s = ad.img[+d.slotauto]; if (s && s.crop) { s.crop = pzFind(s.im, s.kind || 'plan'); pzForm(); adRedraw(); } return; }
@@ -979,12 +997,15 @@ export async function initAdgen2(pg, l, proj) {
     const zoomT = (t, f) => {
       if (t.pan) ad.v.zoom = Math.max(0.5, Math.min(3, (+ad.v.zoom || 1) * f));
       else if (t.pic != null) { const s = ad.img[t.pic]; if (s.fit === 'crop') s.crop.z = Math.max(0.4, Math.min(10, s.crop.z * f)); else s.z = Math.max(0.4, Math.min(4, (s.z || 1) * f)); }
+      else if (t.k) { const sc = (ad.v.sc = ad.v.sc || {}); sc[t.k] = Math.max(0.3, Math.min(4, (sc[t.k] || 1) * f)); }   // a text, a card or an added shape: bigger / smaller
       adRedraw();
     };
     cv.addEventListener('pointerdown', (e) => {
       if (!ad) return; pts.set(e.pointerId, [e.clientX, e.clientY]); cv.setPointerCapture(e.pointerId); e.preventDefault();
-      if (pts.size === 2 && drag && (drag.t.pan || drag.t.pic != null)) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), t: drag.t }; return; }
-      const [x, y] = pt(e), t = under(x, y); if (!t) return;
+      if (pts.size === 2) { const tg = drag ? drag.t : ad.sel ? { k: ad.sel } : null; if (tg) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), t: tg }; } return; }
+      const [x, y] = pt(e);
+      if (ad.xBtn && Math.hypot(x - ad.xBtn.x, y - ad.xBtn.y) <= ad.xBtn.r * 1.9) { exDelete(ad.xBtn.i); pzForm(); adRedraw(); return; }
+      const t = under(x, y); if (!t) { ad.sel = null; adRedraw(); return; }
       drag = { t, x, y }; if (t.pic == null && !t.pan) { ad.sel = t.k; const s = $('pzPart'); if (s) s.value = t.k; } else ad.sel = null;
       adRedraw();
     });
@@ -992,6 +1013,7 @@ export async function initAdgen2(pg, l, proj) {
       if (!ad || !pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]);
       if (pinch && pts.size >= 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch.d > 0) zoomT(pinch.t, d / pinch.d); pinch.d = d; return; }
       if (!drag) return;
+      if (drag.re) { [drag.x, drag.y] = pt(e); drag.re = false; return; }   // one finger left after a pinch: carry on from here
       const [x, y] = pt(e), dx = x - drag.x, dy = y - drag.y, t = drag.t, v = ad.v; drag.x = x; drag.y = y;
       if (t.pic != null) {
         const s = ad.img[t.pic], [iw, ih] = adSize(s.im);
@@ -1001,7 +1023,7 @@ export async function initAdgen2(pg, l, proj) {
       else { const o = v.o[t.k] || [0, 0]; v.o[t.k] = [o[0] + dx, o[1] + dy]; }
       adRedraw();
     });
-    const end = (e) => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) { if (drag && drag.t.pic != null) pzForm(); drag = null; } };
+    const end = (e) => { pts.delete(e.pointerId); if (pts.size < 2) { if (pinch && drag) drag.re = true; pinch = null; } if (!pts.size) { if (drag && drag.t.pic != null) pzForm(); drag = null; } };
     cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
     cv.addEventListener('wheel', (e) => { if (!ad) return; const [x, y] = pt(e), t = under(x, y); if (!t || (t.pic == null && !t.pan)) return; e.preventDefault(); zoomT(t, e.deltaY < 0 ? 1.08 : 1 / 1.08); }, { passive: false });
   }
