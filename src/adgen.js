@@ -46,7 +46,7 @@ const ayaArt = {}; let ayaReady = null;
 function ayaLoad() {
   if (ayaReady) return ayaReady;
   const ld = (n) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = './assets/ad/' + n; });
-  return (ayaReady = Promise.all([ld('aya-base.jpg'), ld('aya-icons.png')]).then(([b, i]) => { ayaArt.base = b; ayaArt.icons = i; }));
+  return (ayaReady = Promise.all([ld('aya-base.jpg'), ld('aya-icons.png'), ld('oy-flag.png')]).then(([b, i, f]) => { ayaArt.base = b; ayaArt.icons = i; ayaArt.oyFlag = f; }));
 }
 const AYA = { kick: '#A85E5E', title: '#655454', proj: '#A3504D', sub: '#605050', card: '#F0E5E1', cTitle: '#3E3330', cVal: '#A85E5D', tag: '#46372F', phone: '#A95F5E', addr: '#6A4E4A', plot: '#A2474F' };
 const AYA_CARDS = [156, 422, 691, 952, 1222], AYA_CW = 226, AYA_CY = 1347, AYA_CH = 260;
@@ -166,6 +166,77 @@ function ayaDraw(c, v, p, at) {
     else L.forEach((t, i) => adFitV(c, t, 1100, i ? 1838 : 1792, i ? 1874 : 1830, 380, 36, 700, AYA.addr, 'center', FB));
   });
 }
+/* «قالب عمر الياسي» (the website's): the plan across the whole picture, the facts in coloured boxes over it, an arrow and a ring on the plot */
+PZ_THEMES.oy = Object.assign({}, PZ_THEMES.co, { name: 'قالب عمر الياسي', layout: 'oy', bar: '#B535FE' });
+const OY = { black: '#0B0B0B', blue: '#4033FC', red: '#FF3535', purple: '#B535FE', ring: '#E0040B' };
+const isLatin = (s) => !/[؀-ۿ]/.test(String(s || ''));
+function oyBox(c, s, right, top, bot, minW, maxW, px, fill, col, r, centre, weight) {
+  s = String(s || ''); if (!s) return null;
+  let size = Math.round(px * PZS); c.font = FD(weight || 800, size);
+  while (c.measureText(s).width > maxW - 70 && size > 18) { size -= 2; c.font = FD(weight || 800, size); }
+  const w = Math.max(minW, Math.min(maxW, c.measureText(s).width + 80)), x = centre ? right - w / 2 : right - w;
+  c.fillStyle = fill; box(c, x, top, w, bot - top, r); c.fill();
+  c.direction = isLatin(s) ? 'ltr' : 'rtl'; adFitV(c, s, x + w / 2, top + 8, bot - 8, w - 50, size / PZS, weight || 800, col, 'center'); c.direction = 'rtl';
+  return { x, y: top, w, h: bot - top };
+}
+function oyArrow(c, tx, ty, K) {   // a thick black arrow coming down from the upper right, its tip at (tx, ty)
+  c.save(); c.translate(tx, ty); c.rotate(-Math.PI / 4); c.scale(K, K);
+  const L = 250, hw = 50, hl = 92, sw = 19;
+  c.beginPath(); c.moveTo(0, 0); c.lineTo(hl, -hw); c.lineTo(hl, -sw); c.lineTo(L, -sw); c.lineTo(L, sw); c.lineTo(hl, sw); c.lineTo(hl, hw); c.closePath();
+  c.lineJoin = 'round'; c.lineWidth = 7; c.strokeStyle = '#FFFFFF'; c.stroke(); c.fillStyle = '#000000'; c.fill();
+  c.restore();
+}
+function oyDraw(c, v, p, at) {
+  const k = 2.2 * (+v.zoom || 1), px = AD_W * 0.36, py = AD_H * 0.62;
+  const x0 = p.c[0] - px / k - (+v.mx || 0) / k, y0 = p.c[1] - py / k - (+v.my || 0) / k;
+  c.save(); c.fillStyle = '#E9DCC0'; c.fillRect(0, 0, AD_W, AD_H); c.scale(k, k); c.translate(-x0, -y0); drawPlan(c, x0, y0, x0 + AD_W / k, y0 + AD_H / k, k); c.restore();
+  ad.hits.push({ k: 'map', pan: 1, x: 0, y: 0, w: AD_W, h: AD_H });
+  const sx = (p.c[0] - x0) * k, sy = (p.c[1] - y0) * k;
+  let rr = 0; (p.p || []).forEach((q) => { rr = Math.max(rr, Math.hypot((q[0] - p.c[0]) * k, (q[1] - p.c[1]) * k)); });
+  const K = +v.pinK || 1, R = Math.max(44, rr + 14) * K;
+  if (v.pin) {
+    c.lineWidth = 9 * K; c.strokeStyle = OY.ring; c.beginPath(); c.arc(sx, sy, R, 0, 7); c.stroke();
+    oyArrow(c, sx + R * 0.74 + 12, sy - R * 0.74 - 12, K * 1.25);
+  }
+  PZS = v.fsT;
+  at('proj', 1000, 145, 508, 148, () => oyBox(c, v.o_proj, 1508, 145, 293, 486, 900, 112, OY.black, '#FFFFFF', 44));
+  at('area', 1000, 345, 508, 114, () => oyBox(c, v.o_area, 1508, 345, 459, 486, 900, 92, OY.blue, '#FFFFFF', 28));
+  at('use', 1000, 504, 508, 166, () => {
+    c.font = FD(800, 80); const w = Math.max(492, Math.min(900, Math.max(c.measureText(v.o_use1 || '').width, c.measureText(v.o_use2 || '').width) + 90));
+    c.fillStyle = OY.red; box(c, 1508 - w, 504, w, 166, 34); c.fill();
+    adFitV(c, v.o_use1, 1508 - w / 2, 512, 592, w - 50, 80, 800, '#FFFFFF', 'center');
+    c.direction = isLatin(v.o_use2) ? 'ltr' : 'rtl'; adFitV(c, v.o_use2, 1508 - w / 2, 596, 662, w - 50, 72, 800, '#FFFFFF', 'center'); c.direction = 'rtl';
+  });
+  PZS = v.fsN;
+  at('price', 70, 1600, 1460, 190, () => {
+    const s = v.mode === 'inst' ? v.o_priceI : v.o_priceC; c.fillStyle = OY.purple; box(c, 70, 1600, 1460, 190, 64); c.fill();
+    c.direction = isLatin(s) ? 'ltr' : 'rtl'; adFitV(c, s, 800, 1622, 1768, 1360, 160, 800, '#FFFFFF', 'center'); c.direction = 'rtl';
+  });
+  PZS = v.fsL;
+  at('pills', 200, 1812, 500, 160, () => {
+    [[v.o_p1, 1812, 1880], [v.o_p2, 1900, 1968]].forEach(([s, t, b]) => {
+      if (!s) return; c.font = FD(800, 54); const w = Math.min(760, c.measureText(s).width + 60);
+      c.save(); c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 10; c.shadowOffsetY = 3; c.fillStyle = '#FFFFFF'; box(c, 444 - w / 2, t, w, b - t, 16); c.fill(); c.restore();
+      adFitV(c, s, 444, t + 7, b - 7, w - 30, 54, 800, '#111111', 'center');
+    });
+  });
+  PZS = 1;
+  if (v.oFlag && ayaArt.oyFlag) at('flag', 120, 170, 500, 392, () => c.drawImage(ayaArt.oyFlag, 120, 170, 500, 392));
+  const lg = PZ_THEMES.co.logo;
+  if (v.oLogo && lg && lg.naturalWidth) at('logo', 1318, 1812, 240, 170, () => {
+    c.save(); c.shadowColor = 'rgba(0,0,0,.22)'; c.shadowBlur = 12; c.shadowOffsetY = 3; c.fillStyle = '#FFFFFF'; box(c, 1318, 1812, 240, 170, 22); c.fill(); c.restore();
+    const h = 152, w = h * lg.naturalWidth / lg.naturalHeight; c.drawImage(lg, 1318 + (240 - w) / 2, 1821, w, h);
+  });
+}
+const OY_PARTS = [['proj', 'اسم المشروع (المربع الأسود)'], ['area', 'المساحة (المربع الأزرق)'], ['use', 'الاستخدام (المربع الأحمر)'], ['price', 'السعر (الشريط البنفسجي)'], ['pills', 'السطران الأبيضان'], ['flag', 'خريطة الإمارات'], ['logo', 'شعار الشركة']];
+const OY_FIELDS = [
+  ['o_proj', 'اسم المشروع (المربع الأسود)'], ['o_area', 'المساحة (المربع الأزرق)'], ['o_use1', 'الاستخدام · السطر الأول (المربع الأحمر)'], ['o_use2', 'الاستخدام · السطر الثاني (مثلًا: G + 2)'],
+  ['o_priceC', 'السعر (الشريط البنفسجي)', 'cash'], ['o_priceI', 'السعر (الشريط البنفسجي)', 'inst'], ['o_p1', 'السطر الأبيض الأول'], ['o_p2', 'السطر الأبيض الثاني'],
+];
+/** staff with the «تصميم البوستات» permission post in «قالب عمر الياسي» only (as the website's manager link); the office has every template */
+const DES_THEMES = ['oy'];
+const allThemes = () => !!(H && H.isAdmin && H.isAdmin());
+const layoutOf = (t) => (PZ_THEMES[t] || {}).layout || '';
 const AYA_PARTS = [['kick', 'السطر الصغير فوق العنوان'], ['title', 'العنوان'], ['proj', 'اسم المشروع'], ['sub', 'السطر تحت اسم المشروع'], ['map', 'الخريطة'], ['lab', 'بطاقة الموقع'], ['cards', 'البطاقات الخمس'], ['more', 'السطر فوق التواصل'], ['bar', 'نصوص التواصل']];
 const AYA_FIELDS = [
   ['a_kick', 'السطر الصغير فوق العنوان'], ['a_title', 'العنوان (مثلًا: أرض سكنية في)'], ['proj', 'اسم المشروع'], ['sub', 'السطر تحت اسم المشروع'],
@@ -226,10 +297,14 @@ function adDefaults(p) {
   const n = inst.length, code = /\(([^()]+)\)\s*$/.exec(T.floors || '');
   Object.assign(v, { a_kick: 'فرصة إستثمارية مميزة', a_title: 'أرض ' + T.use + (v.side ? ' ' + v.side : '') + ' في', a_use: T.use, a_fl: code ? code[1] : fl,
     a_loc: PROJECT, a_city: 'الشارقة', a_ps: 'درهم فقط', a_iT: n === 1 ? 'قسط واحد' : n === 2 ? 'قسطان' : n ? n + ' أقساط' : 'أقساط', a_iS: 'شيكات',
-    a_cT: 'الدفعات', a_cV: 'كاش', a_cS: 'نقداً', a_tag: 'موقع مميز إستثمار مضمون', a_clbl: 'للتواصل والإستفسار', a_addr: 'شركة عمر الياسي للعقارات\nالشارقة - شارع مليحة' });
+    a_cT: 'الدفعات', a_cV: 'كاش', a_cS: 'نقداً',
+    o_proj: PROJECT, o_area: p.ft ? fmt(p.ft) + ' قدم' : '', o_use1: T.use + (v.side ? ' ' + v.side : ''), o_use2: String(code ? code[1] : fl).replace(/\s*\+\s*/g, '  +  '),
+    o_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', o_priceI: pr ? fmt(pr.total) + ' Dhs, ' + (n ? n + ' Installments' : 'Installments') : 'للاستفسار',
+    o_p1: 'المنطقة جاهزة للبناء', o_p2: 'تملّك حر للعرب', oFlag: true, oLogo: true, a_tag: 'موقع مميز إستثمار مضمون', a_clbl: 'للتواصل والإستفسار', a_addr: 'شركة عمر الياسي للعقارات\nالشارقة - شارع مليحة' });
   const s = store();
   AD_KEEP.forEach((k) => { if (typeof s[k] === 'string' && s[k]) v[k] = s[k]; });
-  v.theme = PZ_THEMES[s.theme] ? s.theme : 'co'; v.phone = pzPhone(v.theme); if (v.theme === 'aya') v.lab = false;
+  v.theme = PZ_THEMES[s.theme] ? s.theme : (allThemes() ? 'co' : 'oy'); if (!allThemes() && !DES_THEMES.includes(v.theme)) v.theme = DES_THEMES[0];
+  v.phone = pzPhone(v.theme); if (v.theme === 'aya') v.lab = false;
   return v;
 }
 
@@ -435,6 +510,7 @@ function drawAd(cv) {
   c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = TH.bg; c.fillRect(0, 0, AD_W, AD_H); c.direction = 'rtl'; c.textBaseline = 'alphabetic';
   const at = (k, x, y, w, h, f) => { const o = v.o[k] || [0, 0]; c.save(); c.translate(o[0], o[1]); f(); c.restore(); ad.hits.push({ k, x: x + o[0], y: y + o[1], w, h }); };
   if (TH.layout === 'aya') { ayaDraw(c, v, p, at); PZS = 1; adSel(c); return; }
+  if (TH.layout === 'oy') { oyDraw(c, v, p, at); PZS = 1; adSel(c); return; }
   at('logo', 40, 0, 430, 362, () => {
     if (TH.logo && TH.logo.naturalWidth) c.drawImage(TH.logo, 40, 0, 430, 362);
     else { adFit(c, 'عمر الياسي للعقارات', 217, 300, 420, 42, 800, TH.ink, 'center'); c.direction = 'ltr'; adFit(c, 'Omar Al Yassi Real Estate', 217, 338, 420, 28, 700, TH.ink, 'center', FB); c.direction = 'rtl'; }
@@ -530,7 +606,7 @@ export function adgenPage(l, projects) {
 }
 
 function pzForm() {
-  const aya = (PZ_THEMES[ad.v.theme] || {}).layout === 'aya';
+  const aya = layoutOf(ad.v.theme) === 'aya', oy = layoutOf(ad.v.theme) === 'oy', only = !allThemes();
   const v = ad.v, f = ([k, l, m, area]) => `<label class="fld" data-m="${m || ''}"${m && m !== v.mode ? ' hidden' : ''}>${l}${area ? `<textarea data-k="${k}" rows="3">${esc(v[k])}</textarea>` : `<input type="text" data-k="${k}" value="${esc(v[k])}">`}</label>`;
   const slots = ['صورة المبنى', 'مخطط الأرض', 'شروط التخطيط'].map((t, i) => {
     const s = ad.img[i];
@@ -549,25 +625,25 @@ function pzForm() {
   const was = new Set([...$('pzForm').querySelectorAll('details[open]')].map((d) => d.dataset.sec));
   const fresh = !$('pzForm').querySelector('details');
   const sec = (k, t, body, open) => `<details class="pz-sec" data-sec="${k}"${(fresh ? open : was.has(k)) ? ' open' : ''}><summary>${t}</summary><div class="pz-body">${body}</div></details>`;
-  $('pzForm').innerHTML = `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', '١. القالب ونوع الدفع', `<div class="pz-th">${Object.entries(PZ_THEMES).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
+  $('pzForm').innerHTML = `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', only ? '١. نوع الدفع' : '١. القالب ونوع الدفع', `<div class="pz-th"${only ? ' hidden' : ''}>${Object.entries(PZ_THEMES).filter(([k]) => !only || DES_THEMES.includes(k)).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
     <div class="seg"><button type="button" data-pzmode="cash" class="${v.mode === 'cash' ? 'on' : ''}">قالب الكاش</button><button type="button" data-pzmode="inst" class="${v.mode === 'inst' ? 'on' : ''}">قالب الأقساط</button></div>`, true)
-    + sec('tx', '٢. الكتابة والأسعار', `${(aya ? AYA_FIELDS : AD_FIELDS).map(f).join('')}
+    + sec('tx', '٢. الكتابة والأسعار', `${(aya ? AYA_FIELDS : oy ? OY_FIELDS : AD_FIELDS).map(f).join('')}
     <h3>موقع القطعة في العنوان</h3>
     <div class="seg pz-side">${[['', 'عادية'], ['زاوية', 'زاوية'], ['سكة', 'سكة']].map(([k, l]) => `<button type="button" data-pzside="${k}" class="${(v.side || '') === k ? 'on' : ''}">${l}${ad.rawOk && (v.auto || '') === k ? ' ✓' : ''}</button>`).join('')}</div>
     <p class="help">${ad.rawOk ? `✓ = ما قرأته من المخطط${v.auto ? ': ' + v.auto : ': ليست زاوية ولا على سكة'}. ` : ''}الاختيار يضيف الكلمة إلى آخر العنوان.</p>`, false)
-    + (aya ? '' : sec('im', '٣. الصور', `${slots}<p class="help">الصور التي تضيفها هنا للبوست فقط ولا تُرفع إلى الموقع. يمكنك اختيار صورة أو ملف PDF.</p>`, false))
-    + sec('mp', (aya ? '٣' : '٤') + '. الخريطة والدبوس', `
+    + (aya || oy ? '' : sec('im', '٣. الصور', `${slots}<p class="help">الصور التي تضيفها هنا للبوست فقط ولا تُرفع إلى الموقع. يمكنك اختيار صورة أو ملف PDF.</p>`, false))
+    + sec('mp', (aya || oy ? '٣' : '٤') + '. الخريطة والدبوس', `
     <label>تكبير الخريطة<input type="range" data-k="zoom" min="0.5" max="3" step="0.1" value="${v.zoom}"></label>
     <label>حجم الدبوس <b class="num" data-fsv="pinK">${Math.round((v.pinK || 1) * 100)}%</b><input type="range" data-k="pinK" min="0.4" max="2.5" step="0.05" value="${v.pinK || 1}"></label>
     <label class="chk"><input type="checkbox" data-k="pin"${v.pin ? ' checked' : ''}> الدبوس</label>
-    <label class="chk"><input type="checkbox" data-k="lab"${v.lab ? ' checked' : ''}> بطاقة الموقع على الخريطة</label>
+    ${oy ? `<label class="chk"><input type="checkbox" data-k="oFlag"${v.oFlag ? ' checked' : ''}> خريطة الإمارات</label><label class="chk"><input type="checkbox" data-k="oLogo"${v.oLogo ? ' checked' : ''}> شعار الشركة</label>` : `<label class="chk"><input type="checkbox" data-k="lab"${v.lab ? ' checked' : ''}> بطاقة الموقع على الخريطة</label>`}
     <button type="button" class="btn sm" data-mapcenter>إرجاع الخريطة إلى القطعة</button>`, false)
-    + sec('fs', (aya ? '٤' : '٥') + '. حجم الخط وأماكن العناصر', `<h3>حجم الخط</h3>
+    + sec('fs', (aya || oy ? '٤' : '٥') + '. حجم الخط وأماكن العناصر', `<h3>حجم الخط</h3>
     ${[['fsT', 'العنوان واسم المشروع'], ['fsN', 'الأرقام والأسعار'], ['fsL', 'النصوص والعناوين الصغيرة'], ['fsC', 'سطر وشريط التواصل']].map(([k, l]) => `<label>${l} <b class="num" data-fsv="${k}">${Math.round(v[k] * 100)}%</b><input type="range" data-k="${k}" min="0.6" max="1.6" step="0.05" value="${v[k]}"></label>`).join('')}
     <button type="button" class="btn sm" data-fsreset>إرجاع أحجام الخط الأصلية</button>
     <h3>تحريك العناصر</h3>
     <p class="help">اسحب أي نص أو بطاقة على المعاينة مباشرة، أو اختر العنصر وحرّكه بالأسهم. السحب داخل الخريطة أو داخل صورة يحرّك ما بداخلها.</p>
-    <div class="pz-move"><select id="pzPart">${(aya ? AYA_PARTS : AD_PARTS).map(([k, l]) => `<option value="${k}"${ad.sel === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
+    <div class="pz-move"><select id="pzPart">${(aya ? AYA_PARTS : oy ? OY_PARTS : AD_PARTS).map(([k, l]) => `<option value="${k}"${ad.sel === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
       <div class="pz-arrows"><button type="button" class="btn" data-mv="0,-1" aria-label="فوق">▲</button><button type="button" class="btn" data-mv="1,0" aria-label="يمين">▶</button><button type="button" class="btn" data-mv="-1,0" aria-label="يسار">◀</button><button type="button" class="btn" data-mv="0,1" aria-label="تحت">▼</button></div>
       <span class="rowbtns"><button type="button" class="btn sm" data-mvreset>إرجاع مكانه</button><button type="button" class="btn sm" data-mvall>إرجاع كل الأماكن</button></span></div>`, false)
     + `<p class="help">يُحفظ على هذا الجهاز: القالب المختار، رقم كل قالب، والسطر تحت اسم المشروع وسطر التواصل والعنوان.</p>`;
@@ -710,7 +786,8 @@ export async function initAdgen2(pg, l, proj) {
     if (d.slotcut !== undefined) { pzCut(+d.slotcut); return; }
     if (d.fsreset !== undefined) { ['fsT', 'fsN', 'fsL', 'fsC'].forEach((k) => { ad.v[k] = 1; }); pzForm(); adRedraw(); return; }
     if (d.pzth) {
-      const was = (PZ_THEMES[ad.v.theme] || {}).layout || '', now = PZ_THEMES[d.pzth].layout || '';
+      if (!allThemes() && !DES_THEMES.includes(d.pzth)) return;
+      const was = layoutOf(ad.v.theme), now = layoutOf(d.pzth);
       if (was !== now) { ad.v.o = {}; ad.v.mx = ad.v.my = 0; ad.v.lab = now !== 'aya'; ad.sel = null; }
       ad.v.theme = d.pzth; ad.v.phone = pzPhone(ad.v.theme); pzKeep((s) => { s.theme = ad.v.theme; }); pzForm(); adRedraw(); return;
     }
