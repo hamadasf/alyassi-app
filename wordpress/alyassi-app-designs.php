@@ -6,7 +6,7 @@
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-foreach ( array( 'design_get', 'design_save', 'design_del' ) as $a ) {
+foreach ( array( 'design_get', 'design_save', 'design_del', 'proj_lines', 'proj_lines_save' ) as $a ) {
 	add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a );
 	add_action( 'wp_ajax_nopriv_oay_acc_' . $a, 'oay_acc_' . $a );
 }
@@ -44,4 +44,26 @@ function oay_acc_design_del() {
 	if ( ! oay_design_tpl_ok( $u, $t ) ) { oay_acc_err( 'غير مسموح', 403 ); }
 	$m = oay_designs(); unset( $m[ $id ][ $t ] ); if ( empty( $m[ $id ] ) ) { unset( $m[ $id ] ); }
 	update_option( 'oay_designs', $m, false ); oay_acc_ok();
+}
+
+/* ---------- each project's own lines on the posts (ready to build, who may own, the road…), set by the office ---------- */
+function oay_proj_lines_seed() {   // from the office's own posts
+	return array(
+		'muzaira'     => array( 'p1' => 'المنطقة جاهزة للبناء', 'p2' => 'تملّك حر للعرب' ),
+		'al-sahma'    => array( 'p1' => 'المنطقة جاهزة للبناء', 'p2' => 'تملّك حر للعرب' ),
+		'al-falah'    => array( 'p1' => 'جاهزة للبناء', 'p2' => 'تملّك حر للعرب' ),
+		'al-mutraq'   => array( 'p1' => 'تم البدء في البنية التحتية', 'p2' => 'تملّك حر للعرب' ),
+		'blaida-2'    => array( 'p1' => 'شارع قار موجود أمام الأرض', 'p2' => '' ),
+	);
+}
+function oay_proj_lines_all() { $m = get_option( 'oay_proj_lines', null ); return is_array( $m ) ? $m + oay_proj_lines_seed() : oay_proj_lines_seed(); }
+function oay_acc_proj_lines() {
+	oay_acc_need_perm( 'design' ); $slug = sanitize_key( (string) oay_acc_arg( 'slug', 40 ) ); $m = oay_proj_lines_all();
+	oay_acc_ok( array( 'lines' => isset( $m[ $slug ] ) ? $m[ $slug ] : null ) );
+}
+function oay_acc_proj_lines_save() {
+	oay_acc_need_admin(); $slug = sanitize_key( (string) oay_acc_arg( 'slug', 40 ) ); if ( ! $slug ) { oay_acc_err( 'المشروع؟' ); }
+	$m = get_option( 'oay_proj_lines', array() ); if ( ! is_array( $m ) ) { $m = array(); }
+	$m[ $slug ] = array( 'p1' => mb_substr( sanitize_text_field( oay_acc_arg( 'p1', 80 ) ), 0, 60 ), 'p2' => mb_substr( sanitize_text_field( oay_acc_arg( 'p2', 80 ) ), 0, 60 ), 'sub' => mb_substr( sanitize_text_field( oay_acc_arg( 'sub', 120 ) ), 0, 80 ) );
+	update_option( 'oay_proj_lines', $m, false ); oay_acc_ok( array( 'lines' => $m[ $slug ] ) );
 }

@@ -369,9 +369,10 @@ function adDefaults(p) {
     a_cT: 'الدفعات', a_cV: 'كاش', a_cS: 'نقداً',
     o_proj: PROJECT, o_area: p.ft ? fmt(p.ft) + ' قدم' : '', o_use1: T.use + (v.side ? ' ' + v.side : ''), o_use2: String(code ? code[1] : fl).replace(/\s*\+\s*/g, '  +  '),
     o_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', o_priceI: pr ? fmt(pr.total) + ' Dhs, ' + (n ? n + ' Installments' : 'Installments') : 'للاستفسار',
-    o_p1: 'المنطقة جاهزة للبناء', o_p2: 'تملّك حر للعرب', oFlag: true, oLogo: true,
+    o_p1: (ad && ad.pl && ad.pl.p1) || '', o_p2: (ad && ad.pl && ad.pl.p2) || '', oFlag: true, oLogo: true,   // the project's own lines (set by the office), none when unknown
     r_proj: PROJECT, r_l1: 'المساحة', r_area: p.ft ? fmt(p.ft) + ' قدم' : '', r_l2: 'تصريح الأرض', r_use: (T.use + '   ' + String(code ? code[1] : fl).replace(/\s*\+\s*/g, '  +  ')).trim(),
     r_l3: 'السعـــر', r_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', r_priceI: pr ? fmt(pr.total) + ' اقساط' : 'للاستفسار', rAv: true, a_tag: 'موقع مميز إستثمار مضمون', a_clbl: 'للتواصل والإستفسار', a_addr: 'شركة عمر الياسي للعقارات\nالشارقة - شارع مليحة' });
+  if (ad && ad.pl && ad.pl.sub) v.sub = ad.pl.sub;
   const s = store();
   AD_KEEP.forEach((k) => { if (typeof s[k] === 'string' && s[k]) v[k] = s[k]; });
   v.theme = PZ_THEMES[s.theme] ? s.theme : allowed()[0]; if (!allowed().includes(v.theme)) v.theme = allowed()[0];
@@ -896,6 +897,7 @@ function pzForm() {
   $('pzForm').innerHTML = (sv ? `<div class="pz-saved">📌 تصميم محفوظ لهذا القالب · <span class="num">${esc(dmy(sv.t))}</span>${sv.by ? ' · ' + esc(sv.by) : ''}<span class="rowbtns"><button type="button" class="btn sm" data-pznew>بدء تصميم جديد</button><button type="button" class="btn sm danger" data-pzunsave>حذف المحفوظ</button></span></div>` : '') + `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · إصبعان لتكبيره أو تصغيره · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', only ? '١. نوع الدفع' : '١. القالب ونوع الدفع', `<div class="pz-th"${only ? ' hidden' : ''}>${Object.entries(PZ_THEMES).filter(([k]) => okT.includes(k)).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
     <div class="seg"><button type="button" data-pzmode="cash" class="${v.mode === 'cash' ? 'on' : ''}">قالب الكاش</button><button type="button" data-pzmode="inst" class="${v.mode === 'inst' ? 'on' : ''}">قالب الأقساط</button></div>`, true)
     + sec('tx', '٢. الكتابة والأسعار', `<label class="fld pz-ppf">سعر القدم (درهم) — يحسب الإجمالي تلقائياً<input type="text" inputmode="decimal" data-ppf value="${esc(v.ppf || '')}" placeholder="مثلاً 143"></label><p class="help" id="pzTot">${ppfHelp()}</p>${(aya ? AYA_FIELDS : oy ? OY_FIELDS : ar ? AR_FIELDS : AD_FIELDS).map(f).join('')}
+    ${oy ? `<p class="help">السطران الأبيضان خاصّان بكل مشروع (جاهز للبناء، تملّك حر للعرب أو لكل الجنسيات، البنية التحتية…)${ad.pl ? '' : ' — لم تُحدَّد بعد لهذا المشروع'}.</p>${H.isAdmin && H.isAdmin() ? `<button type="button" class="btn sm" data-pzpl>📌 اجعل السطرين الأبيضين لكل بوستات مشروع ${esc(ad.p.l.projectName)}</button>` : ''}` : ''}
     <h3>موقع القطعة في العنوان</h3>
     <div class="seg pz-side">${[['', 'عادية'], ['زاوية', 'زاوية'], ['سكة', 'سكة']].map(([k, l]) => `<button type="button" data-pzside="${k}" class="${(v.side || '') === k ? 'on' : ''}">${l}${ad.rawOk && (v.auto || '') === k ? ' ✓' : ''}</button>`).join('')}</div>
     <p class="help">${ad.rawOk ? `✓ = ما قرأته من المخطط${v.auto ? ': ' + v.auto : ': ليست زاوية ولا على سكة'}. ` : ''}الاختيار يضيف الكلمة إلى آخر العنوان.</p>`, false)
@@ -1074,6 +1076,8 @@ export async function initAdgen2(pg, l, proj) {
     }
   }
   ad = { p: plotOf(l), proj, P, plots: proj.lands.filter((x) => x.poly).map(plotOf), all, rawOk: !!raw, img: [null, null, null], hits: [] };
+  ad.pl = null;
+  try { const j = await H.api('proj_lines', { slug: l.project }); if (PG !== pg) return; ad.pl = j.lines || null; } catch { /* none */ }
   ad.v = adDefaults(ad.p); ad.saved = {};
   try {   // a design saved before for this plot (the current template's, else the newest one this account may use)
     const j = await H.api('design_get', { id: l.id }); if (PG !== pg) return;
@@ -1141,6 +1145,11 @@ export async function initAdgen2(pg, l, proj) {
       pzForm(); adRedraw(); return;
     }
     if (d.pzmode) { ad.v.mode = d.pzmode; pzForm(); adRedraw(); return; }
+    if (d.pzpl !== undefined) {
+      H.api('proj_lines_save', { slug: ad.p.l.project, p1: ad.v.o_p1 || '', p2: ad.v.o_p2 || '', sub: (ad.pl && ad.pl.sub) || '' })
+        .then((j) => { ad.pl = j.lines; pzForm(); H.toast('تم — هذان السطران لكل بوستات ' + ad.p.l.projectName); }).catch((ex) => H.toast(ex.message));
+      return;
+    }
     if (d.pznew !== undefined) { const th = ad.v.theme; ad.v = adDefaults(ad.p); ad.v.theme = th; ad.v.phone = pzPhone(th); if (layoutOf(th) === 'aya') ad.v.lab = false; ad.sel = null; pzForm(); adRedraw(); H.toast('تصميم جديد — المحفوظ باقٍ حتى تحفظ فوقه'); return; }
     if (d.pzunsave !== undefined) {
       if (!confirm('حذف التصميم المحفوظ لهذا القالب؟')) return;
