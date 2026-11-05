@@ -394,6 +394,7 @@ export function initAdmAd(pg, id) {
     catch (ex) { err.textContent = ex.message; err.hidden = false; go.disabled = false; go.textContent = 'حفظ التعديلات'; }
   };
 }
+export const TPLS = { oy: 'قالب عمر الياسي', ar: 'قالب عبد الرحمن', co: 'قالب الشركة', gr: 'قالب عبادة', pk: 'قالب آية الجابري', aya: 'قالب آية الجديد' };
 export const STAFF = { chats: 'الرد على المحادثات', leads: 'متابعة العملاء وسجل التواصل', viewings: 'مواعيد المعاينة', listings: 'مراجعة الإعلانات وطلبات الشراء', news: 'الأخبار والدليل', push: 'الإشعارات الموجّهة', report: 'التقرير الأسبوعي', payplan: 'إرسال خطة السداد', design: 'تصميم البوستات' };
 /* ---------- the office team (admin only) ---------- */
 export function staffPage() { return '<div class="pad acc" id="staffl"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>'; }
@@ -464,6 +465,8 @@ export async function initAdmUser(pg, id) {
       </div>
       ${u.admin ? '' : `<div class="ccard staffbox"><h4 class="lh">🧑‍💼 موظف في فريق المكتب</h4><p class="muted">اختر ما يستطيع هذا الحساب فعله نيابةً عن الإدارة. الرسائل التي يرسلها للعملاء تظهر باسم «عمر الياسي للعقارات».</p>
         ${Object.entries(STAFF).map(([k, v]) => `<label class="nrow"><span>${v}</span><input type="checkbox" class="nchk" data-perm="${k}" ${(u.staff || []).includes(k) ? 'checked' : ''}></label>`).join('')}
+        <div class="tplbox"${(u.staff || []).includes('design') ? '' : ' hidden'}><h4 class="lh">🖼️ القوالب التي يصمم بها</h4><p class="muted">اختر قالباً أو أكثر — لا تظهر له إلا هذه القوالب.</p>
+          ${Object.entries(TPLS).map(([k, v]) => `<label class="nrow"><span>${v}</span><input type="checkbox" class="nchk" data-tpl="${k}" ${(u.tpl && u.tpl.length ? u.tpl : ['oy']).includes(k) ? 'checked' : ''}></label>`).join('')}</div>
         <button class="btn primary block" data-savestaff>حفظ الصلاحيات</button></div>`}` : ''}
       ${can('listings') ? `<button class="btn block wbtn" data-wallet="${u.id}">💼 محفظة ${esc(u.verified && u.company ? u.company : u.name || '')}</button>` : ''}
       <h2 class="h2">إعلاناته (${j.ads.length})</h2>
@@ -473,7 +476,9 @@ export async function initAdmUser(pg, id) {
   box.onclick = async (e) => {
     if (e.target.closest('[data-savestaff]')) {
       const perms = [...box.querySelectorAll('[data-perm]')].filter((c) => c.checked).map((c) => c.dataset.perm);
-      try { await api('adm_staff', { id, perms }); toast(perms.length ? 'تم حفظ صلاحيات الموظف ✓' : 'تمت إزالة صلاحيات الموظف'); load(); } catch (ex) { toast(ex.message); }
+      const tpl = [...box.querySelectorAll('[data-tpl]')].filter((c) => c.checked).map((c) => c.dataset.tpl);
+      if (perms.includes('design') && !tpl.length) { toast('اختر قالباً واحداً على الأقل لتصميم البوستات'); return; }
+      try { await api('adm_staff', { id, perms, tpl }); toast(perms.length ? 'تم حفظ صلاحيات الموظف ✓' : 'تمت إزالة صلاحيات الموظف'); load(); } catch (ex) { toast(ex.message); }
       return;
     }
     const vk = e.target.closest('[data-vok2]'), vn = e.target.closest('[data-vno2]');
@@ -495,6 +500,7 @@ export async function initAdmUser(pg, id) {
       load(); document.querySelectorAll('.page').forEach((x) => { if (x !== pg) x.dispatchEvent(new Event('oay:refresh')); });
     } catch (ex) { toast(ex.message); }
   };
+  box.addEventListener('change', (e) => { const c = e.target.closest('[data-perm="design"]'); if (c) { const t = box.querySelector('.tplbox'); if (t) t.hidden = !c.checked; } });
   pg.addEventListener('oay:refresh', load);
   load();
 }

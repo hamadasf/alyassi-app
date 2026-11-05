@@ -1120,7 +1120,7 @@ initCalc({ esc, toast, I, money, waLink });
 initContact({ esc, toast, I, waLink, CONTACT });
 initViews({ esc, toast, I, money });
 initPlanView({ esc, toast, I, money, canDesign: () => can('design') });
-initAdgen({ toast, openPlan: (slug) => pushPage('plan', slug), isAdmin: () => !!(session.user() || {}).admin });
+initAdgen({ toast, openPlan: (slug) => pushPage('plan', slug), isAdmin: () => !!(session.user() || {}).admin, tpls: () => (session.user() || {}).tpl || [] });
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
 initCrm({ esc, toast, I, money, waLink, DATA: () => DATA(), pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop() });
 window.__oayPush = push;   // the notification settings page talks to the push service

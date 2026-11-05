@@ -97,6 +97,9 @@ function oay_no_phones( $t ) {
 function oay_acc_is_admin( $u ) { return $u && user_can( $u, 'manage_options' ); }
 /* ---------------- staff: members the office gives some of its powers ---------------- */
 const OAY_STAFF_PERMS = array( 'chats' => 'الرد على المحادثات', 'leads' => 'متابعة العملاء وسجل التواصل', 'viewings' => 'مواعيد المعاينة', 'listings' => 'مراجعة الإعلانات وطلبات الشراء', 'news' => 'الأخبار والدليل', 'push' => 'الإشعارات الموجّهة', 'report' => 'التقرير الأسبوعي', 'payplan' => 'إرسال خطة السداد', 'design' => 'تصميم البوستات' );
+/** the post designer's templates; a member with «تصميم البوستات» designs in the ones the office chose for them (none chosen: قالب عمر الياسي) */
+const OAY_TPLS = array( 'co' => 'قالب الشركة', 'gr' => 'قالب عبادة', 'pk' => 'قالب آية الجابري', 'aya' => 'قالب آية الجديد', 'oy' => 'قالب عمر الياسي', 'ar' => 'قالب عبد الرحمن' );
+function oay_user_tpls( $uid ) { $t = get_user_meta( $uid, 'oay_tpl', true ); $t = is_array( $t ) ? array_values( array_intersect( $t, array_keys( OAY_TPLS ) ) ) : array(); return $t ? $t : array( 'oy' ); }
 function oay_staff_perms( $uid ) { $p = get_user_meta( $uid, 'oay_staff', true ); return is_array( $p ) ? array_values( array_intersect( $p, array_keys( OAY_STAFF_PERMS ) ) ) : array(); }
 /** Admins can do everything; staff only what they were given. */
 function oay_acc_can( $u, $perm ) { return $u && ( oay_acc_is_admin( $u ) || in_array( $perm, oay_staff_perms( $u->ID ), true ) ); }
@@ -107,6 +110,7 @@ function oay_acc_adm_staff() {
 	oay_acc_need_admin(); $u = oay_acc_adm_target(); $in = oay_acc_in();
 	$perms = array_values( array_intersect( (array) ( $in['perms'] ?? array() ), array_keys( OAY_STAFF_PERMS ) ) );
 	if ( $perms ) { update_user_meta( $u->ID, 'oay_staff', $perms ); } else { delete_user_meta( $u->ID, 'oay_staff' ); }
+	if ( isset( $in['tpl'] ) ) { $tpl = array_values( array_intersect( (array) $in['tpl'], array_keys( OAY_TPLS ) ) ); if ( $tpl ) { update_user_meta( $u->ID, 'oay_tpl', $tpl ); } else { delete_user_meta( $u->ID, 'oay_tpl' ); } }
 	if ( function_exists( 'oay_push_to' ) && $perms ) { oay_push_to( array( $u->ID ), 'تمت إضافتك لفريق عمر الياسي للعقارات', 'افتح التطبيق ← المزيد لتجد أدوات العمل الخاصة بك', array( 'open' => 'account' ) ); }
 	oay_acc_ok( array( 'user' => oay_acc_adm_userrow( get_userdata( $u->ID ) ) ) );
 }
@@ -119,7 +123,7 @@ function oay_acc_userdata( $u ) {
 		'google' => (bool) get_user_meta( $u->ID, 'oay_google_sub', true ), 'points' => (int) get_user_meta( $u->ID, 'oay_points', true ),
 		'admin' => oay_acc_is_admin( $u ), 'banned' => (bool) get_user_meta( $u->ID, 'oay_banned', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ),
 		'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ),
-		'verify' => oay_verify_get( $u->ID ), 'staff' => oay_staff_perms( $u->ID ), 'adv' => function_exists( 'oay_adv_state' ) ? oay_adv_state( $u->ID ) : null );
+		'verify' => oay_verify_get( $u->ID ), 'staff' => oay_staff_perms( $u->ID ), 'tpl' => oay_user_tpls( $u->ID ), 'adv' => function_exists( 'oay_adv_state' ) ? oay_adv_state( $u->ID ) : null );
 }
 function oay_acc_need_admin() { $u = oay_acc_need_user(); if ( ! oay_acc_is_admin( $u ) ) { oay_acc_err( 'غير مسموح', 403 ); } return $u; }
 function oay_acc_new_user( $email, $name, $pass ) {
