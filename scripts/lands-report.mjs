@@ -49,3 +49,5 @@ writeFileSync('lands-report.csv', '﻿' + ['المشروع,القطعة,الحا
 console.log(`::notice::lands report: ${rows.length} plots`);
 // the projects' own descriptions (for the post designer's per-project lines)
 writeFileSync('lands-report.projects.json', JSON.stringify(d.projects.map((p) => ({ slug: p.slug, name: p.name, title: p.title, sub: p.sub, note: p.note, loc: p.loc, types: p.types, lands: p.lands.length, na: (p.na || []).length })), null, 1));
+// plots that are not for sale (mosques, parks, services…) as the plan has them, to read what is near a plot
+writeFileSync('lands-report.amen.json', JSON.stringify(d.projects.map((p) => { const raw = rawPlots(p.slug) || []; const odd = raw.filter((q) => /^#/.test(String(q[0])) || !(p.types || {})[q[1]]); return { slug: p.slug, n: raw.length, typesKeys: Object.keys(p.types || {}), sample: raw.slice(0, 2), odd: odd.slice(0, 40).map((q) => [q[0], q[1], q[2], q[3]]), oddCount: odd.length }; }), null, 1));
