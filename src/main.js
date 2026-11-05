@@ -761,7 +761,7 @@ function landPage(l) {
         ${l.inst.map((x, i) => `<div class="r"><span>القسط ${i + 1} · <bdi>${esc(fmtDate(x[0]))}</bdi></span><b>${money(x[1])} د.إ</b></div>`).join('')}
         <div class="r total"><span>الإجمالي</span><b>${money(l.first + sumInst)} د.إ</b></div></div>` : ''}
       ${can('listings') || can('report') ? `<button class="btn ghost block stbtn" data-stats="${esc(l.id)}">📊 إحصائيات الإعلان</button>` : ''}
-      ${can('design') && l.poly ? `<button class="btn adgbtn block" data-adgen="${esc(l.id)}">🖼️ تصميم بوست لهذه القطعة</button>` : ''}
+      ${can('design') && (l.poly || l.pc) ? `<button class="btn adgbtn block" data-adgen="${esc(l.id)}">🖼️ تصميم بوست لهذه القطعة</button>` : ''}
       ${can('listings') && l.total && l.status === 'av' ? marketCardHTML(l) : ''}
       ${isBroker() && l.total && l.status !== 'sold' ? `<button class="btn wbtn block" data-selldeal="${esc(l.id)}">${(session.user() || {}).admin ? '💼 سجّلها بيعاً في محفظة الشركة' : '💼 طلب تسجيل صفقة على هذه الأرض'}</button>` : ''}
       ${can('payplan') && l.total && l.status !== 'sold' ? `<button class="btn ppbtn block" data-payplan="${esc(l.id)}">📄 خطة السداد PDF</button>` : ''}
@@ -830,7 +830,7 @@ function pushPage(kind, id) {
   else if (kind === 'compare') { html = comparePage(id || ''); }
   else if (kind === 'mystats') { html = myStatsPage(); }
   else if (kind === 'advmine') { html = advMinePage(); }
-  else if (kind === 'adgen') { if (id) { l = findLand(id); p = l && d.projects.find((x) => x.slug === l.project); if (!l || !p || !l.poly) return; } html = adgenPage(id ? l : null, d.projects); }
+  else if (kind === 'adgen') { if (id) { l = findLand(id); p = l && d.projects.find((x) => x.slug === l.project); if (!l || !p || !(l.poly || l.pc)) return; } html = adgenPage(id ? l : null, d.projects); }
   else if (kind === 'mychat') { html = myChatPage(); }
   else if (kind === 'group') { html = groupPage(); }
   else if (kind === 'aad') { html = admAdPage(id); if (!html) return; }
@@ -1120,7 +1120,7 @@ initCalc({ esc, toast, I, money, waLink });
 initContact({ esc, toast, I, waLink, CONTACT });
 initViews({ esc, toast, I, money });
 initPlanView({ esc, toast, I, money, canDesign: () => can('design') });
-initAdgen({ toast, openPlan: (slug) => pushPage('plan', slug), isAdmin: () => !!(session.user() || {}).admin, tpls: () => (session.user() || {}).tpl || [] });
+initAdgen({ toast, landsOf: (slug) => DATA().lands.concat(naLands()).filter((x) => x.project === slug), openPlan: (slug) => pushPage('plan', slug), isAdmin: () => !!(session.user() || {}).admin, tpls: () => (session.user() || {}).tpl || [] });
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
 initCrm({ esc, toast, I, money, waLink, DATA: () => DATA(), pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop() });
 window.__oayPush = push;   // the notification settings page talks to the push service

@@ -880,14 +880,15 @@ export function initAdgenPick(pg, projects, open) {
   const show = () => {
     const p = proj(); if (!p) return;
     const q = inp.value.trim().replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
-    const ls = p.lands.filter((l) => l.poly && (!q || l.n.startsWith(q))).sort((a, b) => (a.status === 'av' ? 0 : 1) - (b.status === 'av' ? 0 : 1) || (+a.n || 0) - (+b.n || 0)).slice(0, 40);
-    list.innerHTML = ls.map((l) => `<button type="button" class="chip ${l.status}" data-adg="${esc(l.id)}">${esc(l.n)}<small>${l.status === 'av' ? 'متاحة' : l.status === 'res' ? 'محجوزة' : 'مباعة'}</small></button>`).join('') || '<p class="muted">لا توجد قطعة بهذا الرقم في القطع المعروضة.</p>';
+    const rank = { av: 0, res: 1, sold: 2, na: 3 }, pool = H.landsOf ? H.landsOf(p.slug) : p.lands;   // every plot of the plan, offered or not
+    const ls = pool.filter((l) => (l.poly || l.pc) && (!q || l.n.startsWith(q))).sort((a, b) => (rank[a.status] ?? 4) - (rank[b.status] ?? 4) || (+a.n || 0) - (+b.n || 0)).slice(0, q ? 60 : 40);
+    list.innerHTML = ls.map((l) => `<button type="button" class="chip ${l.status}" data-adg="${esc(l.id)}">${esc(l.n)}<small>${l.status === 'av' ? 'متاحة' : l.status === 'res' ? 'محجوزة' : l.status === 'sold' ? 'مباعة' : 'غير معروضة'}</small></button>`).join('') || '<p class="muted">لا توجد قطعة بهذا الرقم في القطع المعروضة.</p>';
   };
   try { const last = localStorage.getItem('oay:adgproj'); if (last && projects.some((p) => p.slug === last && p.map)) sel.value = last; } catch { /* ignore */ }
   sel.onchange = () => { try { localStorage.setItem('oay:adgproj', sel.value); } catch { /* ignore */ } show(); }; inp.oninput = show; show();
   list.onclick = (e) => { const b = e.target.closest('[data-adg]'); if (b) open(b.dataset.adg); };
   pg.querySelector('#adgPlan').onclick = () => { const p = proj(); if (p && H.openPlan) H.openPlan(p.slug); };
-  inp.onkeydown = (e) => { if (e.key !== 'Enter') return; const p = proj(), q = inp.value.trim().replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)); const l = p && p.lands.find((x) => x.n === q && x.poly); if (l) open(l.id); else H.toast('لا توجد قطعة بهذا الرقم — اختر من القائمة'); };
+  inp.onkeydown = (e) => { if (e.key !== 'Enter') return; const p = proj(), q = inp.value.trim().replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)); const l = p && (H.landsOf ? H.landsOf(p.slug) : p.lands).find((x) => x.n === q && (x.poly || x.pc)); if (l) open(l.id); else H.toast('لا توجد قطعة بهذا الرقم — اختر من القائمة'); };
 }
 
 export async function initAdgen2(pg, l, proj) {
@@ -902,6 +903,16 @@ export async function initAdgen2(pg, l, proj) {
     Promise.all(Object.values(PZ_THEMES).map((t) => (t.logo && !t.logo.complete ? new Promise((r) => { t.logo.onload = t.logo.onerror = r; }) : null))),
   ]).then((r) => r[0]);
   if (PG !== pg) return;
+  if (!l.poly) {   // a plot the company does not list: its outline from the whole plan, or a square of its size around its centre
+    const q = raw && raw.find((r) => String(r[0]) === String(l.n));
+    if (q && q[6] && q[6].length > 2) l = { ...l, poly: q[6], pc: q[7] || l.pc || centreOf(q[6]), pr: q[8] || 0 };
+    else if (l.pc) {
+      const ref = proj.lands.find((x) => x.poly && x.poly.length > 2 && x.m2 > 0);
+      const u = ref ? Math.sqrt(Math.abs(ref.poly.reduce((s, a, i) => { const b = ref.poly[(i + 1) % ref.poly.length]; return s + a[0] * b[1] - b[0] * a[1]; }, 0)) / 2 / ref.m2) : 0.3;
+      const h = Math.max(2, Math.sqrt(l.m2 || 230) * u / 2), [cx, cy] = l.pc;
+      l = { ...l, poly: [[cx - h, cy - h], [cx + h, cy - h], [cx + h, cy + h], [cx - h, cy + h]] };
+    }
+  }
   ad = { p: plotOf(l), proj, P, plots: proj.lands.filter((x) => x.poly).map(plotOf), all, rawOk: !!raw, img: [null, null, null], hits: [] };
   ad.v = adDefaults(ad.p);
   pzForm(); drawAd(cv);
