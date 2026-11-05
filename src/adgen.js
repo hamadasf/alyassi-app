@@ -356,7 +356,7 @@ function adDefaults(p) {
     mode: inst.length ? 'inst' : 'cash', side, title: 'أرض ' + T.use, proj: PROJECT, sub: 'تملك حر لجميع الجنسيات العربية',
     area: p.ft ? fmt(p.ft) : '', pay: 'كاش', until: last ? 'حتى ' + last : '', down: pr && inst.length ? fmt(Math.max(0, pr.down)) : '',
     each: inst.length ? fmt(inst[0].a) : '', every: adEvery(inst.length > 1 ? monthsBetween(inst[0].d, inst[1].d) : 0),
-    price: pr ? fmt(pr.total) : '', feat: 'موقع مميز في مشروع ' + PROJECT + '\nقطعة رقم ' + p.n,
+    price: pr ? fmt(pr.total) : '', ppf: (p.l && p.l.ppf) ? String(Math.round(p.l.ppf)) : pr && p.ft ? String(Math.round(pr.total / p.ft)) : '', nInst: inst.length, feat: 'موقع مميز في مشروع ' + PROJECT + '\nقطعة رقم ' + p.n,
     label1: T.use, label2: fl ? '(' + fl + ')' : '', cap1: T.use, cap2: fl,
     more: 'للمزيد من التفاصيل والإستفسار التواصل على الرقم', phone: '0568080655', addr: 'الشارقة شارع مليحة مكتب رقم 2',
     zoom: 1, pin: true, lab: true, pinK: 1, mx: 0, my: 0, o: {}, fsT: 1, fsN: 1, fsL: 1, fsC: 1,
@@ -735,6 +735,21 @@ const AD_FIELDS = [
   ['cap1', 'تعليق صورة المبنى · السطر الأول'], ['cap2', 'تعليق صورة المبنى · السطر الثاني'], ['more', 'سطر التواصل'], ['phone', 'رقم التواصل'], ['addr', 'العنوان'],
 ];
 
+/* ---------- «سعر القدم»: the total worked out and written in every template's price fields ---------- */
+const num = (s) => +String(s || '').replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[^\d.]/g, '') || 0;
+function areaFt() {   // the area written in the current template (so an edited area counts), else the plot's
+  const v = ad.v, lay = layoutOf(v.theme);
+  return num(lay === 'oy' ? v.o_area : lay === 'ar' ? v.r_area : v.area) || +ad.p.ft || 0;
+}
+function applyPpf() {
+  const v = ad.v, ppf = num(v.ppf), ft = areaFt(); if (!ppf || !ft) return 0;
+  const total = Math.round(ppf * ft), t = fmt(total), n = +v.nInst || 0;
+  Object.assign(v, { price: t, o_priceC: t + ' Dhs, Cash', o_priceI: t + ' Dhs, ' + (n ? n + ' Installments' : 'Installments'), r_priceC: t + ' Dhs, Cash', r_priceI: t + ' اقساط' });
+  return total;
+}
+const ppfHelp = () => { const ppf = num(ad.v.ppf), ft = areaFt(); return ppf && ft ? `الإجمالي: <b class="num">${fmt(ppf)}</b> × <b class="num">${fmt(ft)}</b> قدم = <b class="num">${fmt(Math.round(ppf * ft))}</b> درهم` : 'اكتب سعر القدم ويُحسب السعر الإجمالي ويُكتب في البوست تلقائياً.'; };
+const dmy = (t) => { const d = new Date(t); return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+
 /* ---------- the page ---------- */
 export function adgenPage(l, projects) {
   if (!l) {   // opened from «المزيد»: choose the plot first
@@ -753,7 +768,7 @@ export function adgenPage(l, projects) {
       <div class="adg-tools"><button type="button" id="pzUndo" disabled><b>↶</b>تراجع</button><button type="button" id="pzRedo" disabled>إعادة<b>↷</b></button></div></div>
     <div class="adg-form" id="pzForm"></div>
     <input type="file" id="pzFile" accept="image/*,application/pdf" hidden>
-    <div class="adg-bar"><button class="btn primary" id="pzShare">📤 مشاركة</button><button class="btn" id="pzSave">⬇️ حفظ الصورة</button></div>
+    <div class="adg-bar"><button class="btn primary" id="pzShare">📤 مشاركة</button><button class="btn" id="pzSave">⬇️ حفظ الصورة</button><button class="btn" id="pzKeep">💾 حفظ التصميم</button></div>
     <div class="adg-crop" id="pzCropBox" hidden><div class="adg-cropin">
       <b>اسحب الإطار على الجزء المطلوب (أو ارسم إطارًا جديدًا)</b>
       <div class="adg-cnav" id="pzCropNav"></div>
@@ -783,9 +798,10 @@ function pzForm() {
   const was = new Set([...$('pzForm').querySelectorAll('details[open]')].map((d) => d.dataset.sec));
   const fresh = !$('pzForm').querySelector('details');
   const sec = (k, t, body, open) => `<details class="pz-sec" data-sec="${k}"${(fresh ? open : was.has(k)) ? ' open' : ''}><summary>${t}</summary><div class="pz-body">${body}</div></details>`;
-  $('pzForm').innerHTML = `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · إصبعان لتكبيره أو تصغيره · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', only ? '١. نوع الدفع' : '١. القالب ونوع الدفع', `<div class="pz-th"${only ? ' hidden' : ''}>${Object.entries(PZ_THEMES).filter(([k]) => okT.includes(k)).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
+  const sv = ad.saved && ad.saved[v.theme];
+  $('pzForm').innerHTML = (sv ? `<div class="pz-saved">📌 تصميم محفوظ لهذا القالب · <span class="num">${esc(dmy(sv.t))}</span>${sv.by ? ' · ' + esc(sv.by) : ''}<span class="rowbtns"><button type="button" class="btn sm" data-pznew>بدء تصميم جديد</button><button type="button" class="btn sm danger" data-pzunsave>حذف المحفوظ</button></span></div>` : '') + `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · إصبعان لتكبيره أو تصغيره · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', only ? '١. نوع الدفع' : '١. القالب ونوع الدفع', `<div class="pz-th"${only ? ' hidden' : ''}>${Object.entries(PZ_THEMES).filter(([k]) => okT.includes(k)).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
     <div class="seg"><button type="button" data-pzmode="cash" class="${v.mode === 'cash' ? 'on' : ''}">قالب الكاش</button><button type="button" data-pzmode="inst" class="${v.mode === 'inst' ? 'on' : ''}">قالب الأقساط</button></div>`, true)
-    + sec('tx', '٢. الكتابة والأسعار', `${(aya ? AYA_FIELDS : oy ? OY_FIELDS : ar ? AR_FIELDS : AD_FIELDS).map(f).join('')}
+    + sec('tx', '٢. الكتابة والأسعار', `<label class="fld pz-ppf">سعر القدم (درهم) — يحسب الإجمالي تلقائياً<input type="text" inputmode="decimal" data-ppf value="${esc(v.ppf || '')}" placeholder="مثلاً 143"></label><p class="help" id="pzTot">${ppfHelp()}</p>${(aya ? AYA_FIELDS : oy ? OY_FIELDS : ar ? AR_FIELDS : AD_FIELDS).map(f).join('')}
     <h3>موقع القطعة في العنوان</h3>
     <div class="seg pz-side">${[['', 'عادية'], ['زاوية', 'زاوية'], ['سكة', 'سكة']].map(([k, l]) => `<button type="button" data-pzside="${k}" class="${(v.side || '') === k ? 'on' : ''}">${l}${ad.rawOk && (v.auto || '') === k ? ' ✓' : ''}</button>`).join('')}</div>
     <p class="help">${ad.rawOk ? `✓ = ما قرأته من المخطط${v.auto ? ': ' + v.auto : ': ليست زاوية ولا على سكة'}. ` : ''}الاختيار يضيف الكلمة إلى آخر العنوان.</p>`, false)
@@ -914,7 +930,14 @@ export async function initAdgen2(pg, l, proj) {
     }
   }
   ad = { p: plotOf(l), proj, P, plots: proj.lands.filter((x) => x.poly).map(plotOf), all, rawOk: !!raw, img: [null, null, null], hits: [] };
-  ad.v = adDefaults(ad.p);
+  ad.v = adDefaults(ad.p); ad.saved = {};
+  try {   // a design saved before for this plot (the current template's, else the newest one this account may use)
+    const j = await H.api('design_get', { id: l.id }); if (PG !== pg) return;
+    ad.saved = j.items || {};
+    const ok = allowed(), ks = Object.keys(ad.saved).filter((k) => ok.includes(k) && PZ_THEMES[k]);
+    const k = ks.includes(ad.v.theme) ? ad.v.theme : ks.sort((a, b) => ad.saved[b].t - ad.saved[a].t)[0];
+    if (k) { ad.v = Object.assign(adDefaults(ad.p), ad.saved[k].v, { theme: k }); H.toast('فُتح التصميم المحفوظ لهذه القطعة'); }
+  } catch { /* offline or no permission: a fresh design */ }
   pzForm(); drawAd(cv);
   $('adgLoad').querySelector('span').textContent = 'جارِ تجهيز الصور…';
   try { const img = await adPictures(ad.p); if (PG !== pg) return; ad.img = img; } catch { /* without pictures */ }
@@ -927,10 +950,16 @@ export async function initAdgen2(pg, l, proj) {
     if (!inT) mark(); clearTimeout(inT); inT = setTimeout(() => { inT = 0; }, 900);
     for (const [key, f] of [['slotz', 'z'], ['slotx', 'cx'], ['sloty', 'cy']]) if (t.dataset[key] !== undefined) { const s = ad.img[+t.dataset[key]]; if (s && s.crop) { s.crop[f] = +t.value; adRedraw(); } return; }
     for (const [key, f] of [['picz', 'z'], ['picx', 'cx'], ['picy', 'cy']]) if (t.dataset[key] !== undefined) { const s = ad.img[+t.dataset[key]]; if (s) { s[f] = +t.value; adRedraw(); } return; }
+    if (t.dataset.ppf !== undefined) {
+      ad.v.ppf = t.value; applyPpf();
+      ['price', 'o_priceC', 'o_priceI', 'r_priceC', 'r_priceI'].forEach((f) => { const el = form.querySelector(`[data-k="${f}"]`); if (el) el.value = ad.v[f]; });
+      const h = $('pzTot'); if (h) h.innerHTML = ppfHelp(); adRedraw(); return;
+    }
     if (t.dataset.exk) { const [i, f] = t.dataset.exk.split('|'), e = (ad.v.ex || [])[+i]; if (e) { e[f] = f === 'text' ? t.value : +t.value; adRedraw(); } return; }
     if (!k) return;
     ad.v[k] = t.type === 'checkbox' ? t.checked : t.type === 'range' ? +t.value : t.value;
     const fv = form.querySelector('[data-fsv="' + k + '"]'); if (fv) fv.textContent = Math.round(+t.value * 100) + '%';
+    if (/^(area|o_area|r_area)$/.test(k) && num(ad.v.ppf)) { applyPpf(); ['price', 'o_priceC', 'o_priceI', 'r_priceC', 'r_priceI'].forEach((f) => { const el = form.querySelector(`[data-k="${f}"]`); if (el) el.value = ad.v[f]; }); const h = $('pzTot'); if (h) h.innerHTML = ppfHelp(); }
     if (k === 'phone') pzKeep((s) => { (s.phones = s.phones || {})[ad.v.theme] = t.value; });
     if (AD_KEEP.includes(k)) pzKeep((s) => { s[k] = t.value; });
     adRedraw();
@@ -963,9 +992,17 @@ export async function initAdgen2(pg, l, proj) {
       if (!allowed().includes(d.pzth)) return;
       const was = layoutOf(ad.v.theme), now = layoutOf(d.pzth);
       if (was !== now) { ad.v.o = {}; ad.v.sc = {}; ad.v.mx = ad.v.my = 0; ad.v.lab = now !== 'aya'; ad.sel = null; }
-      ad.v.theme = d.pzth; ad.v.phone = pzPhone(ad.v.theme); pzKeep((s) => { s.theme = ad.v.theme; }); pzForm(); adRedraw(); return;
+      ad.v.theme = d.pzth; ad.v.phone = pzPhone(ad.v.theme); pzKeep((s) => { s.theme = ad.v.theme; });
+      const sv = ad.saved && ad.saved[d.pzth]; if (sv) { ad.v = Object.assign(adDefaults(ad.p), sv.v, { theme: d.pzth }); H.toast('فُتح التصميم المحفوظ لهذا القالب'); }
+      pzForm(); adRedraw(); return;
     }
     if (d.pzmode) { ad.v.mode = d.pzmode; pzForm(); adRedraw(); return; }
+    if (d.pznew !== undefined) { const th = ad.v.theme; ad.v = adDefaults(ad.p); ad.v.theme = th; ad.v.phone = pzPhone(th); if (layoutOf(th) === 'aya') ad.v.lab = false; ad.sel = null; pzForm(); adRedraw(); H.toast('تصميم جديد — المحفوظ باقٍ حتى تحفظ فوقه'); return; }
+    if (d.pzunsave !== undefined) {
+      if (!confirm('حذف التصميم المحفوظ لهذا القالب؟')) return;
+      H.api('design_del', { id: ad.p.l.id, theme: ad.v.theme }).then(() => { delete ad.saved[ad.v.theme]; pzForm(); H.toast('تم حذف التصميم المحفوظ'); }).catch((ex) => H.toast(ex.message));
+      return;
+    }
     if (d.exadd) {
       const ex = (ad.v.ex = ad.v.ex || []), n = ex.length, [x, y] = [[470, 780], [470, 960], [470, 1140], [1130, 1140], [800, 1380]][n % 5];
       ex.push(d.exadd === 'box' ? { t: 'box', text: 'اكتب هنا', bg: EX_COLS[4], s: 64, x, y } : d.exadd === 'arrow' ? { t: 'arrow', r: 45, s: 100, x, y } : { t: 'ring', bg: '#E3060C', s: 60, x, y });
@@ -1066,6 +1103,12 @@ export async function initAdgen2(pg, l, proj) {
     cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
     cv.addEventListener('wheel', (e) => { if (!ad) return; const [x, y] = pt(e), t = under(x, y); if (!t || (t.pic == null && !t.pan)) return; e.preventDefault(); zoomT(t, e.deltaY < 0 ? 1.08 : 1 / 1.08); }, { passive: false });
   }
+  $('pzKeep').onclick = async () => {
+    if (!ad) return; const b = $('pzKeep'); b.disabled = true;
+    try { const j = await H.api('design_save', { id: ad.p.l.id, v: ad.v }); ad.saved[ad.v.theme] = { v: JSON.parse(JSON.stringify(ad.v)), t: j.t, by: H.myName ? H.myName() : '' }; pzForm(); H.toast('تم حفظ التصميم ✓ — تجده عند فتح هذه القطعة'); }
+    catch (ex) { H.toast(ex.message); }
+    b.disabled = false;
+  };
   $('pzUndo').onclick = () => undo(false); $('pzRedo').onclick = () => undo(true);
   $('adgBig').onclick = () => pg.querySelector('.adg').classList.toggle('big');
   $('pzShare').onclick = () => finish(true);
