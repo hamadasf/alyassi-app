@@ -323,8 +323,9 @@ export function initAdmin(pg) {
           : '<p class="muted">لا توجد طلبات توثيق.</p>';
       } else if (ADM.tab === 'users') {
         const j = await api('adm_users', { q: q.value.trim() });
-        list.innerHTML = j.items.length ? j.items.map((u) => `<div class="mine adm" data-auser="${u.id}"><div class="acc-av">${esc((u.name || u.email || '?').charAt(0))}</div>
-          <div><b>${esc(u.verified && u.company ? u.company : u.name || '—')} ${u.verified ? I.verified : ''}${u.banned ? ' <i class="pill sold">موقوف</i>' : ''}${u.admin ? ' <i class="pill plan">مدير</i>' : ''}</b><span>${esc(u.email)}</span><span>${u.ads} إعلان · ${u.points} نقطة${u.google ? ' · جوجل' : ''}</span></div><i class="chev">‹</i></div>`).join('')
+        list.innerHTML = j.items.length ? j.items.map((u) => `<div class="strow" data-auser="${u.id}">${u.avatar ? `<img class="stav" src="${esc(u.avatar)}" alt="">` : `<div class="stav">${esc((u.name || u.email || '?').charAt(0).toUpperCase())}</div>`}
+          <div class="stinfo"><b>${esc(u.verified && u.company ? u.company : u.name || '—')} ${u.verified ? I.verified : ''}</b><span class="stmail"><bdi>${esc(u.email)}</bdi></span>
+          <span class="stperms">${u.admin ? '<i class="adm">مدير</i>' : ''}${(u.staff || []).length ? '<i class="emp">موظف</i>' : ''}${u.banned ? '<i class="ban">موقوف</i>' : ''}<i>${u.ads} إعلان</i><i>${u.admin ? '∞' : u.points} نقطة</i>${u.google ? '<i>جوجل</i>' : ''}</span></div><i class="chev">‹</i></div>`).join('')
           : '<p class="muted">لا يوجد مستخدمون.</p>';
       } else {
         const j = await api('adm_ads', { status: ADM.tab });
@@ -403,8 +404,8 @@ export async function initStaff(pg) {
   try {
     const j = await api('adm_staff_list');
     box.innerHTML = `<div class="ccard"><b>فريق المكتب</b><p class="muted">لإضافة موظف: يسجّل حساباً في التطبيق، ثم افتح ملفه من «لوحة الإدارة ← المستخدمون» واختر صلاحياته.</p></div>
-      ${j.items.length ? j.items.map((u) => `<div class="mine adm" data-auser="${u.id}"><div class="acc-av">${esc((u.name || '?').charAt(0))}</div><div><b>${esc(u.name)}</b><span>${esc(u.email)}</span>
-        <span class="pills">${(u.staff || []).map((k) => `<i class="pill plan">${esc(STAFF[k] || k)}</i>`).join('')}</span></div><i class="chev">‹</i></div>`).join('') : '<p class="muted">لا يوجد موظفون بعد.</p>'}
+      ${j.items.length ? j.items.map((u) => `<div class="strow" data-auser="${u.id}">${u.avatar ? `<img class="stav" src="${esc(u.avatar)}" alt="">` : `<div class="stav">${esc((u.name || '?').charAt(0).toUpperCase())}</div>`}<div class="stinfo"><b>${esc(u.name)}</b><span class="stmail"><bdi>${esc(u.email)}</bdi></span>
+        <span class="stperms">${(u.staff || []).map((k) => `<i>${esc(STAFF[k] || k)}</i>`).join('')}</span>${(u.staff || []).includes('design') ? `<span class="sttpl">🖼️ ${(u.tpl && u.tpl.length ? u.tpl : ['oy']).map((k) => esc(TPLS[k] || k)).join(' · ')}</span>` : ''}</div><i class="chev">‹</i></div>`).join('') : '<p class="muted">لا يوجد موظفون بعد.</p>'}
       <button class="btn primary block" id="pickStaff">👥 اختيار موظف من المستخدمين</button>
       <div class="ccard invbox"><b>🔗 رابط دعوة موظف</b><p class="muted">أرسل الرابط للموظف — يسجّل حساباً واحداً فقط عن طريقه ويحصل مباشرة على الصلاحيات التي تختارها هنا. كل رابط يُستخدم مرة واحدة.</p>
         ${Object.entries(STAFF).map(([k, v]) => `<label class="nrow"><span>${v}</span><input type="checkbox" class="nchk" data-iperm="${k}" ${k === 'payplan' ? 'checked' : ''}></label>`).join('')}
