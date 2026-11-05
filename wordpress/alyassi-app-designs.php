@@ -47,13 +47,23 @@ function oay_acc_design_del() {
 }
 
 /* ---------- each project's own lines on the posts (ready to build, who may own, the road…), set by the office ---------- */
-function oay_proj_lines_seed() {   // from the office's own posts
+function oay_proj_lines_seed() {   // from the office: who may own in each project, and what the office's posts say about it
+	$ar = 'تملّك حر للعرب'; $all = 'تملّك حر لجميع الجنسيات';
 	return array(
-		'muzaira'     => array( 'p1' => 'المنطقة جاهزة للبناء', 'p2' => 'تملّك حر للعرب' ),
-		'al-sahma'    => array( 'p1' => 'المنطقة جاهزة للبناء', 'p2' => 'تملّك حر للعرب' ),
-		'al-falah'    => array( 'p1' => 'جاهزة للبناء', 'p2' => 'تملّك حر للعرب' ),
-		'al-mutraq'   => array( 'p1' => 'تم البدء في البنية التحتية', 'p2' => 'تملّك حر للعرب' ),
-		'blaida-2'    => array( 'p1' => 'شارع قار موجود أمام الأرض', 'p2' => '' ),
+		'muzaira'            => array( 'p1' => 'المنطقة جاهزة للبناء', 'p2' => $ar ),
+		'al-sahma'           => array( 'p1' => 'المنطقة جاهزة للبناء', 'p2' => $ar ),
+		'al-falah'           => array( 'p1' => 'جاهزة للبناء', 'p2' => $ar ),
+		'al-mutraq'          => array( 'p1' => 'تم البدء في البنية التحتية', 'p2' => $ar ),
+		'blaida-1'           => array( 'p1' => '', 'p2' => $ar ),
+		'blaida-2'           => array( 'p1' => 'شارع قار موجود أمام الأرض', 'p2' => $ar ),
+		'blaida-3'           => array( 'p1' => '', 'p2' => $ar ),
+		'basateen-al-zubair' => array( 'p1' => '', 'p2' => $ar ),
+		'dabdaba-north'      => array( 'p1' => '', 'p2' => $ar ),
+		'houshi'             => array( 'p1' => '', 'p2' => $ar ),
+		'houshi-marwan'      => array( 'p1' => '', 'p2' => $ar ),
+		'al-ruwaidat'        => array( 'p1' => '', 'p2' => $all ),
+		'muhathab'           => array( 'p1' => '', 'p2' => $all ),
+		'industrial4'        => array( 'p1' => '', 'p2' => $all ),
 	);
 }
 function oay_proj_lines_all() { $m = get_option( 'oay_proj_lines', null ); return is_array( $m ) ? $m + oay_proj_lines_seed() : oay_proj_lines_seed(); }

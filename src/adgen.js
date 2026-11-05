@@ -214,6 +214,11 @@ function oyDraw(c, v, p, at) {
     c.direction = isLatin(s) ? 'ltr' : 'rtl'; adFitV(c, s, 800, 1622, 1768, 1360, 160, 800, '#FFFFFF', 'center', FO); c.direction = 'rtl';
   });
   PZS = v.fsL;
+  if (v.o_p3) at('pfeat', 120, 1512, 700, 72, () => {
+    c.font = FO(800, 50); const w = Math.min(1100, c.measureText(v.o_p3).width + 60);
+    c.save(); c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 10; c.shadowOffsetY = 3; c.fillStyle = '#FFFFFF'; box(c, 120, 1512, w, 72, 18); c.fill(); c.restore();
+    adFitV(c, v.o_p3, 120 + w / 2, 1519, 1577, w - 30, 50, 800, '#111111', 'center', FO);
+  });
   at('pills', 200, 1812, 500, 160, () => {
     [[v.o_p1, 1812, 1880], [v.o_p2, 1900, 1968]].forEach(([s, t, b]) => {
       if (!s) return; c.font = FO(800, 54); const w = Math.min(760, c.measureText(s).width + 60);
@@ -229,10 +234,10 @@ function oyDraw(c, v, p, at) {
     const h = 152, w = h * lg.naturalWidth / lg.naturalHeight; c.drawImage(lg, 1318 + (240 - w) / 2, 1821, w, h);
   });
 }
-const OY_PARTS = [['proj', 'اسم المشروع (المربع الأسود)'], ['area', 'المساحة (المربع الأزرق)'], ['use', 'الاستخدام (المربع الأحمر)'], ['price', 'السعر (الشريط البنفسجي)'], ['pills', 'السطران الأبيضان'], ['flag', 'خريطة الإمارات'], ['logo', 'شعار الشركة']];
+const OY_PARTS = [['proj', 'اسم المشروع (المربع الأسود)'], ['area', 'المساحة (المربع الأزرق)'], ['use', 'الاستخدام (المربع الأحمر)'], ['price', 'السعر (الشريط البنفسجي)'], ['pills', 'السطران الأبيضان'], ['pfeat', 'مميزات الأرض'], ['flag', 'خريطة الإمارات'], ['logo', 'شعار الشركة']];
 const OY_FIELDS = [
   ['o_proj', 'اسم المشروع (المربع الأسود)'], ['o_area', 'المساحة (المربع الأزرق)'], ['o_use1', 'الاستخدام · السطر الأول (المربع الأحمر)'], ['o_use2', 'الاستخدام · السطر الثاني (مثلًا: G + 2)'],
-  ['o_priceC', 'السعر (الشريط البنفسجي)', 'cash'], ['o_priceI', 'السعر (الشريط البنفسجي)', 'inst'], ['o_p1', 'السطر الأبيض الأول'], ['o_p2', 'السطر الأبيض الثاني'],
+  ['o_priceC', 'السعر (الشريط البنفسجي)', 'cash'], ['o_priceI', 'السعر (الشريط البنفسجي)', 'inst'], ['o_p1', 'السطر الأبيض الأول (جاهزة للبناء…)'], ['o_p2', 'السطر الأبيض الثاني (التملّك)'], ['o_p3', 'مميزات الأرض (فوق السعر)'],
 ];
 /* «قالب عبد الرحمن»: the plan with a ring and an arrow on the plot, a navy panel below — project name on a tab, area / permit / price rows, the advertiser */
 PZ_THEMES.ar = Object.assign({}, PZ_THEMES.co, { name: 'قالب عبد الرحمن', layout: 'ar', bar: '#132440', phone: '' });
@@ -292,11 +297,19 @@ function arDraw(c, v, p, at) {
   });
   PZS = 1;
   if (v.rAv && ayaArt.arAv) at('avatar', 0, 1577, 365, 423, () => c.drawImage(ayaArt.arAv, 0, 1577, 365, 423));
+  if (v.rLines) at('rlines', 40, 1318, 820, 190, () => {   // optional: who may own, and what the plot is near
+    [[v.r_own, 1318], [v.r_feat, 1420]].forEach(([s, t]) => {
+      if (!s) return; c.font = FO(800, 50); const w = Math.min(820, c.measureText(s).width + 60);
+      c.save(); c.shadowColor = 'rgba(0,0,0,.28)'; c.shadowBlur = 10; c.shadowOffsetY = 3; c.fillStyle = '#FFFFFF'; box(c, 40, t, w, 76, 18); c.fill(); c.restore();
+      adFitV(c, s, 40 + w / 2, t + 8, t + 68, w - 30, 50, 800, '#111111', 'center', FO);
+    });
+  });
 }
-const AR_PARTS = [['proj', 'اسم المشروع (اللسان)'], ['rows', 'المساحة والتصريح والسعر'], ['arrow', 'السهم'], ['avatar', 'صورة المعلن']];
+const AR_PARTS = [['proj', 'اسم المشروع (اللسان)'], ['rows', 'المساحة والتصريح والسعر'], ['arrow', 'السهم'], ['avatar', 'صورة المعلن'], ['rlines', 'سطرا التملّك والمميزات']];
 const AR_FIELDS = [
   ['r_proj', 'اسم المشروع'], ['r_l1', 'عنوان السطر الأول'], ['r_area', 'المساحة'], ['r_l2', 'عنوان السطر الثاني'], ['r_use', 'تصريح الأرض (مثلًا: سكني  G + 2)'],
   ['r_l3', 'عنوان السطر الثالث'], ['r_priceC', 'السعر (الشريط الأحمر)', 'cash'], ['r_priceI', 'السعر (الشريط الأحمر)', 'inst'],
+  ['r_own', 'سطر التملّك (اختياري — فعّله من «الخريطة والدبوس»)'], ['r_feat', 'مميزات الأرض (اختياري)'],
 ];
 /** the office has every template; a member with «تصميم البوستات» only the ones the office chose for them (none chosen: قالب عمر الياسي) */
 const allowed = () => {
@@ -316,7 +329,7 @@ const AYA_FIELDS = [
   ['a_tag', 'السطر فوق التواصل'], ['a_clbl', 'عنوان التواصل'], ['phone', 'رقم التواصل'], ['a_addr', 'العنوان (سطران، Enter بينهما)', '', 1],
 ];
 
-const AD_KEEP = ['sub', 'more', 'addr', 'a_tag', 'a_addr', 'a_city'];   // remembered on this phone from one ad to the next
+const AD_KEEP = ['more', 'addr', 'a_tag', 'a_addr', 'a_city'];   // remembered on this phone from one ad to the next
 const store = () => { try { return JSON.parse(localStorage.getItem('dnp-ad') || '{}') || {}; } catch { return {}; } };
 function pzPhone(t) { const s = store(); return (s.phones && s.phones[t]) || PZ_THEMES[t].phone; }
 function pzKeep(f) { try { const s = store(); f(s); localStorage.setItem('dnp-ad', JSON.stringify(s)); } catch { /* private mode */ } }
@@ -348,6 +361,30 @@ function adSide(p, dbg) {
   if (open.some((e) => e !== widest && e.gap <= SIDE_LANE)) return 'سكة';
   return '';
 }
+/** what the plot is near, read from the plan: a park (green), services / mosque (blue), a main road, a corner — else the general line */
+function adFeats(p) {
+  const out = [];
+  try {
+    if (!p || !p.p || p.p.length < 3) throw 0;
+    const area = Math.abs(p.p.reduce((s, q, i) => { const r = p.p[(i + 1) % p.p.length]; return s + q[0] * r[1] - r[0] * q[1]; }, 0)) / 2;
+    const u = Math.sqrt(area / (p.m2 || 1)); if (!(u > 0)) throw 0;
+    const types = (ad.proj && ad.proj.types) || {};
+    const near = (kind, m) => ad.all.some((q) => {
+      if (q.n === p.n || !q.p || q.t !== kind || types[q.t]) return false;
+      const qa = Math.abs(q.p.reduce((s, a, i) => { const b = q.p[(i + 1) % q.p.length]; return s + a[0] * b[1] - b[0] * a[1]; }, 0)) / 2;
+      return Math.hypot(q.c[0] - p.c[0], q.c[1] - p.c[1]) / u - Math.sqrt(qa) / u / 2 <= m;
+    });
+    if (ad.rawOk) {   // corners and roads only with the whole plan's plots
+      if (adSide(p) === 'زاوية') out.push('أرض زاوية');
+      const E = adSide(p, true); if (E && E.edges && E.edges.some((e) => e.gap >= 30 && e.gap < 99)) out.push('على شارع رئيسي');
+    }
+    if (near('blue', 160)) out.push('قريبة من الخدمات');
+    if (near('green', 200)) out.push('قريبة من حديقة');
+  } catch { /* read nothing */ }
+  return out.length ? out : ['أرض مميزة قريبة من جميع الخدمات'];
+}
+/** the project's ownership line in the form the older templates write it */
+const ownSub = (s) => (/جميع الجنسيات/.test(s || '') ? 'تملك حر لجميع الجنسيات' : /للعرب|العرب/.test(s || '') ? 'تملك حر لجميع الجنسيات العربية' : '');
 function adDefaults(p) {
   const l = p.l, PROJECT = l.projectName, T = { use: l.use || 'أرض', floors: l.floors || '' };
   const pr = priceOf(p), inst = pr ? pr.inst : [];
@@ -357,7 +394,7 @@ function adDefaults(p) {
     mode: inst.length ? 'inst' : 'cash', side, title: 'أرض ' + T.use, proj: PROJECT, sub: 'تملك حر لجميع الجنسيات العربية',
     area: p.ft ? fmt(p.ft) : '', pay: 'كاش', until: last ? 'حتى ' + last : '', down: pr && inst.length ? fmt(Math.max(0, pr.down)) : '',
     each: inst.length ? fmt(inst[0].a) : '', every: adEvery(inst.length > 1 ? monthsBetween(inst[0].d, inst[1].d) : 0),
-    price: pr ? fmt(pr.total) : '', ppf: (p.l && p.l.ppf) ? String(Math.round(p.l.ppf)) : pr && p.ft ? String(Math.round(pr.total / p.ft)) : '', nInst: inst.length, feat: 'موقع مميز في مشروع ' + PROJECT + '\nقطعة رقم ' + p.n,
+    price: pr ? fmt(pr.total) : '', ppf: (p.l && p.l.ppf) ? String(Math.round(p.l.ppf)) : pr && p.ft ? String(Math.round(pr.total / p.ft)) : '', nInst: inst.length, feat: adFeats(p).slice(0, 3).join('\n'),
     label1: T.use, label2: fl ? '(' + fl + ')' : '', cap1: T.use, cap2: fl,
     more: 'للمزيد من التفاصيل والإستفسار التواصل على الرقم', phone: '0568080655', addr: 'الشارقة شارع مليحة مكتب رقم 2',
     zoom: 1, pin: true, lab: true, pinK: 1, mx: 0, my: 0, o: {}, fsT: 1, fsN: 1, fsL: 1, fsC: 1,
@@ -369,10 +406,10 @@ function adDefaults(p) {
     a_cT: 'الدفعات', a_cV: 'كاش', a_cS: 'نقداً',
     o_proj: PROJECT, o_area: p.ft ? fmt(p.ft) + ' قدم' : '', o_use1: T.use + (v.side ? ' ' + v.side : ''), o_use2: String(code ? code[1] : fl).replace(/\s*\+\s*/g, '  +  '),
     o_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', o_priceI: pr ? fmt(pr.total) + ' Dhs, ' + (n ? n + ' Installments' : 'Installments') : 'للاستفسار',
-    o_p1: (ad && ad.pl && ad.pl.p1) || '', o_p2: (ad && ad.pl && ad.pl.p2) || '', oFlag: true, oLogo: true,   // the project's own lines (set by the office), none when unknown
+    o_p1: (ad && ad.pl && ad.pl.p1) || '', o_p2: (ad && ad.pl && ad.pl.p2) || '', o_p3: inst.length ? '' : adFeats(p).slice(0, 2).join(' · '), oFlag: true, oLogo: false,   // the project's own lines (set by the office), none when unknown
     r_proj: PROJECT, r_l1: 'المساحة', r_area: p.ft ? fmt(p.ft) + ' قدم' : '', r_l2: 'تصريح الأرض', r_use: (T.use + '   ' + String(code ? code[1] : fl).replace(/\s*\+\s*/g, '  +  ')).trim(),
-    r_l3: 'السعـــر', r_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', r_priceI: pr ? fmt(pr.total) + ' اقساط' : 'للاستفسار', rAv: true, a_tag: 'موقع مميز إستثمار مضمون', a_clbl: 'للتواصل والإستفسار', a_addr: 'شركة عمر الياسي للعقارات\nالشارقة - شارع مليحة' });
-  if (ad && ad.pl && ad.pl.sub) v.sub = ad.pl.sub;
+    r_l3: 'السعـــر', r_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', r_priceI: pr ? fmt(pr.total) + ' اقساط' : 'للاستفسار', rAv: true, rLines: false, r_own: (ad && ad.pl && ad.pl.p2) || '', r_feat: adFeats(p).slice(0, 2).join(' · '), a_tag: inst.length ? 'موقع مميز إستثمار مضمون' : adFeats(p).slice(0, 2).join(' · '), a_clbl: 'للتواصل والإستفسار', a_addr: 'شركة عمر الياسي للعقارات\nالشارقة - شارع مليحة' });
+  if (ad && ad.pl && (ad.pl.sub || ownSub(ad.pl.p2))) v.sub = ad.pl.sub || ownSub(ad.pl.p2);
   const s = store();
   AD_KEEP.forEach((k) => { if (typeof s[k] === 'string' && s[k]) v[k] = s[k]; });
   v.theme = PZ_THEMES[s.theme] ? s.theme : allowed()[0]; if (!allowed().includes(v.theme)) v.theme = allowed()[0];
@@ -906,7 +943,7 @@ function pzForm() {
     <label>تكبير الخريطة<input type="range" data-k="zoom" min="0.5" max="3" step="0.1" value="${v.zoom}"></label>
     <label>حجم الدبوس <b class="num" data-fsv="pinK">${Math.round((v.pinK || 1) * 100)}%</b><input type="range" data-k="pinK" min="0.4" max="2.5" step="0.05" value="${v.pinK || 1}"></label>
     <label class="chk"><input type="checkbox" data-k="pin"${v.pin ? ' checked' : ''}> الدبوس</label>
-    ${ar ? `<label class="chk"><input type="checkbox" data-k="rAv"${v.rAv ? ' checked' : ''}> صورة المعلن</label>` : oy ? `<label class="chk"><input type="checkbox" data-k="oFlag"${v.oFlag ? ' checked' : ''}> خريطة الإمارات</label><label class="chk"><input type="checkbox" data-k="oLogo"${v.oLogo ? ' checked' : ''}> شعار الشركة</label>` : `<label class="chk"><input type="checkbox" data-k="lab"${v.lab ? ' checked' : ''}> بطاقة الموقع على الخريطة</label>`}
+    ${ar ? `<label class="chk"><input type="checkbox" data-k="rAv"${v.rAv ? ' checked' : ''}> صورة المعلن</label><label class="chk"><input type="checkbox" data-k="rLines"${v.rLines ? ' checked' : ''}> سطرا التملّك ومميزات الأرض</label>` : oy ? `<label class="chk"><input type="checkbox" data-k="oFlag"${v.oFlag ? ' checked' : ''}> خريطة الإمارات</label><label class="chk"><input type="checkbox" data-k="oLogo"${v.oLogo ? ' checked' : ''}> شعار الشركة</label>` : `<label class="chk"><input type="checkbox" data-k="lab"${v.lab ? ' checked' : ''}> بطاقة الموقع على الخريطة</label>`}
     <button type="button" class="btn sm" data-mapcenter>إرجاع الخريطة إلى القطعة</button>`, false)
     + sec('ex', '＋ أشكال إضافية' + (v.ex && v.ex.length ? ` (${v.ex.length})` : ''), exForm(v), !!(v.ex && v.ex.length))
     + sec('fs', (aya || oy || ar ? '٤' : '٥') + '. حجم الخط وأماكن العناصر', `<h3>حجم الخط</h3>
@@ -1055,7 +1092,7 @@ export async function initAdgen2(pg, l, proj) {
   PG = pg; ad = null; pzc = null; hist = []; fut = [];
   const cv = $('pzCv');
   const raw = rawPlots(l.project);
-  const all = raw ? raw.filter((q) => q[6] && q[6].length > 2).map(([n, , , m2, , , poly, pc]) => ({ n: String(n), p: poly, c: pc || centreOf(poly), m2 })) : proj.lands.filter((x) => x.poly).map(plotOf);
+  const all = raw ? raw.filter((q) => q[6] && q[6].length > 2).map(([n, t, , m2, , , poly, pc]) => ({ n: String(n), t, p: poly, c: pc || centreOf(poly), m2 })) : proj.lands.filter((x) => x.poly).map(plotOf);
   const P = await Promise.all([
     loadPlan(l.project, proj.map).catch(() => null),
     ayaLoad(),
