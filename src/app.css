@@ -6,6 +6,10 @@
 @font-face { font-family: Tajawal; font-weight: 700; font-display: swap; src: url(fonts/tajawal-latin-700.woff2) format('woff2'); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2212; }
 @font-face { font-family: Tajawal; font-weight: 800; font-display: swap; src: url(fonts/tajawal-latin-800.woff2) format('woff2'); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2212; }
 
+@font-face { font-family: OYF; font-weight: 700; font-display: swap; src: url(fonts/noto-arabic-arabic-700.woff2) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; }
+@font-face { font-family: OYF; font-weight: 700; font-display: swap; src: url(fonts/noto-arabic-latin-700.woff2) format('woff2'); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2212; }
+@font-face { font-family: OYF; font-weight: 800; font-display: swap; src: url(fonts/noto-arabic-arabic-800.woff2) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; }
+@font-face { font-family: OYF; font-weight: 800; font-display: swap; src: url(fonts/noto-arabic-latin-800.woff2) format('woff2'); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2212; }
 :root {
   --navy: #0e1c36; --navy2: #1b2f55; --gold: #c9a14a; --gold2: #e6c77f;
   --bg: #f3f4f7; --card: #fff; --ink: #14203a; --mute: #6b7488; --line: #e6e8ee;
@@ -1065,3 +1069,6 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .strow .chev { align-self: center; color: #94a3b8; font-style: normal; font-size: 20px; }
 .stperms i.adm { background: var(--navy); color: #fff; border-color: var(--navy); } .stperms i.emp { background: #E7F6EE; color: #0F7B4E; border-color: #BFE6D0; } .stperms i.ban { background: #FEE2E2; color: #991B1B; border-color: #FBCACA; }
 .stinfo b .vbadge, .stinfo b svg { width: 16px; height: 16px; vertical-align: -2px; }
+.ex-add { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; } .ex-add .btn { min-height: 42px; font-weight: 800; }
+.ex-cols { display: flex; flex-wrap: wrap; gap: 8px; } .ex-cols button { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #e2e8f0; padding: 0; } .ex-cols button.on { box-shadow: 0 0 0 3px var(--navy); }
+.ex-item textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; font: inherit; font-size: 16px; }
