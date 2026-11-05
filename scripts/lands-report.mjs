@@ -47,3 +47,5 @@ writeFileSync('lands-report.json', JSON.stringify(rows));
 const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 writeFileSync('lands-report.csv', '﻿' + ['المشروع,القطعة,الحالة,الاستخدام,الطوابق,المساحة قدم,السعر,سعر القدم,الموقع,الأقساط'].concat(rows.map((r) => [r.project, r.n, r.status, r.use, r.floors, r.ft, r.total, r.ppf, r.side, r.inst].map(esc).join(','))).join('\n'));
 console.log(`::notice::lands report: ${rows.length} plots`);
+// the projects' own descriptions (for the post designer's per-project lines)
+writeFileSync('lands-report-projects.json', JSON.stringify(d.projects.map((p) => ({ slug: p.slug, name: p.name, title: p.title, sub: p.sub, note: p.note, loc: p.loc, types: p.types, lands: p.lands.length, na: (p.na || []).length })), null, 1));
