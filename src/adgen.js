@@ -768,7 +768,9 @@ export function adgenPage(l, projects) {
       <div class="adg-tools"><button type="button" id="pzUndo" disabled><b>↶</b>تراجع</button><button type="button" id="pzRedo" disabled>إعادة<b>↷</b></button></div></div>
     <div class="adg-form" id="pzForm"></div>
     <input type="file" id="pzFile" accept="image/*,application/pdf" hidden>
-    <div class="adg-bar"><button class="btn primary" id="pzShare">📤 مشاركة</button><button class="btn" id="pzSave">⬇️ حفظ الصورة</button><button class="btn" id="pzKeep">💾 حفظ التصميم</button></div>
+    <div class="adg-bar"><button class="btn primary" id="pzShare">📤 مشاركة</button><button class="btn" id="pzSave">⬇️ حفظ الصورة</button><button class="btn" id="pzKeep">💾 حفظ التصميم</button><button class="btn gold" id="pzAll" hidden>🗂️ كل القوالب</button></div>
+    <div class="adg-allpop" id="pzAllPop" hidden><div class="adg-allin"><b>كل القوالب مرة واحدة</b><p class="muted" id="pzAllTxt"></p>
+      <button class="btn primary block" id="pzAllShare">📤 مشاركة الكل</button><button class="btn ghost block" id="pzAllSave">⬇️ حفظ الكل</button><button class="btn block" id="pzAllNo">إلغاء</button></div></div>
     <div class="adg-crop" id="pzCropBox" hidden><div class="adg-cropin">
       <b>اسحب الإطار على الجزء المطلوب (أو ارسم إطارًا جديدًا)</b>
       <div class="adg-cnav" id="pzCropNav"></div>
@@ -857,6 +859,54 @@ const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s 
 function exportBlob() {
   const cv = $('pzCv'); ad.export = true; drawAd(cv); ad.export = false;
   return new Promise((ok) => cv.toBlob((b) => { adRedraw(); ok(b); }, 'image/jpeg', 0.92));
+}
+/* ---------- every template at once: one picture per template the account may use, shared or saved together ---------- */
+const PZ_FILE = { co: 'company', gr: 'ebada', pk: 'aya-aljabri', aya: 'aya-pink', oy: 'omar-alyassi', ar: 'abdulrahman' };
+function designFor(k) {   // the template's saved design, the open one, or a fresh one carrying the payment type and prices
+  if (k === ad.v.theme) return ad.v;
+  const sv = ad.saved && ad.saved[k]; if (sv) return Object.assign(adDefaults(ad.p), sv.v, { theme: k });
+  const v = adDefaults(ad.p); v.theme = k; v.phone = pzPhone(k); if (layoutOf(k) === 'aya') v.lab = false;
+  ['mode', 'ppf', 'price', 'o_priceC', 'o_priceI', 'r_priceC', 'r_priceI'].forEach((f) => { if (ad.v[f] !== undefined && ad.v[f] !== '') v[f] = ad.v[f]; });
+  return v;
+}
+async function allBlobs() {
+  const keep = ad.v, sel = ad.sel, out = [], cv = document.createElement('canvas'); cv.width = AD_W; cv.height = AD_H;
+  ad.export = true; ad.sel = null;
+  try {
+    for (const k of allowed()) {
+      ad.v = designFor(k); drawAd(cv);
+      const b = await new Promise((ok) => cv.toBlob(ok, 'image/jpeg', 0.92));
+      if (b) out.push({ k, b, name: `post-${ad.p.l.project}-${ad.p.n}-${PZ_FILE[k] || k}.jpg` });
+    }
+  } finally { ad.v = keep; ad.sel = sel; ad.export = false; adRedraw(); }
+  return out;
+}
+async function finishAll(share) {
+  if (!ad) return;
+  H.toast(`جارِ تجهيز ${allowed().length} صور…`);
+  const list = await allBlobs().catch(() => []);
+  if (!list.length) { H.toast('تعذّر تجهيز الصور'); return; }
+  const title = `قطعة رقم ${ad.p.n} · ${ad.p.l.projectName}`;
+  try {
+    if (native) {
+      const uris = [];
+      for (const x of list) { const u8 = new Uint8Array(await x.b.arrayBuffer()); uris.push((await Filesystem.writeFile({ path: x.name, data: b64(u8), directory: Directory.Cache })).uri); }
+      if (!share) {
+        try {
+          for (const x of list) { const u8 = new Uint8Array(await x.b.arrayBuffer()); await Filesystem.writeFile({ path: 'عمر الياسي/' + x.name.replace('.jpg', '-' + Date.now().toString(36) + '.jpg'), data: b64(u8), directory: Directory.Documents, recursive: true }); }
+          H.toast(`تم حفظ ${list.length} صور في: المستندات ← عمر الياسي`); return;
+        } catch { /* no access to the phone's folders: the share sheet has «حفظ» */ }
+      }
+      await Share.share({ title, files: uris, dialogTitle: share ? 'مشاركة كل القوالب' : 'حفظ كل القوالب' });
+      return;
+    }
+    const files = list.map((x) => new File([x.b], x.name, { type: 'image/jpeg' }));
+    if (share && navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files, title }); return; }
+    for (const x of list) { const a = document.createElement('a'), u = URL.createObjectURL(x.b); a.href = u; a.download = x.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000); await new Promise((r) => setTimeout(r, 350)); }
+    H.toast(`تم تجهيز ${list.length} صور`);
+  } catch (e) {
+    if (!/cancel/i.test(String(e && (e.message || e)))) H.toast('تعذّر الحفظ: ' + String((e && e.message) || e).slice(0, 80));
+  }
 }
 async function finish(share) {
   if (!ad) return;
@@ -1109,6 +1159,13 @@ export async function initAdgen2(pg, l, proj) {
     catch (ex) { H.toast(ex.message); }
     b.disabled = false;
   };
+  { const n = allowed().length, all = $('pzAll'), pop = $('pzAllPop');
+    all.hidden = n < 2; pg.querySelector('.adg-bar').classList.toggle('four', n >= 2);
+    all.onclick = () => { $('pzAllTxt').textContent = `${n} صور — صورة بكل قالب (${allowed().map((k) => PZ_THEMES[k].name.replace('قالب ', '')).join('، ')}). القالب المحفوظ يُستخدم كما حفظته.`; pop.hidden = false; };
+    $('pzAllNo').onclick = () => { pop.hidden = true; };
+    $('pzAllShare').onclick = () => { pop.hidden = true; finishAll(true); };
+    $('pzAllSave').onclick = () => { pop.hidden = true; finishAll(false); };
+  }
   $('pzUndo').onclick = () => undo(false); $('pzRedo').onclick = () => undo(true);
   $('adgBig').onclick = () => pg.querySelector('.adg').classList.toggle('big');
   $('pzShare').onclick = () => finish(true);

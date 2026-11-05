@@ -909,6 +909,7 @@ function closeOverlay() {
   const upd = document.querySelector('.upddlg [data-upd="0"]'); if (upd) { upd.click(); return true; }
   const exit = document.querySelector('.exitdlg'); if (exit) { exit.remove(); return true; }
   const wf = document.querySelector('.walletf [data-wx]'); if (wf) { wf.click(); return true; }
+  const ap = document.querySelector('.adg-allpop:not([hidden])'); if (ap) { ap.hidden = true; return true; }
   const crop = document.querySelector('.adg-crop:not([hidden])'); if (crop) { crop.querySelector('#pzCropNo')?.click(); return true; }
   const viewer = document.querySelector('.viewer'); if (viewer) { viewer.remove(); return true; }
   const ss = [...document.querySelectorAll('.ssheet.open')].pop(); if (ss) { ss.querySelector('[data-ssclose]')?.click(); return true; }
