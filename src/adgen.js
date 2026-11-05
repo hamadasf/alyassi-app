@@ -324,7 +324,7 @@ function adEvery(m) { return m ? 'كل ' + (m === 1 ? 'شهر' : m === 2 ? 'شه
 
 /* where the plot sits in its block, read from the plan: «زاوية» with roads on two sides, «سكة» beside a lane (10 m or less) */
 const SIDE_LANE = 10;
-function adSide(p) {
+function adSide(p, dbg) {
   if (!p || !p.p || p.p.length < 3) return '';
   const area = Math.abs(p.p.reduce((s, q, i) => { const r = p.p[(i + 1) % p.p.length]; return s + q[0] * r[1] - r[0] * q[1]; }, 0)) / 2;
   const u = Math.sqrt(area / (p.m2 || 1)); if (!(u > 0)) return '';   // plan units in one metre
@@ -338,8 +338,9 @@ function adSide(p) {
     const r = p.p[(i + 1) % p.p.length], L = Math.hypot(r[0] - q[0], r[1] - q[1]); if (L < Math.max(3 * u, longest * 0.25)) return;
     let nx = (r[1] - q[1]) / L, ny = -(r[0] - q[0]) / L; if (!inside(p, (q[0] + r[0]) / 2 - nx * 0.5 * u, (q[1] + r[1]) / 2 - ny * 0.5 * u)) { nx = -nx; ny = -ny; }
     const gaps = [0.25, 0.5, 0.75].map((f) => { const x = q[0] + (r[0] - q[0]) * f, y = q[1] + (r[1] - q[1]) * f; for (let d = 1; d <= 45; d += 1) if (hit(x + nx * d * u, y + ny * d * u)) return d; return 99; }).sort((a, b) => a - b);
-    edges.push({ gap: gaps[1], a: Math.atan2(ny, nx) });
+    edges.push({ gap: gaps[1], a: Math.atan2(ny, nx), q, r, nx, ny, L });
   });
+  if (dbg) return { u, edges };
   const open = edges.filter((e) => e.gap > 2); if (!open.length) return '';
   const widest = open.reduce((a, e) => (e.gap > a.gap ? e : a), open[0]);
   const turn = (a, b) => { let d = Math.abs(a - b) % (2 * Math.PI); if (d > Math.PI) d = 2 * Math.PI - d; return d; };
@@ -378,6 +379,91 @@ function adDefaults(p) {
   return v;
 }
 
+/* ---------- a plot with no official plan: drawn the way the official site plans of its neighbours look (thin lines, the plot in red
+   with its sides in metres, the numbers around it and the roads), and its planning conditions the same way (built area in yellow,
+   setbacks in the official colours) — the website's own drawing ---------- */
+function skClean(p) {   // the outline without thin spikes (a road's edge caught with the plot when the plan was read)
+  const pts = p.p.slice();
+  for (let loop = 0; loop < 40 && pts.length > 3; loop++) {
+    const area = Math.abs(pts.reduce((s, q, j) => { const r = pts[(j + 1) % pts.length]; return s + q[0] * r[1] - r[0] * q[1]; }, 0)) / 2;
+    const i = pts.findIndex((v, j) => {
+      const a = pts[(j + pts.length - 1) % pts.length], b = pts[(j + 1) % pts.length], ux = a[0] - v[0], uy = a[1] - v[1], wx = b[0] - v[0], wy = b[1] - v[1], lu = Math.hypot(ux, uy), lw = Math.hypot(wx, wy);
+      if (!(lu > 0 && lw > 0)) return true;
+      const cos = (ux * wx + uy * wy) / (lu * lw), tri = Math.abs(ux * wy - uy * wx) / 2;
+      return cos > Math.cos(15 * Math.PI / 180) || (cos > Math.cos(60 * Math.PI / 180) && tri < area * 0.05);
+    });
+    if (i < 0) break; pts.splice(i, 1);
+  }
+  return pts.length === p.p.length ? p : { ...p, p: pts };
+}
+const SK_W = 1245, SK_H = 1086, SK_SERIF = '"Times New Roman", Times, serif';
+function skView(p, D) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; p.p.forEach((q) => { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); });
+  const span = Math.max(x1 - x0, y1 - y0), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, k = Math.min(SK_W, SK_H) / (span * 3.1);
+  const P = (q) => [SK_W / 2 + (q[0] - cx) * k, (D ? SK_H * 0.46 : SK_H / 2) + (q[1] - cy) * k];
+  const near = ad.all.filter((q) => q.n !== p.n && q.p && Math.abs(q.c[0] - cx) < SK_W / k && Math.abs(q.c[1] - cy) < SK_H / k);
+  return { k, P, near };
+}
+function skPath(c, P, q) { c.beginPath(); q.p.forEach((t, i) => { const [x, y] = P(t); if (i) c.lineTo(x, y); else c.moveTo(x, y); }); c.closePath(); }
+function skNeighbours(c, V) {
+  c.lineWidth = 1.6; c.strokeStyle = '#8A8A8A';
+  V.near.forEach((q) => { skPath(c, V.P, q); c.stroke(); });
+  V.near.forEach((q) => { const [x, y] = V.P(q.c); c.direction = 'ltr'; txt(c, String(q.n).replace(/^#/, ''), x, y + 10, '500 30px ' + SK_SERIF, '#2B2B2B', 'center'); });
+}
+function skAlong(c, s, x, y, ang, font, col) { let a = ang; if (a > Math.PI / 2) a -= Math.PI; if (a < -Math.PI / 2) a += Math.PI; c.save(); c.translate(x, y); c.rotate(a); c.direction = 'rtl'; txt(c, s, 0, 0, font, col, 'center'); c.restore(); }
+function skRoads(c, V, E) {
+  E.edges.filter((e) => e.gap > 2).forEach((e) => {
+    const d = (e.gap > 45 ? 9 : e.gap / 2) * E.u, mx = (e.q[0] + e.r[0]) / 2 + e.nx * d, my = (e.q[1] + e.r[1]) / 2 + e.ny * d, [x, y] = V.P([mx, my]);
+    if (x < 40 || x > SK_W - 40 || y < 40 || y > SK_H - 40) return;
+    skAlong(c, 'طريق' + (e.gap <= 45 ? ' ' + e.gap.toFixed(1) : ''), x, y + 10, Math.atan2(e.r[1] - e.q[1], e.r[0] - e.q[0]), '600 30px ' + SK_SERIF, '#2B2B2B');
+  });
+}
+function planSketch(p0) {
+  const p = skClean(p0), [cv, c] = canvas(SK_W, SK_H, '#FFFFFF'), V = skView(p, false), E = adSide(p, true);
+  skNeighbours(c, V);
+  if (E && E.u) skRoads(c, V, E);
+  skPath(c, V.P, p); c.lineWidth = 4; c.strokeStyle = '#D0021B'; c.stroke();
+  const [x, y] = V.P(p.c); c.direction = 'ltr'; txt(c, String(p.n).replace(/^#/, ''), x, y + 12, '700 36px ' + SK_SERIF, '#1B1B1B', 'center');
+  if (E && E.u) p.p.forEach((q, i) => {   // each side in metres, written inside it
+    const r = p.p[(i + 1) % p.p.length], L = Math.hypot(r[0] - q[0], r[1] - q[1]) / E.u; if (L < 4) return;
+    const [ax, ay] = V.P(q), [bx, by] = V.P(r), [cx0, cy0] = V.P(p.c), mx = (ax + bx) / 2, my = (ay + by) / 2, t = 26 / Math.hypot(cx0 - mx, cy0 - my);
+    skAlong(c, L.toFixed(2), mx + (cx0 - mx) * t, my + (cy0 - my) * t + 8, Math.atan2(by - ay, bx - ax), '500 24px ' + SK_SERIF, '#D0021B');
+  });
+  c.direction = 'rtl';
+  return cv;
+}
+const SK_COL = { front: '#4FB6E8', side: '#24346E', back: '#D81B60', fill: '#F7E200' };
+function condSketch(p0) {
+  const p = skClean(p0), [cv, c] = canvas(SK_W, SK_H, '#FFFFFF'), V = skView(p, true), E = adSide(p, true);
+  skNeighbours(c, V);
+  skPath(c, V.P, p); c.fillStyle = SK_COL.fill; c.fill();
+  const used = {};
+  if (E && E.u && E.edges.length) {
+    const open = E.edges.filter((e) => e.gap > 2), front = open.length ? open.reduce((a, e) => (e.gap > a.gap ? e : a), open[0]) : null;
+    const turn = (a, b) => { let d = Math.abs(a - b) % (2 * Math.PI); if (d > Math.PI) d = 2 * Math.PI - d; return d; };
+    const kindOf = (e) => (e === front ? 'front' : e.gap > 2 ? 'side' : front && turn(e.a, front.a) > Math.PI * 0.8 ? 'back' : 'hatch');
+    const depth = Math.min(3 * E.u, Math.min(...E.edges.map((e) => e.L)) * 0.22);
+    const strip = (e) => { const a = V.P(e.q), b = V.P(e.r), ix = -e.nx * depth * V.k, iy = -e.ny * depth * V.k; c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.lineTo(b[0] + ix, b[1] + iy); c.lineTo(a[0] + ix, a[1] + iy); c.closePath(); };
+    E.edges.map((e) => [e, kindOf(e)]).sort((x, y) => (x[1] === 'hatch' ? 0 : 1) - (y[1] === 'hatch' ? 0 : 1)).forEach(([e, kd]) => {
+      used[kd] = 1; strip(e);
+      if (kd === 'hatch') { c.save(); c.clip(); c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, SK_W, SK_H); c.strokeStyle = '#3A3A3A'; c.lineWidth = 2; for (let t = -SK_H; t < SK_W; t += 14) { c.beginPath(); c.moveTo(t, SK_H); c.lineTo(t + SK_H, 0); c.stroke(); } c.restore(); strip(e); c.lineWidth = 1.4; c.strokeStyle = '#3A3A3A'; c.stroke(); }
+      else { c.fillStyle = SK_COL[kd]; c.fill(); }
+    });
+    skRoads(c, V, E);
+  }
+  skPath(c, V.P, p); c.lineWidth = 2.4; c.strokeStyle = '#3A3A3A'; c.stroke();
+  const [x, y] = V.P(p.c); c.direction = 'ltr'; txt(c, String(p.n).replace(/^#/, ''), x, y + 12, '700 36px ' + SK_SERIF, '#1B1B1B', 'center');
+  const keys = [['front', 'أساسي 3.0 م'], ['side', 'جانبي 3.0 م'], ['back', 'خلفي 3.0 م'], ['hatch', 'جانبي/ملاصق']].filter(([k]) => used[k]);
+  c.fillStyle = '#FFFFFF'; c.fillRect(0, SK_H - 96, SK_W, 96); c.fillStyle = '#C9C9C9'; c.fillRect(30, SK_H - 96, SK_W - 60, 2);
+  const w = (SK_W - 60) / Math.max(1, keys.length);
+  keys.forEach(([k, l], i) => {
+    const xr = SK_W - 30 - i * w - 18, y0 = SK_H - 64;
+    if (k === 'hatch') { c.save(); c.beginPath(); c.rect(xr - 40, y0, 40, 30); c.clip(); c.strokeStyle = '#3A3A3A'; c.lineWidth = 2; for (let t = -40; t < 80; t += 9) { c.beginPath(); c.moveTo(xr - 40 + t, y0 + 30); c.lineTo(xr - 10 + t, y0); c.stroke(); } c.restore(); c.strokeStyle = '#3A3A3A'; c.strokeRect(xr - 40, y0, 40, 30); }
+    else { c.fillStyle = SK_COL[k]; c.fillRect(xr - 40, y0, 40, 30); }
+    c.direction = 'rtl'; txt(c, l, xr - 52, y0 + 25, FB(600, 28), '#2B2B2B', 'right');
+  });
+  return cv;
+}
 /* ---------- pictures: the building, the official plan and the planning conditions (from the land's PDF) ---------- */
 const adSize = (im) => [im.naturalWidth || im.width || 1, im.naturalHeight || im.height || 1];
 /* where the plot is drawn on a scanned page: the red outline of the official plan, or the coloured setbacks of the planning conditions */
@@ -461,6 +547,8 @@ async function adPictures(p) {
     } catch { /* no PDF reader or a broken file: the sketch is used */ }
   }
   if (!out[1] && l.sketch) { const im = await imageOf(l.sketch); if (im) out[1] = { im, fit: 'contain', name: 'مخطط الأرض' }; }
+  if (!out[1] && ad.p.p) { try { out[1] = { im: planSketch(ad.p), fit: 'contain', name: 'مخطط الأرض (مرسوم من الخارطة)', gen: 'plan' }; } catch { /* the illustration below */ } }
+  if (!out[2] && ad.p.p) { try { out[2] = { im: condSketch(ad.p), fit: 'contain', name: 'شروط التخطيط (مرسومة من الخارطة)', gen: 'cond' }; } catch { /* none */ } }
   if (!out[1] && ad.P) {   // the plan around the plot, as an illustration
     const [cv, c] = canvas(1200, 900, '#fff');
     drawPlanLoc(c, ad.P, l, ad.proj.lands, ad.proj.map, { x: 0, y: 0, w: 1200, h: 900 });
