@@ -263,12 +263,17 @@ function arDraw(c, v, p, at) {
   // the panel and the tab
   c.fillStyle = AR.navy; c.fillRect(0, PY, AD_W, AD_H - PY);
   PZS = v.fsT;
-  at('proj', 909, 1369, 691, 162, () => {
-    c.fillStyle = AR.gold; c.beginPath(); c.moveTo(909, PY + 1); c.lineTo(1115, 1369); c.lineTo(1150, 1369); c.lineTo(944, PY + 1); c.closePath(); c.fill();
-    c.fillStyle = AR.gold; c.fillRect(1115, 1366, AD_W - 1115, 6);
-    c.fillStyle = AR.navy; c.beginPath(); c.moveTo(944, PY + 1); c.lineTo(1150, 1372); c.lineTo(AD_W, 1372); c.lineTo(AD_W, PY + 1); c.closePath(); c.fill();
-    adFitV(c, v.r_proj, 1265, 1392, 1515, 600, 92, 800, AR.yellow, 'center');
-  });
+  {   // the tab widens with the project's name (its slanted edge moves left), and the name always stays inside it
+    let px = Math.round(92 * PZS); c.font = FD(800, px); let tw = c.measureText(v.r_proj || '').width;
+    while (tw > 820 && px > 24) { px -= 2; c.font = FD(800, px); tw = c.measureText(v.r_proj || '').width; }
+    const L = Math.max(720, Math.min(1150, 1560 - tw - 70)), B = L - 206;
+    at('proj', B - 35, 1366, AD_W - B + 35, PY - 1366, () => {
+      c.fillStyle = AR.gold; c.beginPath(); c.moveTo(B - 35, PY + 1); c.lineTo(L - 35, 1369); c.lineTo(L, 1369); c.lineTo(B, PY + 1); c.closePath(); c.fill();
+      c.fillRect(L - 35, 1366, AD_W - L + 35, 6);
+      c.fillStyle = AR.navy; c.beginPath(); c.moveTo(B, PY + 1); c.lineTo(L, 1372); c.lineTo(AD_W, 1372); c.lineTo(AD_W, PY + 1); c.closePath(); c.fill();
+      adFitV(c, v.r_proj, (L + 1575) / 2, 1392, 1515, 1575 - L - 30, px / PZS, 800, AR.yellow, 'center');
+    });
+  }
   // the three rows
   const rows = [[1638, v.r_l1, v.r_area, 0], [1765, v.r_l2, v.r_use, 1], [1896, v.r_l3, v.mode === 'inst' ? v.r_priceI : v.r_priceC, 2]];
   at('rows', 380, 1575, 1210, 380, () => {
@@ -619,6 +624,7 @@ function drawAd(cv) {
   const c = cv.getContext('2d'), v = ad.v, p = ad.p; TH = PZ_THEMES[v.theme] || PZ_THEMES.co; v.o = v.o || {}; ad.hits = [];
   c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = TH.bg; c.fillRect(0, 0, AD_W, AD_H); c.direction = 'rtl'; c.textBaseline = 'alphabetic';
   const at = (k, x, y, w, h, f) => {   // a part of the post: moved by v.o[k], enlarged by v.sc[k] (two fingers) around its centre
+    if (v.hide && v.hide[k]) return;   // removed with ✕ (brought back with «إظهار العناصر المحذوفة» or ↶)
     const o = v.o[k] || [0, 0], sc = (v.sc && v.sc[k]) || 1, cx = x + w / 2, cy = y + h / 2;
     c.save(); c.translate(o[0], o[1]); if (sc !== 1) { c.translate(cx, cy); c.scale(sc, sc); c.translate(-cx, -cy); } f(); c.restore();
     ad.hits.push({ k, x: cx - w * sc / 2 + o[0], y: cy - h * sc / 2 + o[1], w: w * sc, h: h * sc });
@@ -687,21 +693,39 @@ function adSel(c) {
   if (!ad.sel || ad.export) return;
   const t = [...ad.hits].reverse().find((h) => h.k === ad.sel && h.pic == null); if (!t) return;
   c.save(); c.setLineDash([14, 10]); c.lineWidth = 4; c.strokeStyle = '#1E88E5'; c.strokeRect(t.x - 6, t.y - 6, t.w + 12, t.h + 12); c.restore();
-  if (/^ex\d+$/.test(t.k)) {   // the added shapes: an × on the corner removes them
-    const r = 46, x = Math.min(AD_W - r - 4, Math.max(r + 4, t.x + t.w + 6)), y = Math.min(AD_H - r - 4, Math.max(r + 4, t.y - 6));
+  if (t.k !== 'map') {   // an × on the corner: removes an added shape, or hides a part of the template
+    const r = 64, x = Math.min(AD_W - r - 4, Math.max(r + 4, t.x + t.w + 6)), y = Math.min(AD_H - r - 4, Math.max(r + 4, t.y - 6));
     c.save(); c.shadowColor = 'rgba(0,0,0,.3)'; c.shadowBlur = 10; c.fillStyle = '#E11D2E'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.restore();
     c.save(); c.strokeStyle = '#fff'; c.lineWidth = 9; c.lineCap = 'round'; const d = r * 0.42;
     c.beginPath(); c.moveTo(x - d, y - d); c.lineTo(x + d, y + d); c.moveTo(x + d, y - d); c.lineTo(x - d, y + d); c.stroke(); c.restore();
-    ad.xBtn = { i: +t.k.slice(2), x, y, r };
+    ad.xBtn = { k: t.k, x, y, r };
   }
 }
 /** removes added shape i; the moves and sizes of the shapes after it follow them down */
+function partDelete(k) {
+  if (/^ex\d+$/.test(k)) { exDelete(+k.slice(2)); return; }
+  (ad.v.hide = ad.v.hide || {})[k] = true; ad.sel = null;
+}
 function exDelete(i) {
   const ex = ad.v.ex || []; if (!ex[i]) return; ex.splice(i, 1);
   for (const m of [ad.v.o, ad.v.sc || {}]) for (let j = i; j <= ex.length; j++) { if (m['ex' + (j + 1)]) m['ex' + j] = m['ex' + (j + 1)]; else delete m['ex' + j]; }
   ad.sel = null;
 }
-function adRedraw() { cancelAnimationFrame(adRaf); adRaf = requestAnimationFrame(() => { if (ad) drawAd($('pzCv')); }); }
+let hist = [], fut = [], inT = 0;
+/** remembers the design as it is now, before a change (one step for ↶) */
+function mark() {
+  if (!ad) return; const s = JSON.stringify(ad.v);
+  if (hist[hist.length - 1] !== s) { hist.push(s); if (hist.length > 80) hist.shift(); fut = []; }
+  tools();
+}
+function undo(redo) {
+  if (!ad) return; const from = redo ? fut : hist, to = redo ? hist : fut; if (!from.length) return;
+  to.push(JSON.stringify(ad.v)); ad.v = JSON.parse(from.pop()); ad.sel = null; pzForm(); adRedraw();
+}
+function tools() {
+  const u = $('pzUndo'), r = $('pzRedo'); if (u) u.disabled = !hist.length; if (r) r.disabled = !fut.length;
+}
+function adRedraw() { tools(); cancelAnimationFrame(adRaf); adRaf = requestAnimationFrame(() => { if (ad) drawAd($('pzCv')); }); }
 
 const AD_FIELDS = [
   ['title', 'العنوان الرئيسي'], ['proj', 'اسم المشروع (الشريط)'], ['sub', 'السطر تحت اسم المشروع'], ['area', 'المساحة (قدم مربع)'],
@@ -725,7 +749,8 @@ export function adgenPage(l, projects) {
   }
   return `<div class="adg">
     <div class="adg-prev"><canvas id="pzCv" width="${AD_W}" height="${AD_H}"></canvas><div class="adg-load" id="adgLoad"><i class="spin"></i><span>جارِ تجهيز التصميم…</span></div>
-      <button class="adg-big" id="adgBig" aria-label="تكبير المعاينة">⤢</button></div>
+      <button class="adg-big" id="adgBig" aria-label="تكبير المعاينة">⤢</button>
+      <div class="adg-tools"><button type="button" id="pzUndo" disabled><b>↶</b>تراجع</button><button type="button" id="pzRedo" disabled>إعادة<b>↷</b></button></div></div>
     <div class="adg-form" id="pzForm"></div>
     <input type="file" id="pzFile" accept="image/*,application/pdf" hidden>
     <div class="adg-bar"><button class="btn primary" id="pzShare">📤 مشاركة</button><button class="btn" id="pzSave">⬇️ حفظ الصورة</button></div>
@@ -779,7 +804,7 @@ function pzForm() {
     <p class="help">اسحب أي نص أو بطاقة على المعاينة مباشرة، وكبّره أو صغّره بإصبعين، أو اختر العنصر وحرّكه بالأسهم. السحب داخل الخريطة أو داخل صورة يحرّك ما بداخلها.</p>
     <div class="pz-move"><select id="pzPart">${(aya ? AYA_PARTS : oy ? OY_PARTS : ar ? AR_PARTS : AD_PARTS).concat((v.ex || []).map((e, i) => ['ex' + i, (e.t === 'box' ? 'مربع نص ' : e.t === 'arrow' ? 'سهم ' : 'دائرة ') + (i + 1)])).map(([k, l]) => `<option value="${k}"${ad.sel === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
       <div class="pz-arrows"><button type="button" class="btn" data-mv="0,-1" aria-label="فوق">▲</button><button type="button" class="btn" data-mv="1,0" aria-label="يمين">▶</button><button type="button" class="btn" data-mv="-1,0" aria-label="يسار">◀</button><button type="button" class="btn" data-mv="0,1" aria-label="تحت">▼</button></div>
-      <span class="rowbtns"><button type="button" class="btn sm" data-mvreset>إرجاع مكانه</button><button type="button" class="btn sm" data-mvall>إرجاع كل الأماكن</button></span></div>`, false)
+      <span class="rowbtns"><button type="button" class="btn sm" data-mvreset>إرجاع مكانه</button><button type="button" class="btn sm" data-mvall>إرجاع كل الأماكن</button>${v.hide && Object.keys(v.hide).length ? `<button type="button" class="btn sm" data-unhide>إظهار العناصر المحذوفة (${Object.keys(v.hide).length})</button>` : ''}</span></div>`, false)
     + `<p class="help">يُحفظ على هذا الجهاز: القالب المختار، رقم كل قالب، والسطر تحت اسم المشروع وسطر التواصل والعنوان.</p>`;
 }
 
@@ -866,7 +891,7 @@ export function initAdgenPick(pg, projects, open) {
 }
 
 export async function initAdgen2(pg, l, proj) {
-  PG = pg; ad = null; pzc = null;
+  PG = pg; ad = null; pzc = null; hist = []; fut = [];
   const cv = $('pzCv');
   const raw = rawPlots(l.project);
   const all = raw ? raw.filter((q) => q[6] && q[6].length > 2).map(([n, , , m2, , , poly, pc]) => ({ n: String(n), p: poly, c: pc || centreOf(poly), m2 })) : proj.lands.filter((x) => x.poly).map(plotOf);
@@ -888,6 +913,7 @@ export async function initAdgen2(pg, l, proj) {
   const form = $('pzForm');
   form.addEventListener('input', (e) => {
     const t = e.target, k = t.dataset.k; if (!ad) return;
+    if (!inT) mark(); clearTimeout(inT); inT = setTimeout(() => { inT = 0; }, 900);
     for (const [key, f] of [['slotz', 'z'], ['slotx', 'cx'], ['sloty', 'cy']]) if (t.dataset[key] !== undefined) { const s = ad.img[+t.dataset[key]]; if (s && s.crop) { s.crop[f] = +t.value; adRedraw(); } return; }
     for (const [key, f] of [['picz', 'z'], ['picx', 'cx'], ['picy', 'cy']]) if (t.dataset[key] !== undefined) { const s = ad.img[+t.dataset[key]]; if (s) { s[f] = +t.value; adRedraw(); } return; }
     if (t.dataset.exk) { const [i, f] = t.dataset.exk.split('|'), e = (ad.v.ex || [])[+i]; if (e) { e[f] = f === 'text' ? t.value : +t.value; adRedraw(); } return; }
@@ -908,6 +934,7 @@ export async function initAdgen2(pg, l, proj) {
   form.addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b || !ad) return;
     const d = b.dataset;
+    if (Object.keys(d).length) mark();
     if (d.pzside !== undefined) {
       const t = ad.v.title.replace(/\s+(زاوية|سكة)\s*$/, ''); ad.v.side = d.pzside; ad.v.title = t + (ad.v.side ? ' ' + ad.v.side : '');
       const fi = /\s+في\s*$/.test(ad.v.a_title), b0 = ad.v.a_title.replace(/\s+في\s*$/, '').replace(/\s+(زاوية|سكة)\s*$/, ''); ad.v.a_title = b0 + (ad.v.side ? ' ' + ad.v.side : '') + (fi ? ' في' : '');
@@ -915,7 +942,8 @@ export async function initAdgen2(pg, l, proj) {
     }
     if (d.mv) { const k = $('pzPart').value, [dx, dy] = d.mv.split(',').map(Number), o = ad.v.o[k] || [0, 0]; ad.sel = k; ad.v.o[k] = [o[0] + dx * 10, o[1] + dy * 10]; adRedraw(); return; }
     if (d.mvreset !== undefined) { delete ad.v.o[$('pzPart').value]; if (ad.v.sc) delete ad.v.sc[$('pzPart').value]; ad.sel = $('pzPart').value; adRedraw(); return; }
-    if (d.mvall !== undefined) { ad.v.o = {}; ad.v.sc = {}; adRedraw(); return; }
+    if (d.mvall !== undefined) { ad.v.o = {}; ad.v.sc = {}; ad.v.hide = {}; pzForm(); adRedraw(); return; }
+    if (d.unhide !== undefined) { ad.v.hide = {}; pzForm(); adRedraw(); return; }
     if (d.mapcenter !== undefined) { ad.v.mx = ad.v.my = 0; adRedraw(); return; }
     if (d.picreset !== undefined) { const s = ad.img[+d.picreset]; if (s) { delete s.z; delete s.cx; delete s.cy; pzForm(); adRedraw(); } return; }
     if (d.slotcut !== undefined) { pzCut(+d.slotcut); return; }
@@ -1002,11 +1030,11 @@ export async function initAdgen2(pg, l, proj) {
     };
     cv.addEventListener('pointerdown', (e) => {
       if (!ad) return; pts.set(e.pointerId, [e.clientX, e.clientY]); cv.setPointerCapture(e.pointerId); e.preventDefault();
-      if (pts.size === 2) { const tg = drag ? drag.t : ad.sel ? { k: ad.sel } : null; if (tg) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), t: tg }; } return; }
+      if (pts.size === 2) { mark(); const tg = drag ? drag.t : ad.sel ? { k: ad.sel } : null; if (tg) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), t: tg }; } return; }
       const [x, y] = pt(e);
-      if (ad.xBtn && Math.hypot(x - ad.xBtn.x, y - ad.xBtn.y) <= ad.xBtn.r * 1.9) { exDelete(ad.xBtn.i); pzForm(); adRedraw(); return; }
+      if (ad.xBtn && Math.hypot(x - ad.xBtn.x, y - ad.xBtn.y) <= ad.xBtn.r * 1.6) { mark(); partDelete(ad.xBtn.k); pzForm(); adRedraw(); return; }
       const t = under(x, y); if (!t) { ad.sel = null; adRedraw(); return; }
-      drag = { t, x, y }; if (t.pic == null && !t.pan) { ad.sel = t.k; const s = $('pzPart'); if (s) s.value = t.k; } else ad.sel = null;
+      mark(); drag = { t, x, y }; if (t.pic == null && !t.pan) { ad.sel = t.k; const s = $('pzPart'); if (s) s.value = t.k; } else ad.sel = null;
       adRedraw();
     });
     cv.addEventListener('pointermove', (e) => {
@@ -1027,6 +1055,7 @@ export async function initAdgen2(pg, l, proj) {
     cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
     cv.addEventListener('wheel', (e) => { if (!ad) return; const [x, y] = pt(e), t = under(x, y); if (!t || (t.pic == null && !t.pan)) return; e.preventDefault(); zoomT(t, e.deltaY < 0 ? 1.08 : 1 / 1.08); }, { passive: false });
   }
+  $('pzUndo').onclick = () => undo(false); $('pzRedo').onclick = () => undo(true);
   $('adgBig').onclick = () => pg.querySelector('.adg').classList.toggle('big');
   $('pzShare').onclick = () => finish(true);
   $('pzSave').onclick = () => finish(false);

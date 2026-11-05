@@ -1072,3 +1072,8 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .ex-add { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; } .ex-add .btn { min-height: 42px; font-weight: 800; }
 .ex-cols { display: flex; flex-wrap: wrap; gap: 8px; } .ex-cols button { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #e2e8f0; padding: 0; } .ex-cols button.on { box-shadow: 0 0 0 3px var(--navy); }
 .ex-item textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; font: inherit; font-size: 16px; }
+.adg-prev { flex-direction: column; align-items: center; gap: 8px; }
+.adg-tools { display: flex; gap: 8px; justify-content: center; }
+.adg-tools button { height: 38px; padding: 0 16px; border-radius: 999px; background: #fff; border: 1px solid var(--line); box-shadow: 0 1px 4px rgba(0,0,0,.08); font-size: 14px; font-weight: 800; color: var(--navy); display: flex; align-items: center; gap: 6px; }
+.adg-tools button b { font-size: 18px; }
+.adg-tools button:disabled { opacity: .4; }
