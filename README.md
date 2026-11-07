@@ -19,3 +19,16 @@
 ## نسخة الآيفون (تطبيق ويب)
 الرابط: https://hamadasf.github.io/alyassi-app/ — يُفتح من Safari ثم «مشاركة ← إضافة إلى الشاشة الرئيسية».
 بيانات الأراضي والأسعار تُجمع من الموقع تلقائياً كل ~10 دقائق.
+
+## iPhone / App Store
+
+The workflow **iPhone app (native)** builds the Capacitor iOS project on every push (unsigned simulator build).
+To sign it and upload to TestFlight it needs an Apple Developer account and these repository secrets
+(Settings → Secrets and variables → Actions): `APPLE_TEAM_ID`, `APPSTORE_KEY_ID`, `APPSTORE_ISSUER_ID`,
+`APPSTORE_KEY_P8` (the App Store Connect API key, role App Manager). Bundle id: `com.omaralyassi.realestate`.
+On iPhone the Google sign-in button is hidden (Apple would require «Sign in with Apple» next to it).
+
+## Store listing
+
+`store/` holds the Google Play assets: feature graphic (1024×500) and eight phone screenshots (1080×1920).
+The 512×512 icon is the app icon the build publishes at `https://hamadasf.github.io/alyassi-app/icons/icon-512.png`.
