@@ -26,6 +26,7 @@ import { advStrip, loadBrand } from './adv.js';
 import { checkUpdate } from './update.js';
 import { buildPayPlan } from './payplan.js';
 import { buildLandImage } from './landimg.js';
+import { initSellMod, sellPage, initSell } from './sell.js';
 import { initFavx, syncFavs, syncFavsDaily, snapOne, favNoticeHTML, favSeen, favToast, comparePage, initComparePage } from './favx.js';
 import { initMarket, marketPage, initMarketPage, marketCardHTML, fillMarketCard, editComp } from './market.js';
 import { initMailAdm, mailAdmPage, initMailAdmPage } from './mailadm.js';
@@ -596,7 +597,7 @@ function renderHome() {
     <div class="sec-h"><h2>أفضل الأسعار</h2><button data-go="lands" data-sort="price-asc">عرض الكل</button></div>
     <div class="list">${best.length ? best.slice(0, 6).map(landCard).join('') : (projects.length ? '<div class="empty">لا توجد أسعار معروضة حالياً</div>' : skeleton(2))}</div>
     <section class="cta">
-      <div><h3>عندك أرض للبيع؟</h3><p>سجّل وأضف أرضك من التطبيق — تُعرض بعد موافقة الإدارة</p></div>
+      <div><h3>عندك أرض للبيع؟</h3><p>عبّئ بيانات أرضك وسنتواصل معك</p></div>
       <button class="btn gold" data-addland>أضف أرضك</button>
     </section>`;
   startBanner();
@@ -615,7 +616,7 @@ function bannerHTML(av, projects) {
   projects.slice().sort((a, b) => b.available - a.available).slice(0, 3).forEach((p) => {
     if (p.available) s.push(slide(`data-project="${esc(p.slug)}"`, p.poster, 'مشروع', esc(p.name), `${p.available} أرض متاحة${p.sub ? ' · ' + esc(p.sub.split('،')[0]) : ''}`, 'تصفح المشروع'));
   });
-  s.push(slide('data-addland', 'assets/villa-invest.jpg', 'بيع معنا', 'اعرض أرضك للبيع', 'أضف أرضك من التطبيق وتُعرض بعد الموافقة', 'أضف أرضك', 'gold'));
+  s.push(slide('data-addland', 'assets/villa-invest.jpg', 'بيع معنا', 'اعرض أرضك للبيع', 'عبّئ بيانات أرضك وسنتواصل معك', 'أضف أرضك', 'gold'));
   s.push(slide(`href="${esc(waLink('مرحباً، أرغب بالاستفسار عن الأراضي المتاحة'))}" data-ext`, 'assets/villa-invest.jpg', 'استفسر الآن', 'خطط سداد مرنة', 'دفعة أولى وأقساط ميسّرة', `${I.wa} واتساب`, 'wa'));
   return `<section class="eaban"><div class="easlides" id="easlides">${s.join('')}</div><div class="eadots">${s.map((_, i) => `<i${i ? '' : ' class="on"'}></i>`).join('')}</div></section>`;
 }
@@ -795,6 +796,7 @@ function pushPage(kind, id) {
   else if (kind === 'changes') { html = changesPage(); }
   else if (kind === 'account') { html = accountPage(); }
   else if (kind === 'addland') { html = addLandPage(); }
+  else if (kind === 'sell') { html = sellPage(); }
   else if (kind === 'olands') { html = oLandsPage(); }
   else if (kind === 'admin') { html = adminPage(); }
   else if (kind === 'profile') { html = profilePage(); }
@@ -839,7 +841,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -847,6 +849,7 @@ function pushPage(kind, id) {
   document.body.appendChild(pg);
   if (kind === 'account') initAccount(pg, id);
   if (kind === 'addland') initAddLand(pg);
+  if (kind === 'sell') initSell(pg);
   if (kind === 'admin') initAdmin(pg);
   if (kind === 'editprofile') initEditProfile(pg);
   if (kind === 'verify') initVerify(pg);
@@ -971,7 +974,8 @@ document.addEventListener('click', (e) => {
   if (ds.pshare) { e.stopPropagation(); const p = DATA().projects.find((x) => x.slug === ds.pshare); if (p) openProjectShare(p); return; }
   if (ds.notify !== undefined) { push.enable(); return; }
   if (ds.account !== undefined) { pushPage('account'); return; }
-  if (ds.addland !== undefined) { if (session.token()) pushPage('addland'); else { toast('سجّل الدخول أولاً لإضافة أرضك'); pushPage('account', 'add'); } return; }
+  if (ds.addland !== undefined) { pushPage('sell'); return; }   // «لدي أرض للبيع»: anyone, signed in or not
+  if (ds.addfull !== undefined) { if (session.token()) pushPage('addland'); else pushPage('account', 'add'); return; }
   if (ds.olands !== undefined) { pushPage('olands'); return; }
   if (ds.admin !== undefined) { pushPage('admin'); return; }
   if (ds.profile !== undefined) { pushPage('profile'); return; }
@@ -1112,6 +1116,7 @@ initAdvUI({ toast, closeTop: () => closeTop() });
 initStats({ toast });
 initMailAdm({ toast, esc });
 initMarket({ toast, projects: () => DATA().projects });
+initSellMod({ esc, toast });
 initFavx({ DATA, esc, money, toast, findLand: (id) => findLand(id) });
 initWallet({ toast, projects: () => DATA().projects, openUrl: (u) => openExternal(u), openWallet: (uid) => pushPage('wallet', String(uid)) });
 loadBrand(accApi);

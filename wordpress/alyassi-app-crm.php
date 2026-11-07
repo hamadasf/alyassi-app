@@ -381,9 +381,9 @@ function oay_acc_adm_contacts() {
 	if ( '' !== $done ) { foreach ( $log as &$x ) { if ( (string) $x['t'] === $done ) { $x['done'] = true; } } unset( $x ); update_option( 'oay_contacts', $log, false ); }
 	$k = oay_acc_arg( 'kind', 10 );
 	$items = array_values( array_filter( $log, function ( $x ) use ( $k ) { return ! $k || $k === $x['kind']; } ) );
-	$week = oay_crm_ms() - 7 * DAY_IN_SECONDS * 1000; $c = array( 'call' => 0, 'wa' => 0, 'form' => 0 );
+	$week = oay_crm_ms() - 7 * DAY_IN_SECONDS * 1000; $c = array( 'call' => 0, 'wa' => 0, 'form' => 0, 'sell' => 0 );
 	foreach ( $log as $x ) { if ( $x['t'] > $week && isset( $c[ $x['kind'] ] ) ) { $c[ $x['kind'] ]++; } }
-	oay_acc_ok( array( 'items' => array_slice( $items, 0, 300 ), 'week' => $c, 'open' => count( array_filter( $log, function ( $x ) { return 'form' === $x['kind'] && empty( $x['done'] ); } ) ) ) );
+	oay_acc_ok( array( 'items' => array_slice( $items, 0, 300 ), 'week' => $c, 'open' => count( array_filter( $log, function ( $x ) { return in_array( $x['kind'], array( 'form', 'sell' ), true ) && empty( $x['done'] ); } ) ) ) );
 }
 
 /* ======================================================================================

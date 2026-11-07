@@ -123,7 +123,7 @@ export function initAlerts(pg) {
 }
 
 /* =============================== client follow-up (office) =============================== */
-const SRC = { form: ['📩', 'طلب اتصال'], chat: ['💬', 'محادثة'], wa: ['🟢', 'واتساب'], call: ['📞', 'اتصال'], wanted: ['📝', 'طلب شراء'], alert: ['🔔', 'تنبيه'], calc: ['🧮', 'حاسبة'] };
+const SRC = { sell: ['🏷️', 'أرض للبيع'], form: ['📩', 'طلب اتصال'], chat: ['💬', 'محادثة'], wa: ['🟢', 'واتساب'], call: ['📞', 'اتصال'], wanted: ['📝', 'طلب شراء'], alert: ['🔔', 'تنبيه'], calc: ['🧮', 'حاسبة'] };
 const ST = { new: 'جديد', follow: 'قيد المتابعة', won: 'تم البيع', lost: 'غير مهتم' };
 const avatar = (u) => (u.avatar ? `<span class="acc-av img"><img src="${H.esc(u.avatar)}" alt="" referrerpolicy="no-referrer">${u.online ? '<i class="dot"></i>' : ''}</span>` : `<span class="acc-av">${H.esc((u.name || '?').charAt(0))}${u.online ? '<i class="dot"></i>' : ''}</span>`);
 const waUrl = (ph) => { let d = String(ph).replace(/\D/g, ''); if (d.startsWith('00')) d = d.slice(2); if (d.startsWith('0')) d = '971' + d.slice(1); if (/^5\d{8}$/.test(d)) d = '971' + d; return 'https://wa.me/' + d; };
@@ -254,8 +254,8 @@ export async function initGuide(pg) {
 
 /* =============================== contact log (office): every call / WhatsApp / call-back on a listing =============================== */
 export function contactsPage() {
-  return `<div class="pad leads"><div class="kpis ck"><div><span>📞 اتصال</span><b id="ck-call">–</b><em>هذا الأسبوع</em></div><div><span>🟢 واتساب</span><b id="ck-wa">–</b><em>هذا الأسبوع</em></div><div><span>📩 طلبات اتصال</span><b id="ck-form">–</b><em>هذا الأسبوع</em></div></div>
-    <div class="chips scroll lchips"><button class="chip on" data-ck="">الكل</button><button class="chip" data-ck="form">📩 طلبات اتصال <i id="ckopen"></i></button><button class="chip" data-ck="wa">🟢 واتساب</button><button class="chip" data-ck="call">📞 اتصال</button></div>
+  return `<div class="pad leads"><div class="kpis ck"><div><span>📞 اتصال</span><b id="ck-call">–</b><em>هذا الأسبوع</em></div><div><span>🟢 واتساب</span><b id="ck-wa">–</b><em>هذا الأسبوع</em></div><div><span>📩 طلبات اتصال</span><b id="ck-form">–</b><em>هذا الأسبوع</em></div><div><span>🏷️ أراضٍ للبيع</span><b id="ck-sell">–</b><em>هذا الأسبوع</em></div></div>
+    <div class="chips scroll lchips"><button class="chip on" data-ck="">الكل</button><button class="chip" data-ck="sell">🏷️ أراضٍ للبيع</button><button class="chip" data-ck="form">📩 طلبات اتصال <i id="ckopen"></i></button><button class="chip" data-ck="wa">🟢 واتساب</button><button class="chip" data-ck="call">📞 اتصال</button></div>
     <div id="clog">${loading}</div></div>`;
 }
 export function initContacts(pg) {
@@ -263,9 +263,17 @@ export function initContacts(pg) {
   const load = async (extra = {}) => {
     try {
       const j = await api('adm_contacts', { kind: k, ...extra });
-      ['call', 'wa', 'form'].forEach((x) => { pg.querySelector('#ck-' + x).textContent = j.week[x] || 0; });
+      ['call', 'wa', 'form', 'sell'].forEach((x) => { pg.querySelector('#ck-' + x).textContent = j.week[x] || 0; });
       pg.querySelector('#ckopen').textContent = j.open || '';
-      box.innerHTML = j.items.length ? j.items.map((x) => `<div class="crow${x.kind === 'form' && !x.done ? ' due' : ''}">
+      const sellRow = (x) => `<div class="crow${!x.done ? ' due' : ''}"><i class="cic">🏷️</i>
+        <div><b>أرض للبيع · <span class="notr">${H.esc(x.name)}</span></b>
+          <span><b class="notr">${H.esc(x.who)}</b> · <span dir="ltr">${H.esc(x.phone)}</span>${x.uid ? ` · <button class="clink notr" data-lead="${x.uid}">ملفه</button>` : ''}</span>
+          <span class="notr">${x.ft ? `${Number(x.ft).toLocaleString('en-US')} قدم² · ` : ''}<b>${Number(x.price || 0).toLocaleString('en-US')} د.إ</b>${x.ft && x.price ? ` · ${Math.round(x.price / x.ft).toLocaleString('en-US')} د.إ/قدم` : ''}</span>
+          ${x.msg ? `<p class="notr">${H.esc(x.msg)}</p>` : ''}
+          ${(x.photos || []).length ? `<div class="sellph">${x.photos.map((u) => `<a href="${H.esc(u)}" data-ext><img src="${H.esc(u)}" alt="" loading="lazy"></a>`).join('')}</div>` : ''}
+          <div class="cact"><a class="btn ghost sm" href="tel:${H.esc(x.phone)}">📞 اتصال</a><a class="btn wa sm" href="${H.esc(waUrl(x.phone))}" data-ext>واتساب</a>${x.done ? '<i class="pill ok">تم التواصل</i>' : `<button class="btn primary sm" data-done="${x.t}">✓ تم التواصل</button>`}</div></div>
+        <time>${ago(x.t)}</time></div>`;
+      box.innerHTML = j.items.length ? j.items.map((x) => x.kind === 'sell' ? sellRow(x) : `<div class="crow${x.kind === 'form' && !x.done ? ' due' : ''}">
         <i class="cic">${(SRC[x.kind] || ['•'])[0]}</i>
         <div><b>${(SRC[x.kind] || ['', x.kind])[1]}${x.ref ? ` · <span dir="ltr">${H.esc(x.ref)}</span>` : ''}</b>
           ${x.id ? `<button class="clink notr" ${/^\d+$/.test(x.id) ? `data-oland="${H.esc(x.id)}"` : `data-land="${H.esc(x.id)}"`}>${H.esc(x.name)}</button>` : ''}
