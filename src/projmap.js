@@ -42,21 +42,48 @@ export async function initMapPage(pg) {
   loadEl.remove();
   const map = L.map(pg.querySelector('#pmapEl'), { zoomControl: false, attributionControl: true }).setView(pins[0].c, 11);
   L.control.zoom({ position: 'bottomleft' }).addTo(map);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap © CARTO' }).addTo(map);
+  // Esri tiles: no key needed (CARTO now answers apps with an «API KEY REQUIRED» picture). Street map + satellite toggle.
+  const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
+  const street = L.tileLayer(ESRI + 'World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles © Esri' });
+  const sat = L.layerGroup([
+    L.tileLayer(ESRI + 'World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles © Esri' }),
+    L.tileLayer(ESRI + 'Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
+  ]);
+  let isSat = lsGet('pmapSat', false);
+  (isSat ? sat : street).addTo(map);
+  const tg = document.createElement('button'); tg.className = 'pmap-tg';
+  const tgLbl = () => { tg.innerHTML = isSat ? `${I.map}<span>خريطة</span>` : `${I.globe || I.map}<span>قمر صناعي</span>`; };
+  tgLbl(); pg.querySelector('.pmap').appendChild(tg);
+  tg.addEventListener('click', () => { map.removeLayer(isSat ? sat : street); isSat = !isSat; (isSat ? sat : street).addTo(map); lsSet('pmapSat', isSat); tgLbl(); });
   const show = (p) => {
     const av = p.available || 0;
     card.innerHTML = `<button class="pmap-x" data-pmx aria-label="إغلاق">✕</button><img src="${esc(p.poster)}" alt="" onerror="this.remove()"><div class="pmap-i"><b>${esc(p.name)}</b><span>${av ? `<em>${av}</em> أرض متاحة` : 'لا توجد أراضٍ متاحة حالياً'}</span>
       <div class="pmap-b"><button class="btn primary" data-project="${esc(p.slug)}">${I.building} تفاصيل المشروع</button>${p.map ? `<button class="btn ghost" data-pview="${esc(p.slug)}">${I.grid} المخطط</button>` : ''}</div></div>`;
     card.hidden = false;
   };
-  const bounds = [];
+  const bounds = [], marks = [];
   for (const { p, c } of pins) {
     const av = p.available || 0;
     const icon = L.divIcon({ className: 'pmk-w', html: `<div class="pmk${av ? '' : ' none'}"><b>${esc(p.name)}</b>${av ? `<i>${av}</i>` : ''}</div>`, iconSize: null, iconAnchor: [0, 0] });
-    L.marker(c, { icon }).addTo(map).on('click', () => { show(p); map.panTo(c); });
-    bounds.push(c);
+    const m = L.marker(c, { icon, riseOnHover: true }).addTo(map).on('click', () => { show(p); map.flyTo(c, Math.max(map.getZoom(), 14), { duration: .6 }); });
+    marks.push({ m, c, av }); bounds.push(c);
   }
+  // declutter: a label only shows where it doesn't cover another one; the rest shrink to a small gold dot with the count
+  const declutter = () => {
+    const taken = [];
+    const order = [...marks].sort((a, b) => b.av - a.av);
+    for (const k of order) {
+      const el = k.m.getElement() && k.m.getElement().querySelector('.pmk'); if (!el) continue;
+      el.classList.remove('dot');
+      const pt = map.latLngToContainerPoint(k.c), w = el.offsetWidth + 6, h = el.offsetHeight + 8;
+      const box = [pt.x - w / 2, pt.y - h, pt.x + w / 2, pt.y];
+      const hit = taken.some((t) => box[0] < t[2] && box[2] > t[0] && box[1] < t[3] && box[3] > t[1]);
+      if (hit) { el.classList.add('dot'); k.m.setZIndexOffset(-100); } else { taken.push(box); k.m.setZIndexOffset(100); }
+    }
+  };
+  map.on('zoomend moveend', declutter);
   if (bounds.length > 1) map.fitBounds(bounds, { padding: [60, 60], maxZoom: 13 });
+  setTimeout(declutter, 50);
   map.on('click', () => { card.hidden = true; });
   card.addEventListener('click', (e) => { if (e.target.closest('[data-pmx]')) { e.stopPropagation(); card.hidden = true; } });
   setTimeout(() => map.invalidateSize(), 300);
