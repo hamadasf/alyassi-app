@@ -411,7 +411,9 @@ add_action( 'template_redirect', function () {
 		. '<meta property="og:url" content="' . esc_url( home_url( '/?oay_p=' . rawurlencode( $raw ) ) ) . '">'
 		. '<meta property="og:image" content="' . esc_url( $img ) . '"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:type" content="image/jpeg">'
 		. '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="' . esc_url( $img ) . '">'
-		. '<meta http-equiv="refresh" content="0;url=' . esc_url( $to ) . '"><script>location.replace(' . wp_json_encode( $to ) . ')</script></head>'
+		. '<noscript><meta http-equiv="refresh" content="0;url=' . esc_url( $to ) . '"></noscript>'
+		// Android with the app installed: open the plot in the app (falls back to the plan on the website)
+		. '<script>(function(){var to=' . wp_json_encode( $to ) . ';if(/Android/i.test(navigator.userAgent)&&!/wv\)|; wv/.test(navigator.userAgent)){location.replace(' . wp_json_encode( 'intent://open/land/' . rawurlencode( $slug . ':' . $n ) . '#Intent;scheme=com.omaralyassi.realestate;package=com.omaralyassi.realestate;S.browser_fallback_url=' . rawurlencode( $to ) . ';end' ) . ');setTimeout(function(){if(!document.hidden)location.replace(to);},1800);}else{location.replace(to);}})()</script></head>'
 		. '<body style="font-family:sans-serif;text-align:center;padding:40px"><a href="' . esc_url( $to ) . '">' . esc_html( $title ) . '</a></body></html>';
 	exit;
 }, 0 );

@@ -1,5 +1,16 @@
 const s = (d, extra = '') => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
 export const I = {
+  flame: s('<path d="M12 22c4 0 7-2.7 7-6.8 0-3.3-2.2-5.4-3.6-7.6-.5 2-1.6 3.2-2.9 3.7C13 8 11.7 4.8 9 2c.3 3.3-1.6 5.4-3.1 7.5A8.6 8.6 0 0 0 5 15.2C5 19.3 8 22 12 22z"/><path d="M12 22c-1.7 0-3-1.2-3-3 0-1.6 1.2-2.6 2-3.6.4 1 1.1 1.6 2 1.8.4-.9.4-1.8.2-2.7 1.1 1 1.8 2.5 1.8 4.5 0 1.8-1.3 3-3 3z"/>'),
+  clock: s('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  scale: s('<path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/>'),
+  chart: s('<path d="M3 21h18M6 17V11M11 17V6M16 17v-4M21 17V8"/>'),
+  image: s('<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5.5-5.5L5 20"/>'),
+  brief: s('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>'),
+  file: s('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>'),
+  trend: s('<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>'),
+  bookmark: s('<path d="M6 3h12v18l-6-4-6 4z"/>'),
+  wifioff: s('<path d="M2 8.8a15 15 0 0 1 4.2-2.7M10 5.1a15 15 0 0 1 12 3.7M5 12.5a10 10 0 0 1 3.3-2.1M15.6 10.6a10 10 0 0 1 3.4 1.9M8.5 16a5 5 0 0 1 7 0M3 3l18 18"/>'),
+  home2: s('<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9v12h14V9"/>'),
   calc: s('<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><rect x="8" y="5.5" width="8" height="4" rx="1"/><path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01M15.5 16.5h.01"/>'),
   book: s('<path d="M12 6.5C10.3 5 8 4.5 4 4.5v14c4 0 6.3.5 8 2 1.7-1.5 4-2 8-2v-14c-4 0-6.3.5-8 2z"/><path d="M12 6.5v14"/>'),
   wanted: s('<path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21H11"/><path d="M14 3l5 5h-3.5A1.5 1.5 0 0 1 14 6.5z"/><circle cx="16" cy="16" r="3"/><path d="m18.2 18.2 2.3 2.3"/><path d="M8 9h3M8 13h3"/>'),

@@ -73,7 +73,7 @@ export async function initPlanView2(pg, p, focusN) {
       <div class="pvc1"><b>قطعة رقم ${esc(sel.n)}</b><span class="pvst ${sel.status}">${st}</span></div>
       <div class="pvc2"><span>${esc(sel.use || '')}</span><span>${sel.ft ? money(sel.ft) + ' قدم²' : ''}</span>${sel.status !== 'sold' && sel.total ? `<b>${money(sel.total)} د.إ</b>` : ''}</div>
       <button class="btn primary block" data-land="${esc(sel.id)}">تفاصيل الأرض</button>
-      ${H.canDesign && H.canDesign() && (sel.poly || sel.pc) ? `<button class="btn adgbtn block" data-adgen="${esc(sel.id)}">🖼️ تصميم بوست</button>` : ''}`;
+      ${H.canDesign && H.canDesign() && (sel.poly || sel.pc) ? `<button class="btn adgbtn block" data-adgen="${esc(sel.id)}">${H.I.image} تصميم بوست</button>` : ''}`;
     card.querySelector('.pvx').onclick = (e) => { e.stopPropagation(); sel = null; showCard(); full(); };
   };
 

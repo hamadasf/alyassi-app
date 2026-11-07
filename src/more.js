@@ -41,6 +41,8 @@ export function renderMore(el) {
       ${can('viewings') ? row(I.calendar || I.bell, 'مواعيد المعاينة (الإدارة)', 'data-views') : ''}
       ${can('leads') ? row(I.user, 'متابعة العملاء', 'data-leads') : ''}
       ${can('leads') ? row(I.phone, 'سجل التواصل', 'data-contacts') : ''}
+      ${can('leads') ? row(I.star, 'تقييمات الخدمة', 'data-rates', '<small>رأي العملاء بعد التواصل</small>') : ''}
+      ${can('leads') ? row(I.user, 'التسجيل المسبق «قريباً»', 'data-prereg', '<small>من صفحة omaralyassirealestate.com/app</small>') : ''}
       ${can('chats') ? row(I.chat, 'المحادثات الخاصة', 'data-tab="chats"') : ''}
       ${can('push') ? row(I.bell, 'إشعار موجّه', 'data-pushc') : ''}
       ${can('report') ? row(I.grid, 'التقرير الأسبوعي', 'data-report') : ''}
@@ -68,10 +70,10 @@ export function renderMore(el) {
 
 /* ================= profile ================= */
 export function profilePage() {
-  const { esc } = H; const u = session.user() || {};
+  const { esc, I } = H; const u = session.user() || {};
   return `<div class="pprof">${avatar(u, 'bav')}<h2><span class="notr">${esc(u.verified && u.company ? u.company : u.name || '')}</span> ${vb(u)}</h2>
       ${u.verified && u.company ? `<p class="muted">${esc(u.name || '')}</p>` : ''}
-      <span class="role">${u.admin ? '🛡️ مدير' : (u.staff || []).length ? '🧑‍💼 موظف' : u.verified ? '🏢 مكتب عقاري موثّق' : '🏠 عضو'}</span>
+      <span class="role">${u.admin ? I.shield + ' مدير' : (u.staff || []).length ? I.brief + ' موظف' : u.verified ? I.office + ' مكتب عقاري موثّق' : I.user + ' عضو'}</span>
       <div class="pinfo"><div><b>${u.admin ? '∞' : u.points || 0}</b><span>نقطة</span></div><div><b dir="ltr">${esc(u.phone || '—')}</b><span>الجوال</span></div></div>
       <p class="muted">${esc(u.email || '')}${u.google ? ' · دخول بحساب جوجل' : ''}</p></div>
     <div class="pad"><button class="btn primary block share-big" data-editprofile>تعديل الملف</button></div>`;

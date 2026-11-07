@@ -8,6 +8,7 @@ for (const s of ['arabic', 'latin']) for (const w of [400, 500, 700, 800]) {
 }
 for (const s of ['arabic', 'latin']) for (const w of [700, 800]) copyFileSync(`node_modules/@fontsource/noto-sans-arabic/files/noto-sans-arabic-${s}-${w}-normal.woff2`, `www/fonts/noto-arabic-${s}-${w}.woff2`);   // «قالب عمر الياسي»'s lettering
 for (const f of ['aljazeera', 'aljazeera-bold']) copyFileSync(`src/fonts/${f}.woff2`, `www/fonts/${f}.woff2`);   // the app's lettering (Al Jazeera)
+mkdirSync('www/leaflet', { recursive: true }); for (const f of ['leaflet.js', 'leaflet.css']) copyFileSync(`node_modules/leaflet/dist/${f}`, `www/leaflet/${f}`);   // «الخريطة» (loaded only when opened)
 copyFileSync('src/app.css', 'www/app.css');
 copyFileSync('src/img/villa-invest.jpg', 'www/assets/villa-invest.jpg');   // photo for investment villas (ground + 2)
 for (const f of ['adv-logo.jpg', 'adv-avatar.jpg', 'pp-head.jpg', 'pp-foot.jpg', 'pp-emblem.jpg']) copyFileSync(`src/img/${f}`, `www/assets/${f}`);   // the advertiser strip on every listing card

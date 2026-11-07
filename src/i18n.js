@@ -35,7 +35,7 @@ const EN = {
   'مسح': 'Clear', 'عرض النتائج': 'Show results', 'حفظ هذا البحث': 'Save this search', 'مسح الفلاتر': 'Clear filters',
   'لا توجد أراضٍ تطابق البحث': 'No lands match your search', 'لم تضف أي أرض للمفضلة بعد': "You haven't added any land to favourites yet", 'تصفح الأراضي': 'Browse lands',
   'أرض': 'lands', 'متاحة': 'Available', 'محجوزة': 'Reserved', 'مباعة': 'Sold', 'متاح': 'Available', 'محجوز': 'Reserved', 'مباع': 'Sold',
-  'مميزة': 'Featured', 'مميز': 'Featured', 'جديدة': 'New', 'سعر جديد': 'New price', 'سعر أقل': 'Lower price', 'تحديث': 'Update', 'عرض': 'Offer',
+  'مميزة': 'Featured', 'مميز': 'Featured', 'جديدة': 'New', 'سعر جديد': 'New price', 'سعر أقل': 'Lower price', 'نزل السعر': 'Price drop', 'شوهدت مؤخراً': 'Recently viewed', 'خريطة المشاريع': 'Projects map', 'الخريطة': 'Map', 'تحديث': 'Update', 'عرض': 'Offer',
   'قطعة رقم': 'Plot No.', 'قطعة': 'Plot', 'تم البيع': 'Sold', 'السعر عند الاستفسار': 'Price on request', 'للاستفسار': 'On request', 'عند الاستفسار': 'on request',
   'د.إ': 'AED', 'درهم': 'AED', 'قدم²': 'ft²', 'م²': 'm²', 'دفعة أولى': 'Down payment', 'أقساط': 'instalments', 'اتصال': 'Call', 'واتساب': 'WhatsApp',
   'فلل': 'Villas', 'تجاري': 'Commercial', 'سكني': 'Residential', 'صناعي': 'Industrial', 'محلات': 'Shops', 'أخرى': 'Other', 'مكاتب': 'Offices',

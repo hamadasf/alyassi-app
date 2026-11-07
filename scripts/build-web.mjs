@@ -49,7 +49,7 @@ writeFileSync('web/manifest.webmanifest', JSON.stringify({
 writeFileSync('web/sw.js', `// push notifications (OneSignal) + offline shell — app files cached, data always fetched fresh
 try { importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js'); } catch (e) {}
 const C = 'oay-${V}';
-const SHELL = ['./', 'index.html', 'app.js?v=${V}', 'app.css?v=${V}', 'assets/logo.png', 'assets/emblem.png'];
+const SHELL = ['./', 'index.html', 'app.js?v=${V}', 'app.css?v=${V}', 'assets/logo.png', 'assets/emblem.png', 'assets/mark.png'];
 self.addEventListener('install', (e) => { self.skipWaiting(); e.waitUntil(caches.open(C).then((c) => c.addAll(SHELL)).catch(() => {})); });
 self.addEventListener('activate', (e) => e.waitUntil(caches.keys().then((k) => Promise.all(k.filter((x) => x !== C).map((x) => caches.delete(x)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', (e) => {

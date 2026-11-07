@@ -18,7 +18,7 @@ export function setBooking(b) { pending = b; }
 export function bookPage() {
   const b = pending || {}; const u = session.user() || {};
   return `<div class="pad vbook">
-    <div class="ccard vhead"><b>📅 احجز موعد معاينة</b><span class="notr">${H.esc(b.title || '')}</span>${b.ref ? `<small dir="ltr">${H.esc(b.ref)}</small>` : ''}</div>
+    <div class="ccard vhead"><b>${H.I.calendar} احجز موعد معاينة</b><span class="notr">${H.esc(b.title || '')}</span>${b.ref ? `<small dir="ltr">${H.esc(b.ref)}</small>` : ''}</div>
     <h2 class="h2">اختر اليوم</h2><div class="vdays" id="vdays">${loading}</div>
     <h2 class="h2">اختر الوقت</h2><div class="vslots" id="vslots"><p class="muted">اختر اليوم أولاً</p></div>
     <form class="ccard cform" id="vform">
@@ -52,9 +52,9 @@ export async function initBook(pg) {
     e.preventDefault(); if (!date || !time) return; go.disabled = true;
     try {
       await api('view_book', { id: b.id, title: b.title, loc: b.loc || '', date, time, name: f.name.value.trim(), phone: f.phone.value.replace(/[^\d+]/g, ''), notes: f.notes.value.trim() });
-      pg.querySelector('.vbook').innerHTML = `<div class="ccard vdone"><span>✅</span><b>تم إرسال طلب المعاينة</b><p>${H.esc(b.title || '')}</p><p><b>${dayName(date)} · ${t12(time)}</b></p>
+      pg.querySelector('.vbook').innerHTML = `<div class="ccard vdone"><span>✓</span><b>تم إرسال طلب المعاينة</b><p>${H.esc(b.title || '')}</p><p><b>${dayName(date)} · ${t12(time)}</b></p>
         <p class="muted">سيتواصل معك فريقنا لتأكيد الموعد${session.token() ? '، وتجد مواعيدك في «المزيد ← مواعيد المعاينة»' : ''}.</p>
-        ${b.loc ? `<a class="btn ghost block" href="${H.esc(b.loc)}" data-ext>📍 موقع الأرض على الخريطة</a>` : ''}<button class="btn primary block" data-back>تم</button></div>`;
+        ${b.loc ? `<a class="btn ghost block" href="${H.esc(b.loc)}" data-ext>${H.I.pin} موقع الأرض على الخريطة</a>` : ''}<button class="btn primary block" data-back>تم</button></div>`;
     } catch (ex) { H.toast(ex.message); go.disabled = false; }
   };
 }
@@ -68,9 +68,9 @@ export async function initMyViews(pg) {
     try {
       const j = await api('view_mine');
       box.innerHTML = j.items.length ? j.items.map((v) => `<div class="vcard"><div class="vtop"><b class="notr">${H.esc(v.title)}</b><i class="pill ${ST[v.status][1]}">${ST[v.status][0]}</i></div>
-        <p>📅 ${dayName(v.date)} · ${t12(v.time)}</p>${v.officeNote ? `<p class="muted">💬 ${H.esc(v.officeNote)}</p>` : ''}
-        <div class="cact">${v.loc ? `<a class="btn ghost sm" href="${H.esc(v.loc)}" data-ext>📍 الموقع</a>` : ''}${['pending', 'confirmed'].includes(v.status) ? `<button class="btn ghost sm danger" data-vcancel="${v.id}">إلغاء الموعد</button>` : ''}</div></div>`).join('')
-        : `<div class="cempty">📅<p>لا توجد مواعيد — احجز معاينة من صفحة أي أرض</p></div>`;
+        <p>${H.I.calendar} ${dayName(v.date)} · ${t12(v.time)}</p>${v.officeNote ? `<p class="muted">💬 ${H.esc(v.officeNote)}</p>` : ''}
+        <div class="cact">${v.loc ? `<a class="btn ghost sm" href="${H.esc(v.loc)}" data-ext>${H.I.pin} الموقع</a>` : ''}${['pending', 'confirmed'].includes(v.status) ? `<button class="btn ghost sm danger" data-vcancel="${v.id}">إلغاء الموعد</button>` : ''}</div></div>`).join('')
+        : `<div class="cempty">${H.I.calendar}<p>لا توجد مواعيد — احجز معاينة من صفحة أي أرض</p></div>`;
     } catch (e) { box.innerHTML = `<p class="muted">${H.esc(e.message)}</p>`; }
   };
   box.onclick = async (e) => { const b = e.target.closest('[data-vcancel]'); if (!b) return; if (!confirm('إلغاء موعد المعاينة؟')) return; try { await api('view_cancel', { id: b.dataset.vcancel }); H.toast('تم إلغاء الموعد'); load(); } catch (ex) { H.toast(ex.message); } };

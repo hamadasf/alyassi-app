@@ -62,7 +62,7 @@ jobs:
           i = s.index('</activity>'); s = s[:i] + f + s[i:]
           # links from the home-screen widget: com.omaralyassi.realestate://open/<page>
           f2 = ('<intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" />'
-                '<data android:scheme="com.omaralyassi.realestate" android:host="open" /></intent-filter>')
+                '<category android:name="android.intent.category.BROWSABLE" /><data android:scheme="com.omaralyassi.realestate" android:host="open" /></intent-filter>')
           i = s.index('</activity>'); s = s[:i] + f2 + s[i:]
           # the home-screen widget (latest news + offer)
           w = ('<receiver android:name=".NewsWidget" android:exported="false" android:label="أخبار عمر الياسي">'

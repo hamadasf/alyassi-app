@@ -8,8 +8,9 @@
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
+  <div id="splash"><img src="assets/mark.png" alt="" onerror="this.style.display='none'"><b>عمر الياسي للعقارات</b><span>OMAR AL YASSI REAL ESTATE</span><i></i></div>
   <!-- HOME -->
-  <div class="offbar" id="offbar" hidden>📡 أنت غير متصل بالإنترنت — تُعرض آخر بيانات محفوظة</div>
+  <div class="offbar" id="offbar" hidden><span data-i="wifioff"></span> أنت غير متصل بالإنترنت — تُعرض آخر بيانات محفوظة</div>
   <section class="tab" id="home">
     <div class="ticker" id="ticker" hidden></div>
     <div class="ptr" data-i="refresh"></div>
@@ -21,6 +22,7 @@
     <header class="top">
       <div class="searchbar"><span data-i="search"></span><input id="q" type="search" inputmode="search" placeholder="رقم القطعة، المشروع، النوع…" autocomplete="off"></div>
       <button id="filterBtn" class="iconbtn" aria-label="الفلاتر"><span data-i="filter"></span><i class="n"></i></button>
+      <button class="iconbtn" data-pmap aria-label="الخريطة"><span data-i="map"></span></button>
     </header>
     <div class="chips scroll sticky"></div>
     <div class="ptr" data-i="refresh"></div>
@@ -29,7 +31,7 @@
 
   <!-- PROJECTS -->
   <section class="tab" id="projects" hidden>
-    <header class="top"><h1>المشاريع</h1></header>
+    <header class="top"><h1>المشاريع</h1><button class="mapbtn" data-pmap><span data-i="map"></span>الخريطة</button></header>
     <div class="ptr" data-i="refresh"></div>
     <div class="scroller"><div class="list"></div></div>
   </section>
@@ -77,13 +79,15 @@
       <label>المساحة من (قدم²)<input id="fminA" inputmode="numeric" placeholder="0"></label>
       <label>إلى<input id="fmaxA" inputmode="numeric" placeholder="أي مساحة"></label>
     </div>
+    <div id="rngA"></div>
     <div class="two">
       <label>السعر من (د.إ)<input id="fminP" inputmode="numeric" placeholder="0"></label>
       <label>إلى<input id="fmaxP" inputmode="numeric" placeholder="أي سعر"></label>
     </div>
+    <div id="rngP"></div>
     <div class="two btns"><button class="btn ghost" id="resetF">مسح</button><button class="btn primary" id="applyF">عرض النتائج</button></div>
-    <button class="btn ghost block savef" id="saveF">🔖 حفظ هذا البحث</button>
-    <button class="btn ghost block savef" id="alertF">🔔 نبهني بأراضٍ جديدة مثل هذا البحث</button>
+    <button class="btn ghost block savef" id="saveF"><span data-i="bookmark"></span> حفظ هذا البحث</button>
+    <button class="btn ghost block savef" id="alertF"><span data-i="bell"></span> نبهني بأراضٍ جديدة مثل هذا البحث</button>
   </div>
   <div id="toast"></div>
   <script src="app.js"></script>

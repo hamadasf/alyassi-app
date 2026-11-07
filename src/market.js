@@ -46,9 +46,9 @@ export async function fillMarketCard(root, l) {
   try {
     const r = compare(l, await load());
     if (!r) { el.remove(); return; }
-    if (!r.n) { el.innerHTML = `<b>📈 مقارنة بالسوق</b><p class="muted">لا توجد إعلانات مشابهة مسجّلة لهذا المشروع بعد.</p><button class="btn sm" data-mkadd="${esc(l.project)}">＋ أضف إعلاناً مشابهاً</button>`; return; }
+    if (!r.n) { el.innerHTML = `<b>${H.I.trend} مقارنة بالسوق</b><p class="muted">لا توجد إعلانات مشابهة مسجّلة لهذا المشروع بعد.</p><button class="btn sm" data-mkadd="${esc(l.project)}">＋ أضف إعلاناً مشابهاً</button>`; return; }
     el.className = 'mkcard ' + tone(r.diff);
-    el.innerHTML = `<div class="mk1"><b>📈 مقارنة بالسوق</b><span>${r.n} ${r.n > 10 ? 'إعلاناً' : 'إعلانات'} مشابهة${r.usedSide ? ` · ${esc(r.side)}` : ''}</span></div>
+    el.innerHTML = `<div class="mk1"><b>${H.I.trend} مقارنة بالسوق</b><span>${r.n} ${r.n > 10 ? 'إعلاناً' : 'إعلانات'} مشابهة${r.usedSide ? ` · ${esc(r.side)}` : ''}</span></div>
       <div class="mk2"><div><small>أرخص</small><b>${m(r.lo)}</b></div><div><small>متوسط السوق</small><b>${m(r.md)}</b></div><div class="us"><small>سعرنا</small><b>${m(r.ours)}</b></div></div>
       <p class="mkv">${verdict(r)} <small>(درهم / قدم)</small></p>
       <p class="mks">لتكون الأرخص: <b>${m(r.cheapest)} درهم</b> · مستوى السوق: ${m(r.level)} درهم</p>

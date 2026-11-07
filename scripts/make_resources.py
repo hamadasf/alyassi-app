@@ -21,6 +21,7 @@ def gold_only(im):
     pad = int(max(bb[2] - bb[0], bb[3] - bb[1]) * .02)
     return im.crop((max(0, bb[0] - pad), max(0, bb[1] - pad), min(w, bb[2] + pad), min(h, bb[3] + pad)))
 mark = gold_only(emblem)
+mark.save('www/assets/mark.png')   # the gold emblem alone, for the in-app opening screen
 def place(src, size, frac, bg):
     c = Image.new('RGBA', (size, size), bg)
     k = size * frac / max(src.width, src.height)   # scale up or down to fill the box

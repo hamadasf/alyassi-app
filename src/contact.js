@@ -18,7 +18,7 @@ export function contactBar({ id, title, url, loc = '' }) {
   const { esc, I, CONTACT, waLink } = H;
   const ref = refOf(typeof id === 'string' && id.includes(':') ? { project: id.split(':')[0], n: id.split(':')[1] } : { id });
   const msg = waText(title, url, ref);
-  return `<button class="btn bookbtn" data-book="${esc(id)}" data-btitle="${esc(title)}" data-bref="${esc(ref)}" data-bloc="${esc(loc)}">📅 احجز موعد معاينة</button>
+  return `<button class="btn bookbtn" data-book="${esc(id)}" data-btitle="${esc(title)}" data-bref="${esc(ref)}" data-bloc="${esc(loc)}">${I.calendar} احجز موعد معاينة</button>
   <div class="bar cbar3">
     <a class="btn call" href="tel:${CONTACT.phone}" data-tid="${esc(id)}">${I.phone} اتصال</a>
     <a class="btn wa" href="${esc(waLink(msg))}" data-ext data-tid="${esc(id)}">${I.wa} واتساب</a>
