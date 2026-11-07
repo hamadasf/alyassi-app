@@ -1251,3 +1251,12 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .mav svg, .acc-av svg { width: 55%; height: 55%; color: var(--navy); }
 .codebox b svg, .advnote b svg { width: 16px; height: 16px; vertical-align: -3px; }
 .ei { display: inline-flex; vertical-align: -0.2em; margin-inline-end: 3px; } .ei svg { width: 1.15em; height: 1.15em; }
+
+/* ownership / ready-to-build */
+.opills { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.opill { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; padding: 4px 10px 5px; border-radius: 999px; background: #eef3fb; color: #1d4e89; }
+.opill svg { width: 14px; height: 14px; } .opill.arab { background: #fbf3e2; color: #8a6420; } .opill.ready { background: #e7f6ee; color: #0f7b4e; }
+.card .opills { margin: 4px 0 0; } .card .opill { font-size: 11.5px; padding: 3px 8px 4px; }
+.chip.own svg { width: 15px; height: 15px; vertical-align: -3px; }
+#sheet .fchk { justify-content: flex-start; } .fchkb { display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: #f8f9fb; color: var(--ink); font-weight: 400; font-size: 14px; }
+#sheet .fchkb input { width: 20px; height: 20px; min-width: 0; padding: 0; margin: 0; accent-color: var(--navy); }

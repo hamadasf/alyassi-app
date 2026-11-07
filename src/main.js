@@ -534,7 +534,7 @@ function projectCard(p, wide) {
   return `<article class="card proj${wide ? ' wide' : ''}" data-project="${esc(p.slug)}">
     <div class="ph"><img loading="lazy" decoding="async" src="${esc(p.poster)}" alt="" onerror="this.style.opacity=0">
       <span class="badge av">${p.available} متاحة</span></div>
-    <div class="body"><h3>${esc(p.name)}</h3>${p.sub ? `<div class="meta">${I.pin}<span>${esc(p.sub)}</span></div>` : ''}
+    <div class="body"><h3>${esc(p.name)}</h3>${p.sub ? `<div class="meta">${I.pin}<span>${esc(p.sub)}</span></div>` : ''}${ownPills(p.slug)}
       ${wide ? `<button class="btn wa block pshare" data-pshare="${esc(p.slug)}">${I.wa} مشاركة المشروع PDF</button>` : ''}</div>
   </article>`;
 }
@@ -655,8 +655,23 @@ function startBanner() {
   }, 4500);
 }
 
+/* ---- each project's ownership (all nationalities / Arabs) and «ready to build», set by the office ---- */
+let PINFO = (() => { try { return JSON.parse(localStorage.getItem('oay:pinfo')) || {}; } catch { return {}; } })();
+const pinfo = (slug) => (PINFO.items || {})[slug] || {};
+async function loadPinfo() {
+  if (Date.now() - (PINFO.t || 0) < 6 * 3600e3 && PINFO.items) return;
+  try { const j = await accApi('proj_public'); PINFO = { t: Date.now(), items: j.items || {} }; try { localStorage.setItem('oay:pinfo', JSON.stringify(PINFO)); } catch { /* ignore */ } renderLands(); } catch { /* offline */ }
+}
+const OWN = { all: 'تملّك حر لجميع الجنسيات', arab: 'تملّك حر للعرب' };
+function ownPills(slug) {
+  const x = pinfo(slug); const a = [];
+  if (x.own) a.push(`<span class="opill ${x.own}">${I.globe} ${OWN[x.own]}</span>`);
+  if (x.ready) a.push(`<span class="opill ready">${I.home2} جاهزة للبناء</span>`);
+  return a.length ? `<div class="opills">${a.join('')}</div>` : '';
+}
+
 /* ---- lands with filters ---- */
-const F = { q: '', project: '', status: 'av', cat: '', minA: '', maxA: '', minP: '', maxP: '', sort: 'default', feat: false, offers: false };
+const F = { q: '', project: '', status: 'av', cat: '', minA: '', maxA: '', minP: '', maxP: '', sort: 'default', feat: false, offers: false, own: '', ready: false };
 /* plots the company does not list: searchable, opened as «غير متوفرة» */
 let naMemo = null, naFor = null;
 function naLands() {
@@ -678,6 +693,7 @@ function filtered() {
   let a = pool.filter((l) =>
     (all || !F.status || l.status === F.status) && (!F.project || l.project === F.project) && (!F.cat || l.cat === F.cat) &&
     (!F.feat || l.featured) && (!F.offers || offerFor(l)) &&
+    (!F.own || pinfo(l.project).own === F.own) && (!F.ready || pinfo(l.project).ready) &&
     (!F.minA || l.ft >= +F.minA) && (!F.maxA || l.ft <= +F.maxA) &&
     (!F.minP || (l.total && l.total >= +F.minP)) && (!F.maxP || (l.total && l.total <= +F.maxP)) &&
     (!q || l.n.includes(q) || l.projectName.includes(q) || l.use.includes(q) || (l.tag && l.tag.includes(q))));
@@ -692,7 +708,7 @@ function filtered() {
   return a;
 }
 function activeFilterCount() {
-  return ['project', 'cat', 'minA', 'maxA', 'minP', 'maxP'].filter((k) => F[k]).length + (F.status !== 'av') + (F.sort !== 'default') + F.feat + F.offers;
+  return ['project', 'cat', 'minA', 'maxA', 'minP', 'maxP', 'own'].filter((k) => F[k]).length + (F.status !== 'av') + (F.sort !== 'default') + F.feat + F.offers + F.ready;
 }
 function renderLandsHead() {
   const { projects, lands } = DATA();
@@ -701,6 +717,8 @@ function renderLandsHead() {
   $('#lands .chips').innerHTML =
     `<button class="chip${!F.cat && !F.offers ? ' on' : ''}" data-fcat="">الكل</button>` +
     (hasOfr || F.offers ? `<button class="chip ofr${F.offers ? ' on' : ''}" data-foffers>${I.flame} العروض</button>` : '') +
+    (Object.values(PINFO.items || {}).some((x) => x.own === 'all') ? `<button class="chip own${F.own === 'all' ? ' on' : ''}" data-fown="all">${I.globe} لجميع الجنسيات</button>` : '') +
+    (Object.values(PINFO.items || {}).some((x) => x.ready) ? `<button class="chip own${F.ready ? ' on' : ''}" data-fready>${I.home2} جاهزة للبناء</button>` : '') +
     cats.map((c) => `<button class="chip${F.cat === c ? ' on' : ''}" data-fcat="${esc(c)}">${esc(c)}</button>`).join('');
   const n = activeFilterCount();
   $('#filterBtn .n').textContent = n || ''; $('#filterBtn').classList.toggle('has', !!n);
@@ -738,7 +756,7 @@ function projectPage(p) {
   const av = p.lands.filter((l) => l.status === 'av').sort((a, b) => (!!offerFor(b) - !!offerFor(a)) || (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12)));
   return `<div class="hero-img" data-plan="${esc(p.plan)}" data-pview="${esc(p.slug)}"><img src="${esc(p.poster)}" alt=""><span class="open-plan">${I.map} افتح المخطط التفاعلي</span></div>
     <div class="pad">
-      <h1>${esc(p.name)}</h1>${p.sub ? `<div class="meta">${I.pin}<span>${esc(p.sub)}</span></div>` : ''}
+      <h1>${esc(p.name)}</h1>${p.sub ? `<div class="meta">${I.pin}<span>${esc(p.sub)}</span></div>` : ''}${ownPills(p.slug)}
       <button class="btn wa block share-big" data-pshare="${esc(p.slug)}">${I.wa} مشاركة المشروع PDF</button>
       <div class="stat3"><div class="av"><b>${p.available}</b>متاحة</div><div class="res"><b>${p.reserved}</b>محجوزة</div><div class="sold"><b>${p.sold}</b>مباعة</div></div>
       <div class="grid2">
@@ -768,7 +786,7 @@ function landPage(l) {
     <div class="pad">
       <div class="row between"><h1>قطعة رقم ${esc(l.n)}</h1>${l.featured && l.status === 'av' ? `<span class="badge star inline">${I.star} مميزة</span>` : ''}</div>
       <button class="meta link" data-project="${esc(l.project)}">${I.pin}<span>مشروع ${esc(l.projectName)}</span></button>
-      ${refLine(l.id)}
+      ${refLine(l.id)}${ownPills(l.project)}
       <button class="btn wa block share-big" data-share="land:${esc(l.id)}">${I.wa} مشاركة التفاصيل + مخطط الأرض PDF</button>
       ${o ? `<div class="ofr-box"><b>${I.flame} عرض لفترة محدودة</b>${o.note ? `<span>${esc(o.note)}</span>` : ''}<div class="ofr-t2">${I.clock} <span data-until="${o.until}">${leftText(o.until)}</span> · حتى ${dmy(o.until)}</div></div>` : ''}
       <div class="pricebox">${priceHTML(l, true)}${l.ppf && l.status !== 'sold' ? `<span>سعر القدم ${money(l.ppf)} د.إ</span>` : ''}</div>
@@ -966,7 +984,7 @@ function goBack() {
 function openSheet() {
   $('#fStatus').value = F.status; $('#fSort').value = F.sort;
   ['minA', 'maxA', 'minP', 'maxP'].forEach((k) => { $('#f' + k).value = F[k]; });
-  $('#fProject').value = F.project;
+  $('#fProject').value = F.project; $('#fOwn').value = F.own; $('#fReady').checked = F.ready;
   { const ls = DATA().lands; const top = (k, q) => { const v = ls.map((l) => +l[k] || 0).filter(Boolean).sort((x, y) => x - y); return v.length ? v[Math.min(v.length - 1, Math.floor(v.length * q))] : 0; };
     mountRange($('#rngA'), $('#fminA'), $('#fmaxA'), top('ft', 0.98) || 20000, 100, 'قدم²');
     mountRange($('#rngP'), $('#fminP'), $('#fmaxP'), top('total', 0.98) || 5e6, 10000, 'د.إ'); }
@@ -974,11 +992,11 @@ function openSheet() {
 }
 function closeSheet() { $('#sheet').classList.remove('open'); $('#scrim').classList.remove('open'); }
 function applySheet() {
-  F.status = $('#fStatus').value; F.sort = $('#fSort').value; F.project = $('#fProject').value;
+  F.status = $('#fStatus').value; F.sort = $('#fSort').value; F.project = $('#fProject').value; F.own = $('#fOwn').value; F.ready = $('#fReady').checked;
   ['minA', 'maxA', 'minP', 'maxP'].forEach((k) => { F[k] = $('#f' + k).value.replace(/[^\d]/g, ''); });
   closeSheet(); renderLands(); $('#lands .scroller').scrollTop = 0;
 }
-function resetFilters() { Object.assign(F, { q: '', project: '', status: 'av', cat: '', minA: '', maxA: '', minP: '', maxP: '', sort: 'default', feat: false, offers: false }); $('#q').value = ''; renderLands(); }
+function resetFilters() { Object.assign(F, { q: '', project: '', status: 'av', cat: '', minA: '', maxA: '', minP: '', maxP: '', sort: 'default', feat: false, offers: false, own: '', ready: false }); $('#q').value = ''; renderLands(); }
 
 /* ================= events ================= */
 document.addEventListener('click', (e) => {
@@ -1084,6 +1102,8 @@ document.addEventListener('click', (e) => {
   }
   if (ds.cat !== undefined && !ds.fcat) { resetFilters(); F.cat = ds.cat; renderLands(); closeAll(); return showTab('lands'); }
   if (ds.foffers !== undefined) { F.offers = !F.offers; renderLands(); return; }
+  if (ds.fown !== undefined) { F.own = F.own === ds.fown ? '' : ds.fown; renderLands(); return; }
+  if (ds.fready !== undefined) { F.ready = !F.ready; renderLands(); return; }
   if (ds.fcat !== undefined) { F.cat = ds.fcat; F.offers = false; renderLands(); return; }
   if (ds.compare !== undefined) { e.stopPropagation(); pushPage('compare', ds.compare); return; }
   if (ds.land) return pushPage('land', ds.land);
@@ -1225,6 +1245,7 @@ async function boot() {
   push.init(); push.render();
   if (session.token()) refreshMe().then(() => renderContact());
   await refresh(false);
+  loadPinfo();
   maybeAskRating();
   if (location.hash === '#notify') { history.replaceState(null, '', location.pathname); setTimeout(() => push.enable(), 1200); }
   const hm = /^#land=(.+)$/.exec(location.hash);

@@ -6,7 +6,7 @@
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-foreach ( array( 'design_get', 'design_save', 'design_del', 'proj_lines', 'proj_lines_save' ) as $a ) {
+foreach ( array( 'design_get', 'design_save', 'design_del', 'proj_lines', 'proj_lines_save', 'proj_public' ) as $a ) {
 	add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a );
 	add_action( 'wp_ajax_nopriv_oay_acc_' . $a, 'oay_acc_' . $a );
 }
@@ -76,4 +76,16 @@ function oay_acc_proj_lines_save() {
 	$m = get_option( 'oay_proj_lines', array() ); if ( ! is_array( $m ) ) { $m = array(); }
 	$m[ $slug ] = array( 'p1' => mb_substr( sanitize_text_field( oay_acc_arg( 'p1', 80 ) ), 0, 60 ), 'p2' => mb_substr( sanitize_text_field( oay_acc_arg( 'p2', 80 ) ), 0, 60 ), 'sub' => mb_substr( sanitize_text_field( oay_acc_arg( 'sub', 120 ) ), 0, 80 ) );
 	update_option( 'oay_proj_lines', $m, false ); oay_acc_ok( array( 'lines' => $m[ $slug ] ) );
+}
+
+/** for everyone (the app's filter «التملّك» / «جاهزة للبناء» and the badges): who may own in each project, and whether it is ready to build */
+function oay_acc_proj_public() {
+	$out = array();
+	foreach ( oay_proj_lines_all() as $slug => $l ) {
+		$txt = ( $l['p1'] ?? '' ) . ' ' . ( $l['p2'] ?? '' ) . ' ' . ( $l['sub'] ?? '' );
+		$own = false !== mb_strpos( $txt, 'جميع الجنسيات' ) || false !== mb_strpos( $txt, 'لكل الجنسيات' ) ? 'all' : ( false !== mb_strpos( $txt, 'للعرب' ) ? 'arab' : '' );
+		$out[ $slug ] = array( 'own' => $own, 'ready' => false !== mb_strpos( $txt, 'جاهز' ), 'note' => mb_substr( (string) ( $l['p1'] ?? '' ), 0, 60 ) );
+	}
+	header( 'Cache-Control: public, max-age=600' );
+	oay_acc_ok( array( 'items' => (object) $out ) );
 }
