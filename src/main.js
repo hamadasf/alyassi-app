@@ -600,9 +600,9 @@ function renderHome() {
         <div><b>${lands.filter((l) => l.status === 'sold').length || '—'}</b><span>تم بيعها</span></div>
       </div>
     </section>
-    ${isBroker() ? '<div id="wHome" class="whomebox"></div>' : ''}
     ${bannerHTML(av, projects)}
     <div class="qacts"><button data-alerts=""><span>${I.alert}</span>أرض تناسبني</button><button data-wanted><span>${I.wanted}</span>مطلوب أرض</button><button data-calc=""><span>${I.calc}</span>حاسبة الأقساط</button><button data-guide><span>${I.book}</span>دليل الإجراءات</button></div>
+    ${isBroker() ? '<div id="wHome" class="whomebox"></div>' : ''}
     ${notifCard()}
     ${ofr.length ? `<div class="sec-h ofr-h"><h2>${I.flame} عروض لفترة محدودة</h2><button data-go="lands" data-offers="1">عرض الكل</button></div>
       <div class="hscroll lands">${ofr.map(landCard).join('')}</div>` : ''}

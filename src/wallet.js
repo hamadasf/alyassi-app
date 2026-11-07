@@ -70,11 +70,12 @@ export async function homeWalletCard(el) {
   if (!el) return;
   try {
     const j = await api('wallet_get'); const s = summary(j.deals || []);
-    if (!(j.deals || []).length) { el.innerHTML = `<button class="whome empty" data-wallet=""><b>💼 محفظتي</b><span>سجّل صفقاتك وأقساطك وتابع أرباحك من مكان واحد</span></button>`; return; }
+    // no deals yet → nothing on the home page (محفظتي is already in the bottom bar)
+    if (!(j.deals || []).length) { el.innerHTML = ''; return; }
     const mo = s.months[0], nx = s.next;
-    el.innerHTML = `<button class="whome" data-wallet=""><div class="wh1"><b>💼 محفظتي</b><span>هذا الشهر</span></div>
+    el.innerHTML = `<button class="whome" data-wallet=""><div class="wh1"><b>${ei('wallet')} محفظتي</b><span>هذا الشهر</span></div>
       <div class="wh2"><div class="in"><small>تستلم</small><b>${m(mo.in)}</b></div><div class="out"><small>تدفع</small><b>${m(mo.out)}</b></div><div><small>أرباحي</small><b>${m(s.earn)}</b></div></div>
-      ${nx ? `<div class="wh3 ${nx.d < today() ? 'late' : ''}">${nx.d < today() ? '⚠️ متأخرة' : 'الدفعة القادمة'}: <b>${m(nx.a)} د.إ</b> ${nx.deal.type === 'sell' ? 'لك' : 'عليك'} · ${dmy(nx.d)}</div>` : ''}</button>`;
+      ${nx ? `<div class="wh3 ${nx.d < today() ? 'late' : ''}">${nx.d < today() ? 'دفعة متأخرة' : 'الدفعة القادمة'}: <b>${m(nx.a)} د.إ</b> ${nx.deal.type === 'sell' ? 'لك' : 'عليك'} · ${dmy(nx.d)}</div>` : ''}</button>`;
   } catch { el.innerHTML = ''; }
 }
 /** the company's own wallet: all its lands from every project, the buyers' coming instalments, and the brokers' deals */

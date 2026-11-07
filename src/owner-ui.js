@@ -565,7 +565,7 @@ export function oLandPage(x) {
       <h1 class="notr">${esc(x.title)}</h1>
       ${refLine(String(x.id))}
       ${can('listings') || can('report') ? `<button class="btn ghost block stbtn" data-stats="${x.id}">📊 إحصائيات الإعلان</button>` : ''}
-      ${session.user() && x.by && +x.by === +session.user().id ? `<button class="btn wbtn block" data-owndeal="${x.id}">💼 سجّلها بيعاً في محفظتي</button>` : ''}
+      ${session.user() && x.by && +x.by === +session.user().id ? `<button class="btn wbtn block" data-owndeal="${x.id}">${I.wallet} سجّلها بيعاً في محفظتي</button>` : ''}
       ${x.seller ? `<div class="seller big">${I.verified}<span>${esc(x.seller)} · مكتب عقاري موثّق</span></div>` : ''}
       ${x.price ? `<div class="pricebox"><div class="price big">${money(x.price)} <small>د.إ</small></div></div>` : ''}
       <div class="inst">${rows.map((r) => `<div class="r"><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}</div>
