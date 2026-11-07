@@ -1,0 +1,66 @@
+name: iPhone app (native)
+
+# Builds the real iPhone app (Capacitor) to check it compiles. Signing and uploading to the App Store need an
+# Apple Developer account: add the secrets listed in README «iPhone / App Store» and this job will also make the .ipa.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['wordpress/**', 'README.md', '.github/workflows/web.yml', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install packages
+        run: npm ci
+      - name: Company logo
+        run: |
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36"
+          get() { [ -f "$2" ] || curl -fsSL --connect-timeout 15 --max-time 40 --retry 2 -A "$UA" -o "$2" "$1" || true; }
+          mkdir -p brand
+          get "https://omaralyassirealestate.com/wp-content/plugins/alyassi-dabdaba-plan/assets/logo.png" brand/logo.png
+          get "https://omaralyassirealestate.com/wp-content/uploads/2026/07/logo-2.png" brand/emblem.png
+          test -s brand/logo.png && test -s brand/emblem.png
+          python3 -m pip install --quiet --break-system-packages pillow || python3 -m pip install --quiet pillow
+          python3 scripts/make_resources.py brand/logo.png brand/emblem.png
+      - name: Build web app
+        env:
+          APP_VERSION: 1.0.${{ github.run_number }}
+        run: npm run build
+      - name: Create iPhone project
+        run: |
+          npx cap add ios --packagemanager CocoaPods
+          npx @capacitor/assets generate --ios --iconBackgroundColor '#ffffff' --splashBackgroundColor '#0e1c36' --splashBackgroundColorDark '#0e1c36'
+          P=ios/App/App/Info.plist
+          # links: com.omaralyassi.realestate://open/… and Google sign-in (…://auth); Arabic first; photo access for listings
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" $P
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" $P
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" $P
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string com.omaralyassi.realestate" $P
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDevelopmentRegion ar" $P
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string لاختيار صور الأرض أو صورتك الشخصية وشعار شركتك" $P
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string لتصوير الأرض عند إضافة إعلان" $P
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string لحفظ صور البوستات والمخططات في الصور" $P
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" $P
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.${{ github.run_number }}" $P || true
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" $P || true
+          npx cap sync ios
+      - name: Build (simulator, no signing)
+        working-directory: ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphonesimulator \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO -quiet build
+          ls build/Build/Products/Release-iphonesimulator/
+      - name: Keep the simulator build
+        run: cd ios/App/build/Build/Products/Release-iphonesimulator && zip -qr "$GITHUB_WORKSPACE/OmarAlYassi-ios-simulator.zip" App.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OmarAlYassi-ios-simulator-1.0.${{ github.run_number }}
+          path: OmarAlYassi-ios-simulator.zip
