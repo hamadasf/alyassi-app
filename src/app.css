@@ -1,3 +1,4 @@
+@font-face { font-family: AJ; font-weight: 100 900; font-display: swap; src: url(fonts/aljazeera.woff2) format('woff2'); ascent-override: 74%; descent-override: 30%; line-gap-override: 0%; }
 @font-face { font-family: Tajawal; font-weight: 400; font-display: swap; src: url(fonts/tajawal-arabic-400.woff2) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; }
 @font-face { font-family: Tajawal; font-weight: 500; font-display: swap; src: url(fonts/tajawal-arabic-500.woff2) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; }
 @font-face { font-family: Tajawal; font-weight: 700; font-display: swap; src: url(fonts/tajawal-arabic-700.woff2) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF; }
@@ -20,7 +21,7 @@
   --nav: 64px;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font: 400 15px/1.5 Tajawal, system-ui, sans-serif; overscroll-behavior: none; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font: 400 15px/1.5 AJ, Tajawal, system-ui, sans-serif; overscroll-behavior: none; }
 button, input, select { font: inherit; color: inherit; }
 button { background: none; border: 0; padding: 0; cursor: pointer; }
 a { color: inherit; text-decoration: none; }
@@ -71,7 +72,7 @@ svg { flex: none; }
 .searchbar { flex: 1; display: flex; align-items: center; gap: 8px; background: #fff; color: var(--mute); border-radius: 12px; padding: 0 12px; height: 44px; }
 .searchbar input { font-size: 16px; flex: 1; border: 0; outline: 0; background: none; color: var(--ink); height: 100%; min-width: 0; }
 .iconbtn { position: relative; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.12); color: #fff; }
-.iconbtn .n { position: absolute; top: -4px; left: -4px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--gold); color: var(--navy); font: 800 11px/18px Tajawal; font-style: normal; display: none; }
+.iconbtn .n { position: absolute; top: -4px; left: -4px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--gold); color: var(--navy); font: 800 11px/18px AJ, Tajawal; font-style: normal; display: none; }
 .iconbtn.has .n { display: block; }
 .count { padding: 4px 18px 8px; color: var(--mute); font-size: 13px; }
 
@@ -257,7 +258,7 @@ img { -webkit-user-drag: none; }
 
 /* ---------- updates ---------- */
 .bell { position: absolute; top: calc(var(--st) + 14px); left: 14px; width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; background: rgba(255,255,255,.1); color: #fff; }
-.bell i { position: absolute; top: -5px; right: -5px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #e11d48; color: #fff; font: 800 11px/20px Tajawal; font-style: normal; box-shadow: 0 0 0 2px var(--navy); }
+.bell i { position: absolute; top: -5px; right: -5px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #e11d48; color: #fff; font: 800 11px/20px AJ, Tajawal; font-style: normal; box-shadow: 0 0 0 2px var(--navy); }
 .badge.upd { top: auto; bottom: 10px; right: 10px; background: #2563eb; }
 .badge.upd.down { background: #16a34a; }
 .changes .cday { font-size: 14px; color: var(--mute); font-weight: 700; margin: 18px 4px 8px; }
@@ -1085,21 +1086,42 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .adg-allin { width: 100%; background: #fff; border-radius: 22px 22px 0 0; padding: 18px 16px calc(16px + var(--sb, 0px)); display: flex; flex-direction: column; gap: 10px; }
 .adg-allin b { font-size: 17px; color: var(--navy); } .adg-allin .btn { min-height: 48px; font-weight: 800; }
 /* «لدي أرض للبيع» */
-.sellcard { background: #fff; border-radius: 22px; padding: 18px 16px; box-shadow: 0 4px 20px rgba(0,0,0,.06); border: 1px solid var(--line); }
-.sellcard h2 { margin: 0; font-size: 22px; color: #1f2937; } .sellcard > p { margin: 4px 0 14px; }
-.sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 10px; }
-.sellcard label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 700; color: #4b5563; }
-.sellcard label i { color: #7B1E3A; font-style: normal; }
-.sellcard input, .sellcard select, .sellcard textarea { width: 100%; box-sizing: border-box; border: 1px solid #e5e7eb; background: #F8F7F4; border-radius: 12px; padding: 12px; font: inherit; font-size: 15px; color: #111827; min-width: 0; }
-.sellcard textarea { margin-top: 0; resize: vertical; } .sellcard form > label { margin-top: 12px; }
-.sphotos { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 13px; font-weight: 700; color: #4b5563; }
-.sadd { background: none; border: 0; color: #7B1E3A; font: inherit; font-weight: 800; font-size: 13px; padding: 6px 0; }
-.sthumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; } .sthumbs:empty { display: none; }
+.sellhero { display: flex; align-items: center; gap: 14px; background: linear-gradient(135deg, var(--navy), var(--navy2)); color: #fff; border-radius: 20px; padding: 18px 16px; }
+.sellhero h2 { margin: 0; font-size: 22px; font-weight: 400; } .sellhero p { margin: 2px 0 0; font-size: 13.5px; opacity: .8; }
+.shic { flex: none; width: 52px; height: 52px; border-radius: 16px; background: rgba(230,199,127,.16); display: flex; align-items: center; justify-content: center; }
+.shic svg { width: 28px; height: 28px; fill: var(--gold2); }
+.ssteps { list-style: none; display: flex; gap: 6px; padding: 0; margin: 12px 0; }
+.ssteps li { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12.5px; color: var(--mute); background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px 4px; white-space: nowrap; }
+.ssteps b { width: 20px; height: 20px; border-radius: 50%; background: #eef0f4; color: var(--mute); font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: 400; }
+.ssteps li.on { color: var(--navy); border-color: rgba(201,161,74,.5); } .ssteps li.on b { background: var(--gold); color: #fff; }
+.sellcard { background: #fff; border-radius: 20px; padding: 4px 16px 16px; box-shadow: 0 6px 24px rgba(14,28,54,.06); border: 1px solid var(--line); }
+.ssec { padding: 14px 0 16px; border-bottom: 1px dashed #e6e8ee; display: flex; flex-direction: column; gap: 12px; }
+.ssec h3 { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 15.5px; font-weight: 400; color: var(--navy); }
+.ssec h3 svg { width: 20px; height: 20px; fill: var(--gold); flex: none; } .ssec h3 small { margin-inline-start: auto; font-size: 12px; color: var(--mute); }
+.sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 10px; } .sgrid .full { grid-column: span 1; }
+.sellcard label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #4b5563; min-width: 0; }
+.sellcard label i { color: #c0392b; font-style: normal; }
+.sellcard input:not([type=radio]), .sellcard select, .sellcard textarea { width: 100%; box-sizing: border-box; border: 1.5px solid #e3e6ec; background: #fff; border-radius: 12px; padding: 12px; font: inherit; font-size: 15px; color: var(--ink); min-width: 0; transition: border-color .15s, box-shadow .15s; outline: 0; }
+.sellcard input:focus, .sellcard select:focus, .sellcard textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,161,74,.18); }
+.sellcard input::placeholder, .sellcard textarea::placeholder { color: #a5abb8; }
+.sellcard textarea { resize: vertical; min-height: 84px; }
+.sunit { position: relative; } .sunit input { padding-left: 54px !important; }
+.sunit em { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-style: normal; font-size: 12px; color: var(--mute); background: #f3f4f7; border-radius: 8px; padding: 3px 7px; pointer-events: none; }
+.schips { display: flex; flex-wrap: wrap; gap: 8px; }
+.schip { flex-direction: row !important; } .schip input { position: absolute; opacity: 0; pointer-events: none; }
+.schip span { display: block; padding: 8px 14px; border-radius: 999px; border: 1.5px solid #e3e6ec; background: #fff; font-size: 13.5px; color: #4b5563; transition: all .15s; }
+.schip input:checked + span { background: var(--navy); border-color: var(--navy); color: #fff; }
+.sadd { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 18px; border: 1.5px dashed #cfd4de; border-radius: 14px; background: #fafbfc; color: var(--navy); font: inherit; font-size: 14px; }
+.sadd svg { width: 22px; height: 22px; fill: var(--gold); }
+.sthumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; } .sthumbs:empty { display: none; }
 .sthumbs .pth { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; } .sthumbs img { width: 100%; height: 100%; object-fit: cover; }
 .sthumbs button { position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; }
-.btn.sellgo { margin-top: 16px; background: #7B1E3A; color: #fff; border: 0; min-height: 52px; border-radius: 999px; font-size: 17px; font-weight: 800; }
-.selldone { text-align: center; padding: 20px 4px 6px; } .selldone .ok { width: 64px; height: 64px; border-radius: 50%; background: #E7F6EE; color: #0F7B4E; font-size: 34px; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; }
-.sellfull { margin-top: 12px; }
+.sellgo { width: 100%; margin-top: 18px; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; border: 0; border-radius: 16px; background: linear-gradient(135deg, var(--navy2), var(--navy)); color: #fff; font: inherit; font-size: 18px; box-shadow: 0 10px 22px rgba(14,28,54,.25), inset 0 -3px 0 rgba(201,161,74,.9); }
+.sellgo svg { width: 22px; height: 22px; fill: var(--gold2); } .sellgo:active { transform: translateY(1px); box-shadow: 0 4px 12px rgba(14,28,54,.25), inset 0 -2px 0 rgba(201,161,74,.9); } .sellgo:disabled { opacity: .7; }
+.snote { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 10px 0 0; font-size: 12px; color: var(--mute); text-align: center; } .snote svg { width: 14px; height: 14px; fill: var(--mute); flex: none; }
+.selldone { text-align: center; padding: 26px 4px 10px; } .selldone h3 { font-weight: 400; color: var(--navy); } .selldone .ok { width: 64px; height: 64px; border-radius: 50%; background: #E7F6EE; color: #0F7B4E; font-size: 34px; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; }
+.sellfull { width: 100%; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border-radius: 16px; border: 1.5px solid var(--line); background: #fff; color: var(--navy); font: inherit; font-size: 14.5px; }
+.sellfull span { color: var(--gold); }
 .sellph { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; } .sellph img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; }
 @media (max-width: 360px) { .sgrid { grid-template-columns: 1fr; } }
 .kpis.ck { grid-template-columns: repeat(2, 1fr); }
