@@ -67,6 +67,16 @@ function oay_handle_change( $slug, $name, $old, $new ) {
 	do_action( 'oay_plot_changes', $slug, $name, $ch, $new );   // «أرض تناسبني» alerts (alyassi-app-crm.php)
 }
 
+/** the plot's picture (its spot on the plan, made by the app's build: og/<project>/<plot>.jpg) as the notification thumbnail */
+function oay_push_img( $c ) {
+	$id = isset( $c['id'] ) ? (string) $c['id'] : '';
+	$slug = ! empty( $c['project'] ) ? $c['project'] : strstr( $id, ':', true );
+	$n = isset( $c['n'] ) ? (string) $c['n'] : substr( strrchr( $id, ':' ), 1 );
+	if ( ! $slug || '' === $n || 'test' === $id ) { return array(); }
+	$img = 'https://hamadasf.github.io/alyassi-app/og/' . rawurlencode( $slug ) . '/' . rawurlencode( $n ) . '.jpg';
+	return array( 'big_picture' => $img, 'large_icon' => $img, 'ios_attachments' => array( 'plot' => $img ), 'chrome_web_image' => $img );
+}
+
 function oay_send( $ch ) {
 	$key = trim( (string) get_option( 'oay_onesignal_key', '' ) );
 	if ( '' === $key ) { return; }
@@ -94,7 +104,7 @@ function oay_send( $ch ) {
 			'app_id' => OAY_APP_ID, 'target_channel' => 'push', 'filters' => oay_tag_filter( 'prices' ),
 			'headings' => array( 'en' => $title, 'ar' => $title ), 'contents' => array( 'en' => $body, 'ar' => $body ),
 			'web_url' => OAY_APP_URL . '#updates', 'data' => array( 'open' => 'updates', 'id' => $ch[0]['id'] ), 'ttl' => 86400,
-		) ),
+		) + oay_push_img( $ch[0] ) ),
 	) );
 }
 
@@ -161,7 +171,7 @@ function oay_send_offer( $o ) {
 			'headings' => array( 'en' => $title, 'ar' => $title ), 'contents' => array( 'en' => $body, 'ar' => $body ),
 			'web_url' => OAY_APP_URL . '#land=' . rawurlencode( $o['id'] ), 'data' => array( 'open' => 'land', 'id' => $o['id'] ),
 			'ttl' => 86400, 'priority' => 10,
-		) ),
+		) + oay_push_img( $o ) ),
 	) );
 	return ! is_wp_error( $r ) && wp_remote_retrieve_response_code( $r ) < 300;
 }

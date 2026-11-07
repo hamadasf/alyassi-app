@@ -91,7 +91,7 @@ document.addEventListener('click', (e) => { const t = e.target.closest('[data-vi
 
 /* ---------- the composer: text, photos (camera) and files ---------- */
 function composerHTML(ph) {
-  return `<div class="wabar"><div class="watts" hidden></div>
+  return `<div class="wabar"><div class="wareply" hidden></div><div class="watts" hidden></div>
     <form class="wacomp"><div class="wapill"><textarea rows="1" placeholder="${ph}" maxlength="3000"></textarea>
       <button type="button" class="wai" data-attach aria-label="إرفاق ملف">${ICON.clip}</button><button type="button" class="wai" data-cam aria-label="الكاميرا">${ICON.cam}</button></div>
       <button class="wasend" aria-label="إرسال">${H.I.send}</button></form>
@@ -101,7 +101,13 @@ function composerHTML(ph) {
 function bindComposer(root, { admin, onSend }) {
   const form = root.querySelector('.wacomp'), ta = form.querySelector('textarea'), strip = root.querySelector('.watts');
   const fpick = root.querySelector('.fpick'), cpick = root.querySelector('.cpick'), btn = form.querySelector('.wasend');
-  let picks = [], busy = false;
+  let picks = [], busy = false, reply = null;
+  const rbar = root.querySelector('.wareply');
+  const setReply = (r) => {
+    reply = r; rbar.hidden = !r;
+    if (r) { rbar.innerHTML = `<div class="cq"><b>${H.esc(r.who)}</b><span class="notr">${H.esc(r.text)}</span></div><button type="button" aria-label="إلغاء الرد">✕</button>`; ta.focus(); }
+  };
+  rbar.addEventListener('click', (e) => { if (e.target.closest('button')) setReply(null); });
   const drawPicks = () => {
     strip.hidden = !picks.length;
     strip.innerHTML = picks.map((p, i) => `<div class="watt">${p.img ? `<img src="${p.prev}" alt="">` : `<span class="fi">${ICON.file}<em>${H.esc(p.ext)}</em></span><small class="notr" dir="ltr">${H.esc(p.name)}</small>`}<button type="button" data-rm="${i}" aria-label="إزالة">✕</button></div>`).join('');
@@ -140,11 +146,35 @@ function bindComposer(root, { admin, onSend }) {
         H.toast(picks.length > 1 ? `جارِ رفع المرفقات ${i + 1}/${picks.length}…` : 'جارِ رفع المرفق…');
         const j = await api('chat_file', { data: picks[i].data, name: picks[i].name }); files.push(j.id);
       }
-      if (await onSend(text, files)) { ta.value = ''; ta.style.height = ''; picks = []; drawPicks(); }
+      if (await onSend(text, files, reply ? reply.id : 0)) { ta.value = ''; ta.style.height = ''; picks = []; drawPicks(); setReply(null); }
     } catch (ex) { H.toast(ex.message); }
     busy = false; btn.disabled = false; btn.classList.remove('busy');
   };
-  return { ta };
+  return { ta, setReply };
+}
+
+/* ---- long-press a message → «رد» on it (WhatsApp-style); tap the quote → jump to the original ---- */
+const msgText = (m) => (isLabel(m) || !m.text ? (m.files && m.files.length ? '📎 مرفق' : '') : m.text).slice(0, 160);
+function quoteHTML(r, label) {
+  if (!r) return '';
+  return `<div class="cq${r.gone ? ' gone' : ''}" data-jump="${r.id}"><b>${H.esc(label(r))}</b><span class="notr">${H.esc(r.text || '')}</span></div>`;
+}
+function bindLongPress(box, pick) {
+  let tm = 0, x0 = 0, y0 = 0, el = null;
+  const stop = () => { clearTimeout(tm); tm = 0; if (el) el.classList.remove('lp'); el = null; };
+  box.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('.cmsg[data-mid]'); if (!b || e.target.closest('a,button,img,.cq')) return;
+    x0 = e.clientX; y0 = e.clientY; el = b; b.classList.add('lp');
+    tm = setTimeout(() => { const id = b.dataset.mid; stop(); try { navigator.vibrate && navigator.vibrate(18); } catch { /* ignore */ } pick(id); }, 450);
+  });
+  box.addEventListener('pointermove', (e) => { if (tm && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) stop(); });
+  ['pointerup', 'pointercancel', 'scroll'].forEach((ev) => box.addEventListener(ev, stop, { passive: true }));
+  box.addEventListener('contextmenu', (e) => { if (e.target.closest('.cmsg[data-mid]')) e.preventDefault(); });
+  box.addEventListener('click', (e) => {
+    const q = e.target.closest('.cq[data-jump]'); if (!q) return;
+    const t = box.querySelector(`.cmsg[data-mid="${q.dataset.jump}"]`); if (!t) return;
+    t.scrollIntoView({ block: 'center', behavior: 'smooth' }); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash');
+  });
 }
 
 /* ---------- messages ---------- */
@@ -166,7 +196,8 @@ function msgsHTML(items, admin, seen) {
     const mine = admin ? m.from === 'admin' : m.from === 'user';
     const tail = !prev || prev.from !== m.from;
     const text = isLabel(m) ? '' : m.text;
-    h += `<div class="cmsg ${mine ? 'me' : 'them'}${tail ? ' tail' : ''}">${m.ref ? refCard(m.ref, admin) : ''}${filesHTML(m.files)}${text ? `<p class="notr">${linkify(text)}</p>` : ''}${meta(m, mine, seen)}</div>`;
+    const qLabel = (r) => ((admin ? r.from === 'admin' : r.from === 'user') ? 'أنت' : admin ? 'العميل' : 'عمر الياسي للعقارات');
+    h += `<div class="cmsg ${mine ? 'me' : 'them'}${tail ? ' tail' : ''}" data-mid="${m.id}">${quoteHTML(m.reply, qLabel)}${m.ref ? refCard(m.ref, admin) : ''}${filesHTML(m.files)}${text ? `<p class="notr">${linkify(text)}</p>` : ''}${meta(m, mine, seen)}</div>`;
     if (m.rate && !admin) h += rateCard(m);
     prev = m;
   }
@@ -223,20 +254,25 @@ function bindChat(root, { admin, uid }) {
     try { took(admin ? await api('adm_chat', { id: uid }) : await api('chat_get')); draw(keep); refreshUnread(); }
     catch (e) { box.innerHTML = `<p class="muted pad">${H.esc(e.message)}</p>`; }
   };
-  const send = async (text, files, listing) => {
+  const send = async (text, files, listing, reply) => {
     if (sending) return false; sending = true;
     try {
-      const body = { text, listing, files };
+      const body = { text, listing, files, reply: reply || 0 };
       took(admin ? await api('adm_chat_send', { id: uid, ...body }) : await api('chat_send', body)); draw(); return true;
     } catch (e) { H.toast(e.message); return false; } finally { sending = false; }
   };
-  const onSend = async (text, files) => {
+  const onSend = async (text, files, reply) => {
     const ref = !admin && pendingRef ? pendingRef.id : 0;
     if (!text && !ref && !files.length) return false;
-    const ok = await send(text, files, ref); if (ok && !admin) { pendingRef = null; showChip(); } return ok;
+    const ok = await send(text, files, ref, reply); if (ok && !admin) { pendingRef = null; showChip(); } return ok;
   };
   onSend.allowEmpty = () => !admin && !!pendingRef;
-  const { ta } = bindComposer(root, { admin, onSend });
+  const { ta, setReply } = bindComposer(root, { admin, onSend });
+  bindLongPress(box, (id) => {
+    const m = items.find((x) => String(x.id) === String(id)); if (!m) return;
+    const mine = admin ? m.from === 'admin' : m.from === 'user';
+    setReply({ id: m.id, who: mine ? 'أنت' : admin ? 'العميل' : 'عمر الياسي للعقارات', text: msgText(m) });
+  });
   box.addEventListener('click', async (e) => {
     const rr = e.target.closest('[data-rerate]');
     if (rr) { const m = items.find((x) => String(x.id) === rr.dataset.rerate); if (m) { m.rate.stars = 0; draw(true); } return; }
@@ -314,7 +350,7 @@ export function initGroup(pg) {
       const text = isLabel(m) ? '' : m.text;
       const pid = m.user.admin && !admin ? 0 : m.user.id;
       h += `<div class="gmsg ${m.mine ? 'me' : ''}${first ? ' first' : ''}" data-gid="${m.id}">${m.mine ? '' : (first ? `<button class="gavb" data-prof="${pid}">${m.user.admin ? officeAv(m.user.online, 'gav') : userAv(m.user, 'gav')}</button>` : '<span class="gsp"></span>')}
-        <div class="cmsg ${m.mine ? 'me' : 'them'}${first ? ' tail' : ''}">
+        <div class="cmsg ${m.mine ? 'me' : 'them'}${first ? ' tail' : ''}" data-mid="${m.id}">${quoteHTML(m.reply, (r) => (r.uid && items.some((x) => x.mine && x.user.id === r.uid) ? 'أنت' : r.name || 'عضو'))}
           ${!m.mine && first ? `<button class="gname notr" data-prof="${pid}" style="color:${hue(m.user.id)}">${esc(who(m.user))} ${m.user.verified ? I.verified : ''}${m.user.admin ? '<i class="pill plan">الإدارة</i>' : ''}</button>` : ''}
           ${filesHTML(m.files)}${text ? `<p class="notr${long ? ' clamp' : ''}">${linkify(text)}</p>${long ? '<button class="gmore" data-gmore>قراءة المزيد</button>' : ''}` : ''}
           <div class="gact">${!m.mine ? `<button data-greply="${m.id}">${I.chat} رد على الخاص</button>` : ''}${text ? `<button data-gcopy="${m.id}">نسخ</button>` : ''}${m.mine || admin ? `<button data-gdel="${m.id}" class="del">حذف</button>` : ''}${meta(m, false)}</div></div></div>`;
@@ -331,13 +367,17 @@ export function initGroup(pg) {
       lastId = items.length ? items[items.length - 1].id : 0; draw(more); refreshUnread();
     } catch (e) { box.innerHTML = `<p class="muted pad">${esc(e.message)}</p>`; }
   };
-  bindComposer(pg, {
+  const { setReply } = bindComposer(pg, {
     admin: isOffice(),
-    onSend: async (text, files) => {
+    onSend: async (text, files, reply) => {
       if (sending) return false; sending = true;
-      try { const j = await api('group_send', { text, files, after: lastId }); took(j); items = items.concat(j.items); lastId = items[items.length - 1].id; draw(); return true; }
+      try { const j = await api('group_send', { text, files, after: lastId, reply: reply || 0 }); took(j); items = items.concat(j.items); lastId = items[items.length - 1].id; draw(); return true; }
       catch (ex) { H.toast(ex.message); return false; } finally { sending = false; }
     },
+  });
+  bindLongPress(box, (id) => {
+    const m = items.find((x) => String(x.id) === String(id)); if (!m) return;
+    setReply({ id: m.id, who: m.mine ? 'أنت' : who(m.user), text: msgText(m) });
   });
   box.addEventListener('click', async (e) => {
     const t = e.target.closest('button'); if (!t || t.dataset.prof !== undefined || t.dataset.view !== undefined) return;

@@ -1,4 +1,5 @@
 import { canCheckUpdate } from './update.js';
+import { phoneField } from './phone.js';
 import { LEGAL, LEGAL_EN } from './legal.js';
 // «المزيد» tab: profile, my activity, account & settings, support, terms & privacy.
 import { api, session, refreshMe, logout, resizePhoto, can, isOffice, isBroker } from './owner.js';
@@ -49,7 +50,7 @@ export function renderMore(el) {
       ${row(I.phone, 'الاتصال بنا', 'data-contactpg')}
       ${row(I.book, 'دليل الإجراءات العقارية', 'data-guide')}
       ${row(I.doc, 'الأخبار العقارية', 'data-news', can('news') ? '<small>إدارة الشريط</small>' : '')}
-      ${row(I.info, 'من نحن', `data-web="${H.SITE}/about-us/"`)}
+      ${row(I.info, 'من نحن', 'data-about=""')}
     </div>
     ${u ? `<button class="mlogout" data-logout>${I.logout} تسجيل الخروج</button>` : ''}
     <p class="mfoot">باستخدامك تطبيق عمر الياسي للعقارات فأنت توافق على <button data-legal="terms">شروط الاستخدام</button> و<button data-legal="privacy">سياسة الخصوصية</button></p>
@@ -72,7 +73,7 @@ export function editProfilePage() {
     <div class="pprof flat"><label class="avpick">${avatar(u, 'bav')}<input type="file" accept="image/*" hidden id="avFile"><span>تغيير الصورة</span></label></div>
     <form class="accf" id="profForm" novalidate>
       <label>الاسم<input name="name" maxlength="80" value="${esc(u.name || '')}"></label>
-      <label>رقم الجوال<input name="phone" type="tel" dir="ltr" inputmode="tel" value="${esc(u.phone || '')}" placeholder="05xxxxxxxx"></label>
+      <label>رقم الجوال${phoneField('phone', u.phone || '')}</label>
       <p class="ferr" id="profErr" hidden></p>
       <button class="btn gold block share-big" type="submit" id="profGo">حفظ</button>
     </form>
@@ -143,6 +144,47 @@ export async function deleteAccount() {
 export async function doLogout() { await logout(); H.toast('تم تسجيل الخروج'); H.closeAll(); }
 
 /* ================= notifications ================= */
+
+/* ================= «من نحن» — inside the app; the text under «عن الشركة» comes from the website's About page ================= */
+const ABOUT_DEF = '<p>عمر الياسي للعقارات شركة عقارية في الشارقة، نساعد عملاءنا في اختيار الأرض المناسبة للسكن أو التطوير أو الاستثمار في الشارقة وعجمان، بخيارات تنافسية وخطط سداد مرنة، مع متابعة كاملة من أول استفسار حتى تسجيل الأرض.</p>';
+const aboutGet = () => { try { return JSON.parse(localStorage.getItem('oay:about')) || null; } catch { return null; } };
+export function aboutPage() {
+  const { I, CONTACT, waLink, LOGO, DATA } = H; const d = DATA();
+  const sold = d.lands.filter((l) => l.status === 'sold').length, av = d.lands.filter((l) => l.status === 'av').length;
+  const c = aboutGet();
+  return `<div class="aboutpg">
+    <section class="ab-hero"><div class="ab-logo"><img src="${LOGO}" alt="عمر الياسي للعقارات"></div>
+      <p>شريكك الموثوق في أراضي الشارقة وعجمان</p></section>
+    <div class="ab-stats"><div><b>${d.projects.length || '—'}</b><span>مشروع</span></div><div><b>${av || '—'}</b><span>أرض متاحة</span></div><div><b>${sold || '—'}</b><span>تم بيعها</span></div></div>
+    <section class="ab-sec"><h3>${I.building} عن الشركة</h3><div class="ab-body" id="abBody">${c && c.html ? c.html : ABOUT_DEF}</div></section>
+    <section class="ab-sec"><h3>${I.star} لماذا عمر الياسي؟</h3><div class="ab-why">
+      <div>${I.map}<b>مخططات تفاعلية</b><span>شاهد موقع كل أرض ومساحتها وحالتها على المخطط مباشرة</span></div>
+      <div>${I.calc}<b>خطط سداد مرنة</b><span>دفعات وأقساط واضحة لكل أرض قبل أن تقرر</span></div>
+      <div>${I.globe}<b>تملّك حر</b><span>مشاريع بتملّك حر لجميع الجنسيات العربية</span></div>
+      <div>${I.chat}<b>متابعة حتى التسجيل</b><span>فريقنا معك من أول استفسار حتى نقل الملكية</span></div></div></section>
+    <section class="ab-sec"><h3>${I.phone} تواصل معنا</h3>
+      <div class="ab-cta"><a class="btn primary" href="tel:${CONTACT.phone}">${I.phone} اتصل بنا</a><a class="btn wa" href="${waLink('مرحباً، أرغب بالاستفسار عن الأراضي المتاحة')}" data-ext>${I.wa} واتساب</a></div>
+      <div class="ab-lines"><span>${I.pin}${CONTACT.address}</span><span dir="ltr">${I.phone}${CONTACT.phoneLabel}</span><a href="${CONTACT.instagram}" data-ext>${I.ig}<span dir="ltr">@omaralyassi.uae3</span></a></div></section>
+  </div>`;
+}
+/** the About page text from the website (WordPress REST), cleaned to plain headings / paragraphs / lists; kept on the phone */
+export async function initAbout(pg) {
+  const box = pg.querySelector('#abBody'); const c = aboutGet();
+  if (c && Date.now() - c.t < 24 * 3600e3) return;
+  try {
+    const r = await fetch(`${H.SITE}/wp-json/wp/v2/pages?slug=about-us&_fields=content`, { cache: 'no-store' });
+    const j = await r.json(); const raw = j && j[0] && j[0].content && j[0].content.rendered; if (!raw) return;
+    const doc = new DOMParser().parseFromString(raw, 'text/html'); const out = []; const seen = new Set();
+    doc.querySelectorAll('h1,h2,h3,h4,p,li').forEach((el) => {
+      if (el.closest('li') && el.tagName !== 'LI') return;
+      const t = el.textContent.replace(/\s+/g, ' ').trim(); if (t.length < 3 || seen.has(t) || /^(من نحن|about us)$/i.test(t)) return; seen.add(t);
+      out.push(/^H/.test(el.tagName) ? `<h4>${H.esc(t)}</h4>` : el.tagName === 'LI' ? `<p class="li">${H.esc(t)}</p>` : `<p>${H.esc(t)}</p>`);
+    });
+    const html = out.join(''); if (html.length < 80) return;
+    try { localStorage.setItem('oay:about', JSON.stringify({ t: Date.now(), html })); } catch { /* private mode */ }
+    if (box && box.isConnected) box.innerHTML = html;
+  } catch { /* offline: keep what we have */ }
+}
 
 /* ================= contact us (the old tab) ================= */
 export function contactPage() {

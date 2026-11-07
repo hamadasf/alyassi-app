@@ -1,5 +1,6 @@
 // «لدي أرض للبيع»: a short form anyone may send (signed in or not). It reaches the office's contact log with a push.
 import { api, session, resizePhoto } from './owner.js';
+import { phoneField } from './phone.js';
 
 let H = null;
 export function initSellMod(h) { H = h; }
@@ -28,7 +29,7 @@ export function sellPage() {
         <div class="ssec"><h3>${IC.user}بياناتك</h3>
           <div class="sgrid">
             <label class="full"><span>الاسم <i>*</i></span><input name="name" placeholder="الاسم الكامل" autocomplete="name" value="${esc(u.name || '')}"></label>
-            <label class="full"><span>رقم الهاتف <i>*</i></span><input name="phone" type="tel" dir="ltr" inputmode="tel" placeholder="05X XXX XXXX" autocomplete="tel" value="${esc(u.phone || '')}"></label>
+            <label class="full"><span>رقم الهاتف <i>*</i></span>${phoneField('phone', u.phone || '')}</label>
           </div>
         </div>
         <div class="ssec"><h3>${IC.home}بيانات العقار</h3>

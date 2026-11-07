@@ -1,4 +1,5 @@
 import { ei } from './icons.js';
+import { phoneField } from './phone.js';
 // Screens for accounts and user-submitted lands. Plugged into main.js's page stack.
 import { advStrip } from './adv.js';
 import { pickersHTML, bindPickers, pickersError, submitAdv, advMissing, renderAdvReqs, advReqClick } from './advui.js';
@@ -41,7 +42,7 @@ export function accountPage() {
     <form class="accf" id="accForm" novalidate>
       <label data-only="register">الاسم<input name="name" autocomplete="name" maxlength="80"></label>
       <label>البريد الإلكتروني<input name="email" type="email" dir="ltr" autocomplete="email" inputmode="email" maxlength="120"></label>
-      <label data-only="register">رقم الجوال<input name="phone" type="tel" dir="ltr" autocomplete="tel" inputmode="tel" placeholder="05xxxxxxxx" maxlength="20"></label>
+      <label data-only="register">رقم الجوال${phoneField('phone', '', 'maxlength="16"')}</label>
       <label>كلمة المرور<input name="password" type="password" dir="ltr" autocomplete="current-password" maxlength="200"></label>
       <label data-only="register" class="invfld">كود دعوة موظف (إن وُجد)<input name="invite" dir="ltr" maxlength="12" autocapitalize="characters" placeholder="مثال: K7Q2M9XA"><small id="invOk"></small></label>
       ${pickersHTML({}, 'register')}
@@ -193,7 +194,7 @@ function landFormHTML(v = {}, admin = false) {
       <label>الموقع / الوصف المختصر للمكان<input name="location" maxlength="160" value="${val('location')}" placeholder="مثال: الشارقة، شارع مليحة"></label>
       <label>رابط الموقع على خرائط جوجل<input name="maps_url" dir="ltr" inputmode="url" value="${val('maps')}" placeholder="https://maps.app.goo.gl/…"></label>
       <label>تفاصيل إضافية<textarea name="description" rows="4" maxlength="3000">${val('description')}</textarea></label>
-      <label>${admin ? 'جوال صاحب الأرض' : 'رقم جوالك للتواصل'}<input name="phone" type="tel" dir="ltr" inputmode="tel" value="${val('phone')}"></label>
+      <label>${admin ? 'جوال صاحب الأرض' : 'رقم جوالك للتواصل'}${phoneField('phone', v.phone || '')}</label>
       ${admin ? '' : `<div class="photos"><b>صور الأرض (حتى 10) — الأولى صورة الغلاف</b>
         <div class="pgrid" id="pgrid"><label class="padd"><input type="file" accept="image/*" multiple hidden id="pfile"><span>＋<br>إضافة صور</span></label></div></div>`}
       <p class="ferr" id="landErr" hidden></p>

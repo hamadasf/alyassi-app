@@ -19,7 +19,7 @@ import { initViews, setBooking, bookPage, initBook, myViewsPage, initMyViews, vi
 import { staffPage, initStaff } from './owner-ui.js';
 import { initCrm, wantedPage, initWanted, wantedAddPage, initWantedAdd, alertsPage, initAlerts, leadsPage, initLeads, leadPage, initLead, apushPage, initApush, guidePage, initGuide, contactsPage, initContacts } from './crm.js';
 import { initReport, reportPage, initReportPage } from './report.js';
-import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle, toolsPage } from './more.js';
+import { verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle, toolsPage, aboutPage, initAbout } from './more.js';
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser } from './owner-ui.js';
 import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { advStrip, loadBrand } from './adv.js';
@@ -112,6 +112,16 @@ const offerWas = (l, o) => { const was = l.total || o.old; return o.price && was
 const offerLands = () => DATA().lands.filter(offerFor).sort((a, b) => offerFor(a).until - offerFor(b).until);
 setInterval(() => document.querySelectorAll('[data-until]').forEach((el) => { el.textContent = leftText(+el.dataset.until); }), 30e3);
 
+// a notice stays marked until it is opened, or for one day at most
+function chRead() { try { return JSON.parse(localStorage.getItem('oay:chread')) || {}; } catch { return {}; } }
+document.addEventListener('click', (e) => {
+  const it = e.target.closest && e.target.closest('.citm[data-chr]'); if (!it) return;
+  it.classList.remove('unseen');
+  const rd = chRead(), cut = Date.now() - 2 * DAY;
+  for (const k of Object.keys(rd)) if (rd[k] < cut) delete rd[k];   // keep the list small
+  rd[it.dataset.chr] = Date.now();
+  try { localStorage.setItem('oay:chread', JSON.stringify(rd)); } catch { /* private mode */ }
+}, true);
 function unseenCount() { const s = seen.get(); return getChanges().filter((c) => c.t > s).length; }
 function updateBell() {
   const n = unseenCount(); const b = $('#bellN');
@@ -122,13 +132,16 @@ function changesPage() {
   if (!items.length) return `<div class="pad changes">${notifCard()}</div><div class="empty">${I.bell}<p>لا توجد تحديثات حالياً</p><p class="sub">ستظهر هنا أي تغييرات في الأسعار أو حالة الأراضي</p></div>`;
   const fmtDay = (t) => new Date(t).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE', { weekday: 'long', day: 'numeric', month: 'long' });
   let html = '', last = '';
-  const s = seen.get();
+  const rd = chRead();
   for (const c of items) {
     const day = fmtDay(c.t);
     if (day !== last) { html += `<h3 class="cday">${esc(day)}</h3>`; last = day; }
-    const has = DATA().lands.some((l) => l.id === c.id);
-    html += `<div class="citm${c.t > s ? ' unseen' : ''}" ${has ? `data-land="${esc(c.id)}"` : ''}>
-      <div class="ck ${c.kind}">${c.kind === 'price' ? I.tag : c.kind === 'new' || c.kind === 'offer' ? I.star : I.info}</div>
+    const l = DATA().lands.find((x) => x.id === c.id);
+    const key = c.id + ':' + c.t, unread = !rd[key] && Date.now() - c.t < DAY;
+    // the land's own thumbnail (its spot on the plan, or its photo); the kind of change as a small corner icon
+    const thumb = l && (l.poly || l.pc) ? `<canvas class="cardloc" data-loc="${esc(l.id)}"></canvas>` : l && l.img ? `<img loading="lazy" src="${esc(l.img)}" alt="" onerror="this.remove()">` : '';
+    html += `<div class="citm${unread ? ' unseen' : ''}" data-chr="${esc(key)}" ${l ? `data-land="${esc(c.id)}"` : ''}>
+      <div class="cth${thumb ? '' : ' none'}">${thumb}<i class="ck ${c.kind}">${c.kind === 'price' ? I.tag : c.kind === 'new' || c.kind === 'offer' ? I.star : I.info}</i></div>
       <div class="cb"><b>قطعة ${esc(c.n)} · ${esc(c.projectName)}</b><span>${changeLine(c)}</span></div>
       <time>${new Date(c.t).toLocaleTimeString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE', { hour: 'numeric', minute: '2-digit' })}</time></div>`;
   }
@@ -846,6 +859,7 @@ function pushPage(kind, id) {
   else if (kind === 'settings') { html = settingsPage(); }
   else if (kind === 'notifs') { html = notifsPage(); }
   else if (kind === 'contactpg') { html = contactPage(); }
+  else if (kind === 'about') { html = aboutPage(); }
   else if (kind === 'saved') { html = savedPage(); }
   else if (kind === 'legal') { html = legalPage(id); }
   else if (kind === 'verify') { html = verifyPage(); }
@@ -883,7 +897,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { tools: (session.user() || {}).admin ? 'لوحة الإدارة' : 'أدوات الموظف', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { tools: (session.user() || {}).admin ? 'لوحة الإدارة' : 'أدوات الموظف', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -893,6 +907,7 @@ function pushPage(kind, id) {
   if (kind === 'addland') initAddLand(pg);
   if (kind === 'sell') initSell(pg);
   if (kind === 'map') initMapPage(pg);
+  if (kind === 'about') initAbout(pg);
   if (kind === 'rates') initRatesPage(pg);
   if (kind === 'prereg') initPreregPage(pg);
   if (kind === 'admin') initAdmin(pg);
@@ -1075,6 +1090,7 @@ document.addEventListener('click', (e) => {
   if (ds.settings !== undefined) { pushPage('settings'); return; }
   if (ds.notifs !== undefined) { pushPage('notifs'); return; }
   if (ds.contactpg !== undefined) { pushPage('contactpg'); return; }
+  if (ds.about !== undefined) { pushPage('about'); return; }
   if (ds.saved !== undefined) { pushPage('saved'); return; }
   if (ds.legal) { pushPage('legal', ds.legal); return; }
   if (ds.lang !== undefined) { setLang(isEn() ? 'ar' : 'en'); return; }
@@ -1189,7 +1205,7 @@ initAdgen({ toast, api: accApi, myName: () => (session.user() || {}).name || '',
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
 initCrm({ esc, toast, I, money, waLink, DATA: () => DATA(), pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop() });
 window.__oayPush = push;   // the notification settings page talks to the push service
-initMore({ isEn, setLang, esc, toast, I, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), closeAll: () => closeAll(), waLink, CONTACT, EMBLEM, SITE });
+initMore({ isEn, setLang, esc, toast, I, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), closeAll: () => closeAll(), waLink, CONTACT, EMBLEM, SITE, LOGO, DATA });
 const syncNav = () => { const b = document.querySelector('.nwallet'); if (b) b.hidden = !isBroker(); };
 syncNav();
 session.subs.add(() => { syncNav(); renderContact(); refreshUnread(); push.link(); if (current === 'chats') renderChatsTab($('#chats .content')); });

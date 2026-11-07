@@ -730,12 +730,26 @@ function oay_chat_ref( $lid, $admin ) {
 		$r['ownerPhone'] = $ph; $r['owner'] = $o ? ( get_user_meta( $o->ID, 'oay_company', true ) ?: $o->display_name ) : ''; }
 	return $r;
 }
+/* ---- «رد» on a message (long-press in the app): the reply keeps a pointer to the message it answers ---- */
+function oay_reply_in( $post_id, $type ) {
+	$rid = absint( oay_acc_arg( 'reply', 12 ) ); if ( ! $rid ) { return 0; }
+	$c = get_comment( $rid );
+	return ( $c && (int) $c->comment_post_ID === (int) $post_id && $type === $c->comment_type ) ? $rid : 0;
+}
+function oay_reply_out( $cid ) {
+	$rid = (int) get_comment_meta( $cid, 'reply', true ); if ( ! $rid ) { return null; }
+	$c = get_comment( $rid ); if ( ! $c ) { return array( 'id' => $rid, 'text' => 'رسالة محذوفة', 'gone' => true ); }
+	$t = $c->comment_content; if ( '' === trim( $t ) && get_comment_meta( $rid, 'files', true ) ) { $t = '📎 مرفق'; }
+	$u = $c->user_id ? get_userdata( $c->user_id ) : null;
+	return array( 'id' => $rid, 'text' => mb_substr( $t, 0, 160 ), 'from' => get_comment_meta( $rid, 'from', true ) ?: 'user', 'uid' => (int) $c->user_id,
+		'name' => $u ? ( get_user_meta( $u->ID, 'oay_verified', true ) && get_user_meta( $u->ID, 'oay_company', true ) ? get_user_meta( $u->ID, 'oay_company', true ) : $u->display_name ) : '' );
+}
 function oay_chat_msgs( $tid, $admin ) {
 	$cs = get_comments( array( 'post_id' => $tid, 'type' => 'oay_msg', 'order' => 'ASC', 'number' => 300, 'status' => 'all' ) );
 	return array_map( function ( $c ) use ( $admin ) {
 		$lid = (int) get_comment_meta( $c->comment_ID, 'listing', true );
 		$from = get_comment_meta( $c->comment_ID, 'from', true ) ?: 'user';
-		$m = array( 'id' => (int) $c->comment_ID, 't' => strtotime( $c->comment_date_gmt . ' UTC' ) * 1000, 'from' => $from, 'text' => $c->comment_content, 'ref' => $lid ? oay_chat_ref( $lid, $admin ) : null, 'files' => oay_chat_files_out( $c->comment_ID ) );
+		$m = array( 'id' => (int) $c->comment_ID, 't' => strtotime( $c->comment_date_gmt . ' UTC' ) * 1000, 'from' => $from, 'text' => $c->comment_content, 'ref' => $lid ? oay_chat_ref( $lid, $admin ) : null, 'files' => oay_chat_files_out( $c->comment_ID ), 'reply' => oay_reply_out( $c->comment_ID ) );
 		// the office forwarded the advertiser's number: the client is asked to rate how the dealing went
 		if ( 'admin' === $from && $lid && false !== strpos( $c->comment_content, 'wa.me/' ) ) {
 			$owner = (int) get_post_field( 'post_author', $lid ); $ou = $owner ? get_userdata( $owner ) : null;
@@ -754,6 +768,7 @@ function oay_chat_add( $tid, $uid, $from, $text, $lid ) {
 	if ( '' === $text && ! $lid && ! $files ) { oay_acc_err( 'اكتب رسالة' ); }
 	$cid = wp_insert_comment( array( 'comment_post_ID' => $tid, 'comment_content' => $text, 'user_id' => $uid, 'comment_type' => 'oay_msg', 'comment_approved' => 1 ) );
 	update_comment_meta( $cid, 'from', $from ); if ( $lid ) { update_comment_meta( $cid, 'listing', $lid ); }
+	$rid = oay_reply_in( $tid, 'oay_msg' ); if ( $rid ) { update_comment_meta( $cid, 'reply', $rid ); }
 	if ( $files ) { update_comment_meta( $cid, 'files', $files ); if ( '' === $text ) { $text = oay_files_label( $files ); } }
 	$now = (int) round( microtime( true ) * 1000 );
 	update_post_meta( $tid, 'oay_last', $now ); update_post_meta( $tid, 'oay_last_from', $from ); update_post_meta( $tid, 'oay_last_text', mb_substr( $text ?: '📎 إعلان', 0, 120 ) );
@@ -867,7 +882,7 @@ function oay_group_msgs( $after = 0, $me = 0 ) {
 	if ( $after ) { $cs = array_values( array_filter( $cs, function ( $c ) use ( $after ) { return (int) $c->comment_ID > $after; } ) ); }
 	return array_map( function ( $c ) use ( $me ) {
 		$u = get_userdata( $c->user_id ); $uid = (int) $c->user_id;
-		return array( 'id' => (int) $c->comment_ID, 't' => strtotime( $c->comment_date_gmt . ' UTC' ) * 1000, 'text' => $c->comment_content, 'mine' => $uid === $me, 'files' => oay_chat_files_out( $c->comment_ID ),
+		return array( 'id' => (int) $c->comment_ID, 't' => strtotime( $c->comment_date_gmt . ' UTC' ) * 1000, 'text' => $c->comment_content, 'mine' => $uid === $me, 'files' => oay_chat_files_out( $c->comment_ID ), 'reply' => oay_reply_out( $c->comment_ID ),
 			'user' => array( 'id' => $uid, 'name' => $u ? ( get_user_meta( $uid, 'oay_verified', true ) && get_user_meta( $uid, 'oay_company', true ) ? get_user_meta( $uid, 'oay_company', true ) : $u->display_name ) : 'عضو',
 				'avatar' => (string) get_user_meta( $uid, 'oay_avatar', true ), 'verified' => (bool) get_user_meta( $uid, 'oay_verified', true ), 'admin' => $u && user_can( $u, 'manage_options' ), 'online' => oay_is_online( $uid ) ) );
 	}, $cs );
@@ -885,6 +900,7 @@ function oay_acc_group_send() {
 	if ( '' === $text && ! $files ) { oay_acc_err( 'اكتب رسالة' ); }
 	if ( ! oay_is_office( $u ) ) { $text = oay_group_clean( $text ); }
 	$cid = wp_insert_comment( array( 'comment_post_ID' => oay_group_id(), 'comment_content' => $text, 'user_id' => $u->ID, 'comment_type' => 'oay_gmsg', 'comment_approved' => 1 ) );
+	$rid = oay_reply_in( oay_group_id(), 'oay_gmsg' ); if ( $rid ) { update_comment_meta( $cid, 'reply', $rid ); }
 	if ( $files ) { update_comment_meta( $cid, 'files', $files ); if ( '' === $text ) { $text = oay_files_label( $files ); } }
 	update_user_meta( $u->ID, 'oay_group_read', $cid );
 	update_option( 'oay_group_last', array( 't' => (int) round( microtime( true ) * 1000 ), 'text' => mb_substr( $text, 0, 120 ), 'id' => $cid ), false );

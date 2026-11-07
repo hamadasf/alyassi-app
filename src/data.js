@@ -58,6 +58,10 @@ export async function getIndex(force = false) {
   catch (e) { if (c) return c.d; throw e; }
 }
 
+// location line for projects whose plan page has none yet (the plan's own «sub» wins once it's filled on the website)
+const DABDABA_SUB = 'الدبدبة شمال ضاحية الرحمانية على حدود الشارقة وعجمان';
+const SUB_FALLBACK = { 'dabdaba-north': DABDABA_SUB, 'الدبدبة شمال': DABDABA_SUB };
+
 /* ---------- 2. plan meta: plot numbers, types, sizes (from the plan page) ---------- */
 async function fetchPlan(p) {
   const d = parseHTML(await getText(p.plan));
@@ -158,7 +162,7 @@ function buildProject(p, plan, state) {
   });
   return {
     na, types: Object.fromEntries(Object.entries(plan.types || {}).map(([k, v]) => [k, { use: v.use || '', tag: v.tag || '', floors: v.floors || '', c: v.c || null }])),
-    ...p, name: plan.name || p.title, sub: plan.sub, note: plan.note, poster: plan.poster || p.poster,
+    ...p, name: plan.name || p.title, sub: plan.sub || SUB_FALLBACK[p.slug] || SUB_FALLBACK[(plan.name || p.title || '').trim()] || '', note: plan.note, poster: plan.poster || p.poster,
     loc: (state && state.loc) || '', updated: (state && state.updated) || '', map: plan.map || null,
     lands, available: count('av'), reserved: count('res'), sold: count('sold'),
   };
