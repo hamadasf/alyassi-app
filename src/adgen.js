@@ -1,3 +1,4 @@
+import { ei } from './icons.js';
 // «مولّد منشورات الإعلانات»: the website's ad designer (alyassi-dabdaba-plan → advertisement designer) inside the app.
 // The same four templates (الشركة · عبادة · آية الجابري · آية الجديد), cash and instalment versions, filled from the plot
 // and the plan, every text editable, parts dragged on the picture, photos / PDF pages cut out, saved or shared as JPEG.
@@ -886,7 +887,7 @@ export function adgenPage(l, projects) {
     return `<div class="pad adg-pick">
       <ol class="adg-steps"><li>اختر المشروع</li><li>اختر القطعة من المخطط أو من القائمة</li><li>عدّل الكتابة إن أردت، ثم شارك البوست أو احفظه</li></ol>
       <label class="fld">١. المشروع<select id="adgProj">${projects.filter((p) => p.map).map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join('')}</select></label>
-      <button class="btn primary block" id="adgPlan">🗺️ اختر القطعة من المخطط</button>
+      <button class="btn primary block" id="adgPlan">${ei('map')} اختر القطعة من المخطط</button>
       <div class="adg-or"><span>أو</span></div>
       <label class="fld">٢. رقم القطعة<input id="adgN" inputmode="numeric" placeholder="اكتب الرقم أو اختر من القائمة"></label>
       <div id="adgList" class="adg-chips"></div>
@@ -898,9 +899,9 @@ export function adgenPage(l, projects) {
       <div class="adg-tools"><button type="button" id="pzUndo" disabled><b>↶</b>تراجع</button><button type="button" id="pzRedo" disabled>إعادة<b>↷</b></button></div></div>
     <div class="adg-form" id="pzForm"></div>
     <input type="file" id="pzFile" accept="image/*,application/pdf" hidden>
-    <div class="adg-bar"><button class="btn primary" id="pzShare">📤 مشاركة</button><button class="btn" id="pzSave">⬇️ حفظ الصورة</button><button class="btn" id="pzKeep">💾 حفظ التصميم</button><button class="btn gold" id="pzAll" hidden>🗂️ كل القوالب</button></div>
+    <div class="adg-bar"><button class="btn primary" id="pzShare">${ei('share')} مشاركة</button><button class="btn" id="pzSave">${ei('pdf')} حفظ الصورة</button><button class="btn" id="pzKeep">${ei('bookmark')} حفظ التصميم</button><button class="btn gold" id="pzAll" hidden>${ei('grid')} كل القوالب</button></div>
     <div class="adg-allpop" id="pzAllPop" hidden><div class="adg-allin"><b>كل القوالب مرة واحدة</b><p class="muted" id="pzAllTxt"></p>
-      <button class="btn primary block" id="pzAllShare">📤 مشاركة الكل</button><button class="btn ghost block" id="pzAllSave">⬇️ حفظ الكل</button><button class="btn block" id="pzAllNo">إلغاء</button></div></div>
+      <button class="btn primary block" id="pzAllShare">${ei('share')} مشاركة الكل</button><button class="btn ghost block" id="pzAllSave">${ei('pdf')} حفظ الكل</button><button class="btn block" id="pzAllNo">إلغاء</button></div></div>
     <div class="adg-crop" id="pzCropBox" hidden><div class="adg-cropin">
       <b>اسحب الإطار على الجزء المطلوب (أو ارسم إطارًا جديدًا)</b>
       <div class="adg-cnav" id="pzCropNav"></div>
@@ -931,10 +932,10 @@ function pzForm() {
   const fresh = !$('pzForm').querySelector('details');
   const sec = (k, t, body, open) => `<details class="pz-sec" data-sec="${k}"${(fresh ? open : was.has(k)) ? ' open' : ''}><summary>${t}</summary><div class="pz-body">${body}</div></details>`;
   const sv = ad.saved && ad.saved[v.theme];
-  $('pzForm').innerHTML = (sv ? `<div class="pz-saved">📌 تصميم محفوظ لهذا القالب · <span class="num">${esc(dmy(sv.t))}</span>${sv.by ? ' · ' + esc(sv.by) : ''}<span class="rowbtns"><button type="button" class="btn sm" data-pznew>بدء تصميم جديد</button><button type="button" class="btn sm danger" data-pzunsave>حذف المحفوظ</button></span></div>` : '') + `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · إصبعان لتكبيره أو تصغيره · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', only ? '١. نوع الدفع' : '١. القالب ونوع الدفع', `<div class="pz-th"${only ? ' hidden' : ''}>${Object.entries(PZ_THEMES).filter(([k]) => okT.includes(k)).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
+  $('pzForm').innerHTML = (sv ? `<div class="pz-saved">${ei('bookmark')} تصميم محفوظ لهذا القالب · <span class="num">${esc(dmy(sv.t))}</span>${sv.by ? ' · ' + esc(sv.by) : ''}<span class="rowbtns"><button type="button" class="btn sm" data-pznew>بدء تصميم جديد</button><button type="button" class="btn sm danger" data-pzunsave>حذف المحفوظ</button></span></div>` : '') + `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · إصبعان لتكبيره أو تصغيره · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', only ? '١. نوع الدفع' : '١. القالب ونوع الدفع', `<div class="pz-th"${only ? ' hidden' : ''}>${Object.entries(PZ_THEMES).filter(([k]) => okT.includes(k)).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
     <div class="seg"><button type="button" data-pzmode="cash" class="${v.mode === 'cash' ? 'on' : ''}">قالب الكاش</button><button type="button" data-pzmode="inst" class="${v.mode === 'inst' ? 'on' : ''}">قالب الأقساط</button></div>`, true)
     + sec('tx', '٢. الكتابة والأسعار', `<label class="fld pz-ppf">سعر القدم (درهم) — يحسب الإجمالي تلقائياً<input type="text" inputmode="decimal" data-ppf value="${esc(v.ppf || '')}" placeholder="مثلاً 143"></label><p class="help" id="pzTot">${ppfHelp()}</p>${(aya ? AYA_FIELDS : oy ? OY_FIELDS : ar ? AR_FIELDS : AD_FIELDS).map(f).join('')}
-    ${oy ? `<p class="help">السطران الأبيضان خاصّان بكل مشروع (جاهز للبناء، تملّك حر للعرب أو لكل الجنسيات، البنية التحتية…)${ad.pl ? '' : ' — لم تُحدَّد بعد لهذا المشروع'}.</p>${H.isAdmin && H.isAdmin() ? `<button type="button" class="btn sm" data-pzpl>📌 اجعل السطرين الأبيضين لكل بوستات مشروع ${esc(ad.p.l.projectName)}</button>` : ''}` : ''}
+    ${oy ? `<p class="help">السطران الأبيضان خاصّان بكل مشروع (جاهز للبناء، تملّك حر للعرب أو لكل الجنسيات، البنية التحتية…)${ad.pl ? '' : ' — لم تُحدَّد بعد لهذا المشروع'}.</p>${H.isAdmin && H.isAdmin() ? `<button type="button" class="btn sm" data-pzpl>${ei('bookmark')} اجعل السطرين الأبيضين لكل بوستات مشروع ${esc(ad.p.l.projectName)}</button>` : ''}` : ''}
     <h3>موقع القطعة في العنوان</h3>
     <div class="seg pz-side">${[['', 'عادية'], ['زاوية', 'زاوية'], ['سكة', 'سكة']].map(([k, l]) => `<button type="button" data-pzside="${k}" class="${(v.side || '') === k ? 'on' : ''}">${l}${ad.rawOk && (v.auto || '') === k ? ' ✓' : ''}</button>`).join('')}</div>
     <p class="help">${ad.rawOk ? `✓ = ما قرأته من المخطط${v.auto ? ': ' + v.auto : ': ليست زاوية ولا على سكة'}. ` : ''}الاختيار يضيف الكلمة إلى آخر العنوان.</p>`, false)

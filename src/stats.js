@@ -1,3 +1,4 @@
+import { ei } from './icons.js';
 // «إحصائيات الإعلان»: how many saw a listing in the app and how many called / sent WhatsApp / shared / asked for a call,
 // day by day (7, 30 or 90 days). The office sees every listing; a member sees their own listings only.
 import { api } from './owner.js';
@@ -6,7 +7,7 @@ let H = null;
 export function initStats(h) { H = h; }
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 const nf = new Intl.NumberFormat('en-US');
-const KINDS = [['view', 'مشاهدة', '👁️'], ['call', 'اتصال', '📞'], ['wa', 'واتساب', '💬'], ['form', 'طلب اتصال', '📝'], ['share', 'مشاركة', '🔗']];
+const KINDS = [['view', 'مشاهدة', ei('eye')], ['call', 'اتصال', ei('phone')], ['wa', 'واتساب', ei('chat')], ['form', 'طلب اتصال', ei('doc')], ['share', 'مشاركة', ei('share')]];
 const RANGE = (d) => `<div class="seg stseg">${[7, 30, 90].map((n) => `<button data-days="${n}" class="${n === d ? 'on' : ''}">${n} يوم</button>`).join('')}</div>`;
 const tiles = (t) => `<div class="sttiles">${KINDS.map(([k, l, i]) => `<div class="sttile ${k}"><span>${i}</span><b>${nf.format(t[k] || 0)}</b><small>${l}</small></div>`).join('')}</div>`;
 
@@ -55,7 +56,7 @@ export function initMyStats(pg) {
         <h3 class="msec">${j.office ? 'الإعلانات الأكثر مشاهدة' : 'إعلاناتي'}</h3>
         ${j.items.length ? `<div class="stlist">${j.items.map((x) => `<button class="strow" data-stats="${esc(x.id)}">
             <b class="notr">${esc(x.name)}</b>
-            <span><i>👁️ ${nf.format(x.view)}</i><i>📞 ${nf.format(x.call)}</i><i>💬 ${nf.format(x.wa)}</i>${x.form ? `<i>📝 ${nf.format(x.form)}</i>` : ''}</span><em>‹</em></button>`).join('')}</div>`
+            <span><i>${ei('eye')} ${nf.format(x.view)}</i><i>${ei('phone')} ${nf.format(x.call)}</i><i>${ei('chat')} ${nf.format(x.wa)}</i>${x.form ? `<i>${ei('doc')} ${nf.format(x.form)}</i>` : ''}</span><em>‹</em></button>`).join('')}</div>`
           : `<p class="muted">${j.office ? 'لا توجد بيانات في هذه الفترة.' : 'لم تضف إعلانات بعد.'}</p>`}`;
     } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
   };

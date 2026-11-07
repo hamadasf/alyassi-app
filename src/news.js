@@ -1,3 +1,4 @@
+import { ei } from './icons.js';
 // «شريط الأخبار»: real-estate news scrolling right → left at the top of the app, the company emblem between items.
 // The office adds and removes news from the app (الأخبار العقارية page) — stored on the website.
 import { api, session, can } from './owner.js';
@@ -48,7 +49,7 @@ export function newsPage() {
   return `<div class="pad newspg">${admin ? `<form class="ncard nform" id="nform"><h4>إضافة خبر جديد</h4>
       <textarea id="ntext" rows="3" maxlength="400" placeholder="نص الخبر…"></textarea>
       <input id="nlink" type="url" dir="ltr" placeholder="رابط (اختياري) https://">
-      <div class="nbtns"><button class="btn primary" data-pub="1">🔔 نشر مع إشعار للهواتف</button><button class="btn ghost" data-pub="0">نشر بدون تنبيه</button></div></form>
+      <div class="nbtns"><button class="btn primary" data-pub="1">${ei('bell')} نشر مع إشعار للهواتف</button><button class="btn ghost" data-pub="0">نشر بدون تنبيه</button></div></form>
     <div class="ncard nspeed"><h4>سرعة الشريط</h4>
       <div class="nsrow"><span>🐢 بطيء</span><input type="range" id="nspd" min="15" max="150" step="5" value="${speed}"><span>سريع 🐇</span></div>
       <p class="muted" id="nspv"></p><button class="btn ghost block" id="nspsave">حفظ السرعة</button></div>` : ''}

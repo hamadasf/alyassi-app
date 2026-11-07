@@ -1,3 +1,4 @@
+import { ei } from './icons.js';
 // Screens for accounts and user-submitted lands. Plugged into main.js's page stack.
 import { advStrip } from './adv.js';
 import { pickersHTML, bindPickers, pickersError, submitAdv, advMissing, renderAdvReqs, advReqClick } from './advui.js';
@@ -364,8 +365,8 @@ export function admAdPage(id) {
         ${x.review !== 'rejected' ? `<button class="btn ghost" data-act="reject">✕ ${x.review === 'approved' ? 'إخفاء' : 'رفض'}</button>` : ''}
         <button class="btn ghost" data-act="feature">${x.featured ? 'إلغاء التمييز' : '⭐ تمييز دائم'}</button>
         <button class="btn ghost" data-act="pkg">🎞️ باقة (أسبوع / شهر / سلايدر)</button>
-        <button class="btn ghost danger" data-act="delete">🗑 حذف</button>
-        ${x.owner ? `<button class="btn ghost" data-auser="${x.owner.id}">👤 ملف صاحب الإعلان</button>` : ''}
+        <button class="btn ghost danger" data-act="delete">${ei('trash')} حذف</button>
+        ${x.owner ? `<button class="btn ghost" data-auser="${x.owner.id}">${ei('user')} ملف صاحب الإعلان</button>` : ''}
       </div>
       <h2 class="h2">تعديل الإعلان</h2>
       ${landFormHTML({ ...x, phone: x.ownerPhone }, true)}
@@ -406,15 +407,15 @@ export async function initStaff(pg) {
     box.innerHTML = `<div class="ccard"><b>فريق المكتب</b><p class="muted">لإضافة موظف: يسجّل حساباً في التطبيق، ثم افتح ملفه من «لوحة الإدارة ← المستخدمون» واختر صلاحياته.</p></div>
       ${j.items.length ? j.items.map((u) => `<div class="strow" data-auser="${u.id}">${u.avatar ? `<img class="stav" src="${esc(u.avatar)}" alt="">` : `<div class="stav">${esc((u.name || '?').charAt(0).toUpperCase())}</div>`}<div class="stinfo"><b>${esc(u.name)}</b><span class="stmail"><bdi>${esc(u.email)}</bdi></span>
         <span class="stperms">${(u.staff || []).map((k) => `<i>${esc(STAFF[k] || k)}</i>`).join('')}</span>${(u.staff || []).includes('design') ? `<span class="sttpl">🖼️ ${(u.tpl && u.tpl.length ? u.tpl : ['oy']).map((k) => esc(TPLS[k] || k)).join(' · ')}</span>` : ''}</div><i class="chev">‹</i></div>`).join('') : '<p class="muted">لا يوجد موظفون بعد.</p>'}
-      <button class="btn primary block" id="pickStaff">👥 اختيار موظف من المستخدمين</button>
-      <div class="ccard invbox"><b>🔗 رابط دعوة موظف</b><p class="muted">أرسل الرابط للموظف — يسجّل حساباً واحداً فقط عن طريقه ويحصل مباشرة على الصلاحيات التي تختارها هنا. كل رابط يُستخدم مرة واحدة.</p>
+      <button class="btn primary block" id="pickStaff">${ei('user')} اختيار موظف من المستخدمين</button>
+      <div class="ccard invbox"><b>${ei('share')} رابط دعوة موظف</b><p class="muted">أرسل الرابط للموظف — يسجّل حساباً واحداً فقط عن طريقه ويحصل مباشرة على الصلاحيات التي تختارها هنا. كل رابط يُستخدم مرة واحدة.</p>
         ${Object.entries(STAFF).map(([k, v]) => `<label class="nrow"><span>${v}</span><input type="checkbox" class="nchk" data-iperm="${k}" ${k === 'payplan' ? 'checked' : ''}></label>`).join('')}
         <label class="ppname">اسم الموظف (للتذكير، اختياري)<input id="invNote" maxlength="60"></label>
         <button class="btn gold block" id="invNew">＋ إنشاء رابط دعوة</button>
         <div id="invList"></div></div>`;
     box.querySelector('#pickStaff').onclick = (e) => { e.stopPropagation(); ADM.tab = 'users'; H.pushPage('admin'); };
     const invLink = (code) => `${APP_URL}?inv=${code}`;
-    const invText = (code) => `مرحباً 👋\nهذه دعوتك للانضمام إلى فريق *عمر الياسي للعقارات* في التطبيق.\n\n🔗 سجّل حسابك من الرابط:\n${invLink(code)}\n\nأو من تطبيق الأندرويد: حسابي ← حساب جديد ← اكتب كود الدعوة: *${code}*\n\nالرابط لحساب واحد فقط.`;
+    const invText = (code) => `مرحباً 👋\nهذه دعوتك للانضمام إلى فريق *عمر الياسي للعقارات* في التطبيق.\n\n${ei('share')} سجّل حسابك من الرابط:\n${invLink(code)}\n\nأو من تطبيق الأندرويد: حسابي ← حساب جديد ← اكتب كود الدعوة: *${code}*\n\nالرابط لحساب واحد فقط.`;
     const list = box.querySelector('#invList');
     const loadInv = async () => {
       try {

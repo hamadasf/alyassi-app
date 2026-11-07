@@ -1,3 +1,4 @@
+import { ei } from './icons.js';
 // Clients follow-up (office), «مطلوب أرض» requests, «أرض تناسبني» alerts, targeted notifications and the
 // Sharjah procedures guide.
 import { api, session, can } from './owner.js';
@@ -20,19 +21,19 @@ const loading = '<div class="ss-state"><i class="spin"></i><span>جارِ الت
 /* =============================== «مطلوب أرض» =============================== */
 function wantedCard(w, mine, admin) {
   const { esc, money } = H;
-  const chips = [w.projectName && `📍 ${esc(w.projectName)}`, w.area && `🗺️ ${esc(w.area)}`, w.budget && `💰 حتى ${money(w.budget)} د.إ`,
-    (w.minFt || w.maxFt) && `📐 ${w.minFt ? money(w.minFt) : '0'}–${w.maxFt ? money(w.maxFt) : '∞'} قدم²`, w.pay && w.pay !== 'any' && (w.pay === 'cash' ? '💵 كاش' : '🗓️ أقساط')].filter(Boolean);
+  const chips = [w.projectName && `${ei('pin')} ${esc(w.projectName)}`, w.area && `${ei('map')} ${esc(w.area)}`, w.budget && `${ei('wallet')} حتى ${money(w.budget)} د.إ`,
+    (w.minFt || w.maxFt) && `${ei('area')} ${w.minFt ? money(w.minFt) : '0'}–${w.maxFt ? money(w.maxFt) : '∞'} قدم²`, w.pay && w.pay !== 'any' && (w.pay === 'cash' ? '' + ei('wallet') + ' كاش' : '' + ei('calendar') + ' أقساط')].filter(Boolean);
   const st = { approved: ['منشور', 'ok'], pending: ['بانتظار الموافقة', 'wait'], rejected: ['غير منشور', 'no'] }[w.status];
   return `<article class="wcard"><div class="wtop"><b>مطلوب ${esc(w.cat || 'أرض')}</b>${mine || admin ? `<i class="pill ${st[1]}">${st[0]}</i>` : ''}<time>${ago(w.date)}</time></div>
     <div class="wchips">${chips.map((c) => `<span>${c}</span>`).join('')}</div>
     ${w.notes ? `<p class="notr">${esc(w.notes)}</p>` : ''}
     <div class="wfoot"><small>${w.by ? `بواسطة <span class="notr">${esc(w.by)}</span>` : ''}</small>
-      ${admin && w.user ? `<button class="btn ghost sm" data-lead="${w.user.id}">👤 ملف العميل</button>` : ''}
+      ${admin && w.user ? `<button class="btn ghost sm" data-lead="${w.user.id}">${ei('user')} ملف العميل</button>` : ''}
       ${admin && w.status === 'pending' ? `<button class="btn wa sm" data-wok="${w.id}">✓ نشر</button><button class="btn ghost sm" data-wno="${w.id}">✕</button>` : ''}
       ${mine || admin ? `<button class="btn ghost sm danger" data-wdel="${w.id}">حذف</button>` : `<button class="btn primary sm" data-whave="${w.id}">عندي أرض تناسب</button>`}</div></article>`;
 }
 export function wantedPage() {
-  return `<div class="pad wanted"><div class="whead"><div><b>طلبات الشراء</b><span>مشترون يبحثون عن أراضٍ — التواصل عن طريق الإدارة</span></div><button class="btn gold" data-wadd>➕ أضف طلبك</button></div>
+  return `<div class="pad wanted"><div class="whead"><div><b>طلبات الشراء</b><span>مشترون يبحثون عن أراضٍ — التواصل عن طريق الإدارة</span></div><button class="btn gold" data-wadd>${ei('plusc')} أضف طلبك</button></div>
     <div class="cseg wtabs"><button class="on" data-wt="all">كل الطلبات</button><button data-wt="mine">طلباتي</button>${isAdmin() ? '<button data-wt="pending">بانتظار الموافقة <i id="wpend"></i></button>' : ''}</div>
     <div id="wlist">${loading}</div></div>`;
 }
@@ -94,7 +95,7 @@ export function initWantedAdd(pg) {
 /* =============================== «أرض تناسبني» =============================== */
 export function alertsPage(pre = {}) {
   return `<div class="pad alerts">
-    <div class="ccard ahead"><b>🔔 أرض تناسبني</b><span>حدد ما تبحث عنه، ونرسل لك إشعاراً فور نزول أرض مطابقة أو انخفاض سعر أرض لنطاقك.</span></div>
+    <div class="ccard ahead"><b>${ei('bell')} أرض تناسبني</b><span>حدد ما تبحث عنه، ونرسل لك إشعاراً فور نزول أرض مطابقة أو انخفاض سعر أرض لنطاقك.</span></div>
     <form class="ccard cform" id="aform">
       <div class="cgrid"><label>المشروع<select name="project">${projOpts(pre.project || '')}</select></label><label>نوع الأرض<select name="cat">${catOpts(pre.cat || '')}</select></label></div>
       <label>السعر الأقصى (درهم)<input name="maxPrice" inputmode="numeric" value="${pre.maxPrice ? H.money(pre.maxPrice) : ''}" placeholder="اختياري"></label>
@@ -108,7 +109,7 @@ export function initAlerts(pg) {
   const draw = (items) => {
     box.innerHTML = items.length ? items.map((a) => `<div class="arow"><div><b>${H.esc(a.cat || 'أي نوع')}${a.project ? ' · ' + H.esc(pname(a.project)) : ''}</b>
       <span>${a.maxPrice ? 'حتى ' + H.money(a.maxPrice) + ' د.إ' : 'أي سعر'}${a.minFt || a.maxFt ? ` · ${a.minFt ? H.money(a.minFt) : 0}–${a.maxFt ? H.money(a.maxFt) : '∞'} قدم²` : ''}${a.hits ? ` · ${a.hits} تنبيه أُرسل` : ''}</span></div>
-      <button data-adel="${a.id}" aria-label="حذف">🗑</button></div>`).join('') : '<p class="muted">لا توجد تنبيهات بعد.</p>';
+      <button data-adel="${a.id}" aria-label="حذف">${ei('trash')} </button></div>`).join('') : '<p class="muted">لا توجد تنبيهات بعد.</p>';
   };
   const load = async () => { if (!session.token()) { box.innerHTML = '<p class="muted">سجّل الدخول لحفظ التنبيهات</p>'; return; } try { draw((await api('alert_list')).items); } catch (e) { box.innerHTML = `<p class="muted">${H.esc(e.message)}</p>`; } };
   f.onsubmit = async (e) => {
@@ -123,12 +124,12 @@ export function initAlerts(pg) {
 }
 
 /* =============================== client follow-up (office) =============================== */
-const SRC = { sell: ['🏷️', 'أرض للبيع'], form: ['📩', 'طلب اتصال'], chat: ['💬', 'محادثة'], wa: ['🟢', 'واتساب'], call: ['📞', 'اتصال'], wanted: ['📝', 'طلب شراء'], alert: ['🔔', 'تنبيه'], calc: ['🧮', 'حاسبة'] };
+const SRC = { sell: ['' + ei('tag') + ' ', 'أرض للبيع'], form: ['' + ei('mail') + ' ', 'طلب اتصال'], chat: ['' + ei('chat') + ' ', 'محادثة'], wa: ['' + ei('wa') + ' ', 'واتساب'], call: ['' + ei('phone') + ' ', 'اتصال'], wanted: ['' + ei('doc') + ' ', 'طلب شراء'], alert: ['' + ei('bell') + ' ', 'تنبيه'], calc: ['' + ei('calc') + ' ', 'حاسبة'] };
 const ST = { new: 'جديد', follow: 'قيد المتابعة', won: 'تم البيع', lost: 'غير مهتم' };
 const avatar = (u) => (u.avatar ? `<span class="acc-av img"><img src="${H.esc(u.avatar)}" alt="" referrerpolicy="no-referrer">${u.online ? '<i class="dot"></i>' : ''}</span>` : `<span class="acc-av">${H.esc((u.name || '?').charAt(0))}${u.online ? '<i class="dot"></i>' : ''}</span>`);
 const waUrl = (ph) => { let d = String(ph).replace(/\D/g, ''); if (d.startsWith('00')) d = d.slice(2); if (d.startsWith('0')) d = '971' + d.slice(1); if (/^5\d{8}$/.test(d)) d = '971' + d; return 'https://wa.me/' + d; };
 export function leadsPage() {
-  return `<div class="pad leads"><div class="chips scroll lchips"><button class="chip on" data-ls="">الكل</button><button class="chip due" data-ls="due">📅 متابعة اليوم <i></i></button>
+  return `<div class="pad leads"><div class="chips scroll lchips"><button class="chip on" data-ls="">الكل</button><button class="chip due" data-ls="due">${ei('calendar')} متابعة اليوم <i></i></button>
     ${Object.entries(ST).map(([k, v]) => `<button class="chip" data-ls="${k}">${v} <i></i></button>`).join('')}</div><div id="llist">${loading}</div></div>`;
 }
 export function initLeads(pg) {
@@ -140,7 +141,7 @@ export function initLeads(pg) {
       box.innerHTML = j.items.length ? j.items.map((r) => `<button class="lrow${r.due ? ' due' : ''}" data-lead="${r.id}">${avatar(r)}
         <div><b class="notr">${H.esc(r.verified && r.company ? r.company : r.name)} ${r.verified ? H.I.verified : ''}</b>
           <span>${r.top ? `${(SRC[r.top.src] || ['•'])[0]} <span class="notr">${H.esc(r.top.name || (SRC[r.top.src] || ['', ''])[1])}</span>` : ''}</span>
-          <small>${r.count} اهتمام · ${ago(r.last)}${r.next ? ` · 📅 ${day(r.next)}` : ''}</small></div>
+          <small>${r.count} اهتمام · ${ago(r.last)}${r.next ? ` · ${ei('calendar')} ${day(r.next)}` : ''}</small></div>
         <i class="lst ${r.status}">${ST[r.status]}</i></button>`).join('') : `<div class="cempty">${H.I.user || ''}<p>لا يوجد عملاء في هذه القائمة</p></div>`;
     } catch (e) { box.innerHTML = `<p class="muted">${H.esc(e.message)}</p>`; }
   };
@@ -155,16 +156,16 @@ export async function initLead(pg, id) {
   const render = () => {
     const u = j.user, l = j.lead; const ph = u.phone;
     el.innerHTML = `<div class="ccard lcard">${avatar(u)}<div><b class="notr">${esc(u.verified && u.company ? u.company : u.name)} ${u.verified ? I.verified : ''}</b><span dir="ltr">${esc(ph || u.email)}</span></div></div>
-      <div class="lbtns">${ph ? `<a class="btn ghost" href="tel:${esc(ph)}">📞 اتصال</a><a class="btn wa" href="${esc(waUrl(ph))}" data-ext>${I.wa} واتساب</a>` : ''}
-        <button class="btn primary" data-chat="${u.id}">💬 محادثة</button><button class="btn ghost" data-prof="${u.id}">👤 الملف</button><button class="btn ghost" data-apush="${u.id}">🔔 إشعار له</button></div>
+      <div class="lbtns">${ph ? `<a class="btn ghost" href="tel:${esc(ph)}">${ei('phone')} اتصال</a><a class="btn wa" href="${esc(waUrl(ph))}" data-ext>${I.wa} واتساب</a>` : ''}
+        <button class="btn primary" data-chat="${u.id}">${ei('chat')} محادثة</button><button class="btn ghost" data-prof="${u.id}">${ei('user')} الملف</button><button class="btn ghost" data-apush="${u.id}">${ei('bell')} إشعار له</button></div>
       <div class="ccard"><h4 class="lh">الحالة</h4><div class="lstates">${Object.entries(ST).map(([k, v]) => `<button class="${l.status === k ? 'on ' : ''}${k}" data-st="${k}">${v}</button>`).join('')}</div>
         <h4 class="lh">موعد المتابعة</h4><div class="lnext"><input type="date" id="lnext" value="${l.next ? new Date(l.next).toISOString().slice(0, 10) : ''}">
           <button data-nd="1">غداً</button><button data-nd="3">بعد 3 أيام</button><button data-nd="7">أسبوع</button>${l.next ? '<button data-nd="0">إلغاء</button>' : ''}</div>
         <h4 class="lh">ملاحظة</h4><textarea id="lnote" rows="2" maxlength="1000" placeholder="مثال: يريد أرض زاوية، يتصل بعد العيد…"></textarea><button class="btn primary block" id="lsave">حفظ الملاحظة</button>
         ${l.notes.length ? `<div class="ltl">${l.notes.map((n) => `<div><time>${day(n.t)}${n.by ? ' · ' + esc(n.by) : ''}</time><p class="notr">${esc(n.text)}</p></div>`).join('')}</div>` : ''}</div>
       <div class="ccard"><h4 class="lh">الاهتمامات (${l.items.length})</h4>${l.items.length ? l.items.map((it) => `<button class="lint" ${/^\d+$/.test(it.lid) ? `data-oland="${esc(it.lid)}"` : it.lid ? `data-land="${esc(it.lid)}"` : ''}><i>${(SRC[it.src] || ['•'])[0]}</i><span><b>${(SRC[it.src] || ['', it.src])[1]}</b> <span class="notr">${esc(it.name || '')}</span></span><time>${ago(it.t)}</time></button>`).join('') : '<p class="muted">—</p>'}</div>
-      ${j.wanted.length ? `<div class="ccard"><h4 class="lh">طلبات الشراء</h4>${j.wanted.map((w) => `<p>📝 مطلوب ${esc(w.cat || 'أرض')}${w.projectName ? ' · ' + esc(w.projectName) : ''}${w.budget ? ' · حتى ' + H.money(w.budget) + ' د.إ' : ''}</p>`).join('')}</div>` : ''}
-      ${j.alerts.length ? `<div class="ccard"><h4 class="lh">تنبيهات «أرض تناسبني»</h4>${j.alerts.map((a) => `<p>🔔 ${esc(a.cat || 'أي نوع')}${a.maxPrice ? ' · حتى ' + H.money(a.maxPrice) + ' د.إ' : ''}</p>`).join('')}</div>` : ''}`;
+      ${j.wanted.length ? `<div class="ccard"><h4 class="lh">طلبات الشراء</h4>${j.wanted.map((w) => `<p>${ei('doc')} مطلوب ${esc(w.cat || 'أرض')}${w.projectName ? ' · ' + esc(w.projectName) : ''}${w.budget ? ' · حتى ' + H.money(w.budget) + ' د.إ' : ''}</p>`).join('')}</div>` : ''}
+      ${j.alerts.length ? `<div class="ccard"><h4 class="lh">تنبيهات «أرض تناسبني»</h4>${j.alerts.map((a) => `<p>${ei('bell')} ${esc(a.cat || 'أي نوع')}${a.maxPrice ? ' · حتى ' + H.money(a.maxPrice) + ' د.إ' : ''}</p>`).join('')}</div>` : ''}`;
   };
   const save = async (body, msg) => { try { const r = await api('adm_lead_save', { id, ...body }); j.lead = r.lead; j.user = r.user; render(); if (msg) H.toast(msg); document.querySelectorAll('.page').forEach((p) => p.dispatchEvent(new Event('oay:refresh'))); } catch (e) { H.toast(e.message); } };
   try { j = await api('adm_lead', { id }); } catch (e) { el.innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
@@ -172,11 +173,11 @@ export async function initLead(pg, id) {
   el.addEventListener('click', (e) => {
     const t = e.target.closest('button'); if (!t) return;
     if (t.dataset.st) save({ status: t.dataset.st }, 'تم تحديث الحالة');
-    else if (t.dataset.nd !== undefined) { const d = +t.dataset.nd; save({ next: d ? new Date(Date.now() + d * 864e5).setHours(9, 0, 0, 0) : 0, status: d && j.lead.status === 'new' ? 'follow' : j.lead.status }, d ? 'تم ضبط موعد المتابعة 📅' : 'تم إلغاء الموعد'); }
+    else if (t.dataset.nd !== undefined) { const d = +t.dataset.nd; save({ next: d ? new Date(Date.now() + d * 864e5).setHours(9, 0, 0, 0) : 0, status: d && j.lead.status === 'new' ? 'follow' : j.lead.status }, d ? 'تم ضبط موعد المتابعة ✓' : 'تم إلغاء الموعد'); }
     else if (t.id === 'lsave') { const v = el.querySelector('#lnote').value.trim(); if (v) save({ note: v, status: j.lead.status === 'new' ? 'follow' : j.lead.status }, 'تم حفظ الملاحظة'); }
     else if (t.dataset.apush) { e.stopPropagation(); H.pushPage('apush', 'user:' + t.dataset.apush + ':' + (j.user.name || '')); }
   });
-  el.addEventListener('change', (e) => { if (e.target.id === 'lnext' && e.target.value) save({ next: new Date(e.target.value + 'T09:00:00').getTime(), status: j.lead.status === 'new' ? 'follow' : j.lead.status }, 'تم ضبط موعد المتابعة 📅'); });
+  el.addEventListener('change', (e) => { if (e.target.id === 'lnext' && e.target.value) save({ next: new Date(e.target.value + 'T09:00:00').getTime(), status: j.lead.status === 'new' ? 'follow' : j.lead.status }, 'تم ضبط موعد المتابعة ✓'); });
 }
 
 /* =============================== targeted notifications (office) =============================== */
@@ -193,7 +194,7 @@ export function apushPage(id = '') {
     <label>النص<textarea name="body" rows="3" maxlength="400" placeholder="مثال: نزلت 5 أراضٍ سكنية بأسعار تبدأ من 380,000 درهم — تصفحها الآن"></textarea></label>
     <div class="cgrid"><label>عند الضغط يفتح<select name="open"><option value="home">الصفحة الرئيسية</option><option value="project">مشروع</option><option value="news">الأخبار</option><option value="wanted">طلبات الشراء</option><option value="url">رابط</option></select></label>
       <label id="ptgt" hidden>الهدف<select name="tproj">${H.DATA().projects.map((p) => `<option value="${H.esc(p.slug)}">${H.esc(p.name)}</option>`).join('')}</select><input name="turl" type="url" dir="ltr" placeholder="https://" hidden></label></div>
-    <button class="btn primary block">🔔 إرسال الإشعار</button>
+    <button class="btn primary block">${ei('bell')} إرسال الإشعار</button>
     <div id="plog"></div></form>`;
 }
 export function initApush(pg) {
@@ -231,14 +232,14 @@ export async function initGuide(pg) {
   let secs = null; try { secs = JSON.parse(localStorage.getItem(GK) || 'null'); } catch { /* ignore */ }
   const link = (t) => esc(t).replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" data-ext dir="ltr">${u.replace(/^https?:\/\//, '')}</a>`).replace(/\n/g, '<br>');
   const view = () => {
-    el.innerHTML = `<div class="ccard ghead"><b>📘 دليل الإجراءات العقارية في الشارقة</b><span>معلومات عامة للاسترشاد — الأنظمة والرسوم تُحدَّث من الجهات الرسمية، وفريقنا يساعدك في كل خطوة.</span></div>
+    el.innerHTML = `<div class="ccard ghead"><b>${ei('book')} دليل الإجراءات العقارية في الشارقة</b><span>معلومات عامة للاسترشاد — الأنظمة والرسوم تُحدَّث من الجهات الرسمية، وفريقنا يساعدك في كل خطوة.</span></div>
       ${secs.map((s, i) => `<details class="gsec"${i ? '' : ' open'}><summary>${esc(s.title)}</summary><div class="gbody notr">${link(s.body)}</div></details>`).join('')}
       <div class="lbtns"><a class="btn wa" href="${esc(H.waLink('مرحباً، عندي استفسار عن إجراءات شراء وتسجيل أرض في الشارقة'))}" data-ext>${H.I.wa} اسأل فريقنا</a>${canNews() ? '<button class="btn ghost" id="gedit">✏️ تعديل الدليل</button>' : ''}</div>`;
     const b = el.querySelector('#gedit'); if (b) b.onclick = edit;
   };
   const edit = () => {
     el.innerHTML = `<div class="gedit">${secs.map((s) => `<div class="ccard cform gitem"><input class="gt" value="${esc(s.title)}" maxlength="120"><textarea class="gb" rows="6">${esc(s.body)}</textarea><button type="button" class="btn ghost sm danger gdel">حذف القسم</button></div>`).join('')}</div>
-      <button class="btn ghost block" id="gadd">➕ قسم جديد</button><button class="btn primary block" id="gsave">حفظ الدليل</button>`;
+      <button class="btn ghost block" id="gadd">${ei('plusc')} قسم جديد</button><button class="btn primary block" id="gsave">حفظ الدليل</button>`;
     const wrap = el.querySelector('.gedit');
     wrap.onclick = (e) => { if (e.target.closest('.gdel')) e.target.closest('.gitem').remove(); };
     el.querySelector('#gadd').onclick = () => wrap.insertAdjacentHTML('beforeend', '<div class="ccard cform gitem"><input class="gt" placeholder="عنوان القسم" maxlength="120"><textarea class="gb" rows="6" placeholder="المحتوى"></textarea><button type="button" class="btn ghost sm danger gdel">حذف القسم</button></div>');
@@ -279,7 +280,7 @@ export function initContacts(pg) {
           ${x.id ? `<button class="clink notr" ${/^\d+$/.test(x.id) ? `data-oland="${H.esc(x.id)}"` : `data-land="${H.esc(x.id)}"`}>${H.esc(x.name)}</button>` : ''}
           <span>${x.kind === 'form' ? `<b class="notr">${H.esc(x.who)}</b> · <span dir="ltr">${H.esc(x.phone)}</span>${x.wa ? ' · يفضّل واتساب' : ''}` : x.uid ? `عضو: <button class="clink notr" data-lead="${x.uid}">${H.esc(x.who)}</button>` : `زائر بدون حساب #${H.esc(x.dev || '')}`}</span>
           ${x.msg ? `<p class="notr">${H.esc(x.msg)}</p>` : ''}
-          ${x.kind === 'form' ? `<div class="cact"><a class="btn ghost sm" href="tel:${H.esc(x.phone)}">📞 اتصال</a><a class="btn wa sm" href="${H.esc(waUrl(x.phone))}" data-ext>واتساب</a>${x.done ? '<i class="pill ok">تم التواصل</i>' : `<button class="btn primary sm" data-done="${x.t}">✓ تم التواصل</button>`}</div>` : ''}</div>
+          ${x.kind === 'form' ? `<div class="cact"><a class="btn ghost sm" href="tel:${H.esc(x.phone)}">${ei('phone')} اتصال</a><a class="btn wa sm" href="${H.esc(waUrl(x.phone))}" data-ext>واتساب</a>${x.done ? '<i class="pill ok">تم التواصل</i>' : `<button class="btn primary sm" data-done="${x.t}">✓ تم التواصل</button>`}</div>` : ''}</div>
         <time>${ago(x.t)}</time></div>`).join('') : `<div class="cempty">${H.I.phone}<p>لا يوجد تواصل بعد</p></div>`;
     } catch (e) { box.innerHTML = `<p class="muted">${H.esc(e.message)}</p>`; }
   };

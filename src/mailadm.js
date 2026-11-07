@@ -1,3 +1,4 @@
+import { ei } from './icons.js';
 // «النشرة البريدية» (admin): the weekly «أراضٍ مختارة لك» e-mail — on / off, day and hour, a test to my own e-mail,
 // send now, and how the last round went.
 import { api, session } from './owner.js';
@@ -20,8 +21,8 @@ export function initMailAdmPage(pg) {
       <div class="mlstats"><div><b>${nf.format(s.audience)}</b><small>مشترك</small></div><div><b>${nf.format(s.pool)}</b><small>أرض متاحة بسعر</small></div>
         <div><b>${nf.format(s.sent)}</b><small>أُرسلت آخر مرة</small></div><div><b>${nf.format(s.queue)}</b><small>بالانتظار</small></div></div>
       ${s.started ? `<p class="help">آخر إرسال بدأ ${new Date(s.started).toLocaleString('ar-AE')}${s.fail ? ` · تعذّر ${s.fail}` : ''}. تُرسل ${12} رسالة كل 5 دقائق.</p>` : ''}
-      <button class="btn block" id="mlTest">✉️ إرسال تجربة إلى بريدي</button>
-      <button class="btn gold block" id="mlNow" ${s.queue ? 'disabled' : ''}>📤 إرسال للجميع الآن</button>`;
+      <button class="btn block" id="mlTest">${ei('mail')} إرسال تجربة إلى بريدي</button>
+      <button class="btn gold block" id="mlNow" ${s.queue ? 'disabled' : ''}>${ei('share')} إرسال للجميع الآن</button>`;
   };
   const load = async () => { try { draw((await api('adm_mail_get')).state); } catch (e) { box.innerHTML = `<p class="muted">${H.esc(e.message)}</p>`; } };
   box.addEventListener('click', async (e) => {

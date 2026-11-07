@@ -1,5 +1,6 @@
 const s = (d, extra = '') => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
 export const I = {
+  eye: s('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
   flame: s('<path d="M12 22c4 0 7-2.7 7-6.8 0-3.3-2.2-5.4-3.6-7.6-.5 2-1.6 3.2-2.9 3.7C13 8 11.7 4.8 9 2c.3 3.3-1.6 5.4-3.1 7.5A8.6 8.6 0 0 0 5 15.2C5 19.3 8 22 12 22z"/><path d="M12 22c-1.7 0-3-1.2-3-3 0-1.6 1.2-2.6 2-3.6.4 1 1.1 1.6 2 1.8.4-.9.4-1.8.2-2.7 1.1 1 1.8 2.5 1.8 4.5 0 1.8-1.3 3-3 3z"/>'),
   clock: s('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   scale: s('<path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/>'),
@@ -58,3 +59,6 @@ export const I = {
   send: s('<path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m21 3-11 10"/>'),
   refresh: s('<path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/>'),
 };
+
+/** an icon inside running text (replaces the emoji the screens used to have) */
+export const ei = (k) => `<i class="ei">${I[k] || ''}</i>`;

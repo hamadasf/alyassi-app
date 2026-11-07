@@ -1,3 +1,4 @@
+import { ei } from './icons.js';
 // «مقارنة بالسوق» (office only): comparable listings from other sites, added by the office (link, price, area, use,
 // corner / lane / regular), and the company's own reservations / sales. Each company land is compared by price per sq ft
 // with similar listings in its project (same use, similar size, same position first) — so our prices stay competitive.
@@ -111,7 +112,7 @@ export function editComp(c0, slug, after) {
     <div class="two"><label class="fld">تاريخ الإعلان<input id="cSeen" type="date" value="${esc(c.seen)}"></label><label class="nrow"><span>عليه أقساط</span><input type="checkbox" class="nchk" id="cInst" ${c.inst ? 'checked' : ''}></label></div>
     <label class="fld">ملاحظة<input id="cNote" value="${esc(c.note || '')}" placeholder="مثلاً: مقابل مسجد، على شارع 18 متر"></label>
     <button class="btn primary block share-big" id="cSave">حفظ</button>
-    ${c0 ? '<button class="btn ghost danger block" id="cDel">🗑 حذف</button>' : ''}</div></div>`;
+    ${c0 ? '<button class="btn ghost danger block" id="cDel">' + ei('trash') + ' حذف</button>' : ''}</div></div>`;
   document.body.appendChild(ov); requestAnimationFrame(() => ov.classList.add('in'));
   const $ = (s) => ov.querySelector(s);
   const close = () => { ov.classList.remove('in'); setTimeout(() => ov.remove(), 200); };

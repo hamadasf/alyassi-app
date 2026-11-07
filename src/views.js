@@ -1,3 +1,4 @@
+import { ei } from './icons.js';
 // «احجز معاينة»: the client picks a day and a time for a land; the office confirms, moves or cancels it,
 // and both get a reminder before the visit.
 import { api, session, can } from './owner.js';
@@ -68,7 +69,7 @@ export async function initMyViews(pg) {
     try {
       const j = await api('view_mine');
       box.innerHTML = j.items.length ? j.items.map((v) => `<div class="vcard"><div class="vtop"><b class="notr">${H.esc(v.title)}</b><i class="pill ${ST[v.status][1]}">${ST[v.status][0]}</i></div>
-        <p>${H.I.calendar} ${dayName(v.date)} · ${t12(v.time)}</p>${v.officeNote ? `<p class="muted">💬 ${H.esc(v.officeNote)}</p>` : ''}
+        <p>${H.I.calendar} ${dayName(v.date)} · ${t12(v.time)}</p>${v.officeNote ? `<p class="muted">${ei('chat')} ${H.esc(v.officeNote)}</p>` : ''}
         <div class="cact">${v.loc ? `<a class="btn ghost sm" href="${H.esc(v.loc)}" data-ext>${H.I.pin} الموقع</a>` : ''}${['pending', 'confirmed'].includes(v.status) ? `<button class="btn ghost sm danger" data-vcancel="${v.id}">إلغاء الموعد</button>` : ''}</div></div>`).join('')
         : `<div class="cempty">${H.I.calendar}<p>لا توجد مواعيد — احجز معاينة من صفحة أي أرض</p></div>`;
     } catch (e) { box.innerHTML = `<p class="muted">${H.esc(e.message)}</p>`; }
@@ -79,7 +80,7 @@ export async function initMyViews(pg) {
 
 /* ---------- appointments (office) ---------- */
 export function viewsPage() {
-  return `<div class="pad vlist"><div class="chips scroll lchips"><button class="chip on" data-vt="today">اليوم <i></i></button><button class="chip" data-vt="pending">بانتظار التأكيد <i></i></button><button class="chip" data-vt="next">القادمة <i></i></button><button class="chip" data-vt="past">السابقة</button><button class="chip" data-vt="cfg">⚙️ أوقات العمل</button></div>
+  return `<div class="pad vlist"><div class="chips scroll lchips"><button class="chip on" data-vt="today">اليوم <i></i></button><button class="chip" data-vt="pending">بانتظار التأكيد <i></i></button><button class="chip" data-vt="next">القادمة <i></i></button><button class="chip" data-vt="past">السابقة</button><button class="chip" data-vt="cfg">${ei('gear')} أوقات العمل</button></div>
     <div id="vl">${loading}</div></div>`;
 }
 export function initViewsAdm(pg) {
@@ -88,11 +89,11 @@ export function initViewsAdm(pg) {
     const conf = `مرحباً ${v.name}، نؤكد موعد معاينة ${v.title} (${v.ref}) يوم ${dayName(v.date)} الساعة ${t12(v.time)}.${v.loc ? '\nالموقع: ' + v.loc : ''}\nعمر الياسي للعقارات`;
     return `<div class="vcard${v.status === 'pending' ? ' due' : ''}" data-vid="${v.id}"><div class="vtop"><b>${dayName(v.date)} · ${t12(v.time)}</b><i class="pill ${ST[v.status][1]}">${ST[v.status][0]}</i></div>
       <button class="clink notr" ${/^\d+$/.test(v.lid) ? `data-oland="${H.esc(v.lid)}"` : v.lid ? `data-land="${H.esc(v.lid)}"` : ''}>${H.esc(v.title)} <span dir="ltr">${H.esc(v.ref)}</span></button>
-      <p>👤 <b class="notr">${H.esc(v.name)}</b> · <span dir="ltr">${H.esc(v.phone)}</span>${v.uid ? ` · <button class="clink" data-lead="${v.uid}">ملف العميل</button>` : ''}</p>
-      ${v.notes ? `<p class="muted notr">📝 ${H.esc(v.notes)}</p>` : ''}${v.officeNote ? `<p class="muted notr">💬 ${H.esc(v.officeNote)}</p>` : ''}
-      <div class="cact"><a class="btn ghost sm" href="tel:${H.esc(v.phone)}">📞</a><a class="btn wa sm" href="${H.esc(waUrl(v.phone, conf))}" data-ext>واتساب</a>
+      <p>${ei('user')} <b class="notr">${H.esc(v.name)}</b> · <span dir="ltr">${H.esc(v.phone)}</span>${v.uid ? ` · <button class="clink" data-lead="${v.uid}">ملف العميل</button>` : ''}</p>
+      ${v.notes ? `<p class="muted notr">${ei('doc')} ${H.esc(v.notes)}</p>` : ''}${v.officeNote ? `<p class="muted notr">${ei('chat')} ${H.esc(v.officeNote)}</p>` : ''}
+      <div class="cact"><a class="btn ghost sm" href="tel:${H.esc(v.phone)}">${ei('phone')} </a><a class="btn wa sm" href="${H.esc(waUrl(v.phone, conf))}" data-ext>واتساب</a>
         ${v.status === 'pending' ? '<button class="btn primary sm" data-vs="confirmed">✓ تأكيد</button>' : ''}
-        ${['pending', 'confirmed'].includes(v.status) ? '<button class="btn ghost sm" data-vmove>🔁 تغيير الموعد</button><button class="btn ghost sm" data-vs="done">تمت</button><button class="btn ghost sm" data-vs="noshow">لم يحضر</button><button class="btn ghost sm danger" data-vs="cancelled">إلغاء</button>' : ''}
+        ${['pending', 'confirmed'].includes(v.status) ? '<button class="btn ghost sm" data-vmove>' + ei('refresh') + ' تغيير الموعد</button><button class="btn ghost sm" data-vs="done">تمت</button><button class="btn ghost sm" data-vs="noshow">لم يحضر</button><button class="btn ghost sm danger" data-vs="cancelled">إلغاء</button>' : ''}
         <button class="btn ghost sm" data-vnote>ملاحظة</button></div></div>`;
   };
   const cfgForm = () => {
@@ -112,7 +113,7 @@ export function initViewsAdm(pg) {
       const j = await api('adm_views', { tab: tab === 'cfg' ? 'next' : tab }); items = j.items; cfg = j.cfg;
       pg.querySelectorAll('[data-vt]').forEach((b) => { const i = b.querySelector('i'); if (i) i.textContent = j.counts[b.dataset.vt] || ''; });
       if (tab === 'cfg') { cfgForm(); return; }
-      box.innerHTML = items.length ? items.map(card).join('') : `<div class="cempty">📅<p>لا توجد مواعيد هنا</p></div>`;
+      box.innerHTML = items.length ? items.map(card).join('') : `<div class="cempty">${ei('calendar')} <p>لا توجد مواعيد هنا</p></div>`;
     } catch (e) { box.innerHTML = `<p class="muted">${H.esc(e.message)}</p>`; }
   };
   const save = async (id, body, msg) => { try { await api('adm_view_save', { id, ...body }); H.toast(msg); load(); } catch (e) { H.toast(e.message); } };

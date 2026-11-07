@@ -1250,3 +1250,4 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .mfoot { margin-top: 18px; }
 .mav svg, .acc-av svg { width: 55%; height: 55%; color: var(--navy); }
 .codebox b svg, .advnote b svg { width: 16px; height: 16px; vertical-align: -3px; }
+.ei { display: inline-flex; vertical-align: -0.2em; margin-inline-end: 3px; } .ei svg { width: 1.15em; height: 1.15em; }

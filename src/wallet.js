@@ -1,3 +1,4 @@
+import { ei } from './icons.js';
 // «محفظتي» — the broker / office wallet: their listings, their deals (lands bought → instalments they pay, lands sold →
 // instalments they receive + their commission), the next payment, upcoming instalments, a 12-month cash-flow chart and
 // their earnings. The broker keeps it; the office (permission «listings») can open anyone's wallet and add or edit.
@@ -117,8 +118,8 @@ export function initWalletPage(pg, uid) {
   };
   const dueList = (rows) => (rows.length ? rows.slice(0, 80).map((r) => `<div class="wrow ${r.deal.type === 'sell' ? 'in' : 'out'}${r.d < today() ? ' late' : ''}">
       <label class="wchk"><input type="checkbox" data-wpay="${esc(r.deal.id)}|${r.i}"><i></i></label>
-      <div><b>${m(r.a)} د.إ</b><span>${r.deal.type === 'sell' ? '⬇️ لك من' : '⬆️ عليك إلى'} ${esc(r.deal.party || '—')} · ${esc(r.deal.title)}${r.l ? ' · ' + esc(r.l) : ''}</span></div>
-      <em>${dmy(r.d)}${r.deal.type === 'sell' ? `<button class="wrem" data-wrem="${esc(r.deal.id)}|${r.i}" aria-label="ذكّر العميل">💬 ذكّر</button>` : ''}</em></div>`).join('') : '<p class="muted">لا توجد أقساط قادمة. أضف صفقة بجدول دفعاتها.</p>');
+      <div><b>${m(r.a)} د.إ</b><span>${r.deal.type === 'sell' ? ei('down') + ' لك من' : ei('up') + ' عليك إلى'} ${esc(r.deal.party || '—')} · ${esc(r.deal.title)}${r.l ? ' · ' + esc(r.l) : ''}</span></div>
+      <em>${dmy(r.d)}${r.deal.type === 'sell' ? `<button class="wrem" data-wrem="${esc(r.deal.id)}|${r.i}" aria-label="ذكّر العميل">${ei('chat')} ذكّر</button>` : ''}</em></div>`).join('') : '<p class="muted">لا توجد أقساط قادمة. أضف صفقة بجدول دفعاتها.</p>');
   const dealList = (deals) => (deals.length ? [...deals].sort((a, b) => (b.date || '').localeCompare(a.date || '')).map((d) => {
     const tot = d.sched.reduce((a, r) => a + r.a, 0), paid = d.sched.filter((r) => r.p).reduce((a, r) => a + r.a, 0), pc = tot ? Math.round(paid / tot * 100) : 0;
     return `<button class="wdeal" data-wedit="${esc(d.id)}"><div class="wd1"><i class="pill ${d.type === 'sell' ? 'av' : 'sold'}">${d.type === 'sell' ? 'بيع' : 'شراء'}</i><b>${esc(d.title)}</b>${d.done ? '<i class="pill">منتهية</i>' : ''}</div>
@@ -160,7 +161,7 @@ export function initWalletPage(pg, uid) {
     const projects = (H.projects() || []).map((p) => `<option value="${esc(p.slug)}" ${d.project === p.slug ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
     ov.innerHTML = `<div class="wfbox"><header><button class="back" data-wx aria-label="إغلاق">✕</button><b>${d0 ? 'تعديل الصفقة' : 'صفقة جديدة'}</b></header>
       <div class="wfbody">
-        <div class="seg"><button type="button" data-ty="sell" class="${d.type === 'sell' ? 'on' : ''}">⬇️ أرض بعتها لعميل</button><button type="button" data-ty="buy" class="${d.type === 'buy' ? 'on' : ''}">⬆️ أرض اشتريتها</button></div>
+        <div class="seg"><button type="button" data-ty="sell" class="${d.type === 'sell' ? 'on' : ''}">${ei('down')} أرض بعتها لعميل</button><button type="button" data-ty="buy" class="${d.type === 'buy' ? 'on' : ''}">⬆️ أرض اشتريتها</button></div>
         <p class="help" id="tyHelp"></p>
         ${needsOk(d) ? '<p class="wst wait">⏳ ستُرسل الصفقة للإدارة للاعتماد قبل أن تُحسب في محفظتك' + (d.src === 'company' ? ' — أرض من أراضي الشركة' : '') + '.</p>' : ''}
         <label class="fld">الأرض (الاسم أو الوصف) *<input id="fTitle" value="${esc(d.title)}" placeholder="مثال: قطعة 4873 الدبدبة شمال"></label>
@@ -178,7 +179,7 @@ export function initWalletPage(pg, uid) {
         <label class="fld">ملاحظات<textarea id="fNote" rows="2">${esc(d.note)}</textarea></label>
         <label class="nrow"><span>صفقة منتهية (مكتملة)</span><input type="checkbox" class="nchk" id="fDone" ${d.done ? 'checked' : ''}></label>
         <button class="btn primary block share-big" id="fSave">حفظ الصفقة</button>
-        ${d0 ? '<button class="btn ghost danger block" id="fDel">🗑 حذف الصفقة</button>' : ''}
+        ${d0 ? '<button class="btn ghost danger block" id="fDel">' + ei('trash') + ' حذف الصفقة</button>' : ''}
       </div></div>`;
     document.body.appendChild(ov); requestAnimationFrame(() => ov.classList.add('in'));
     const $ = (s) => ov.querySelector(s);
