@@ -9,61 +9,49 @@ const VER = typeof __VERSION__ !== 'undefined' ? __VERSION__ : '';
 
 const avatar = (u, cls = 'acc-av') => u && u.avatar
   ? `<span class="${cls} img"><img src="${H.esc(u.avatar)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()"></span>`
-  : `<span class="${cls}">${H.esc(u ? (u.name || u.email || '?').trim().charAt(0) : '👤')}</span>`;
+  : `<span class="${cls}">${u ? H.esc((u.name || u.email || '?').trim().charAt(0)) : H.I.user}</span>`;
 const vb = (u) => (u && u.verified ? H.I.verified : '');
 const CITIES = ['الشارقة', 'دبي', 'أبوظبي', 'عجمان', 'رأس الخيمة', 'أم القيوين', 'الفجيرة', 'العين'];
 const row = (icon, label, attrs, extra = '') => `<button class="mrow" ${attrs}><span class="mi">${icon}</span><b>${label}</b>${extra}<i class="chev">‹</i></button>`;
 
 /* ================= the tab ================= */
+const tile = (icon, label, attrs, badge = '') => `<button class="mtile" ${attrs}><span>${icon}${badge ? `<i>${badge}</i>` : ''}</span>${label}</button>`;
 export function renderMore(el) {
   const { I, esc } = H; const u = session.user();
+  const nSaved = saved.all().length;
   el.innerHTML = `
     ${u ? `<button class="mprof" data-profile>${avatar(u, 'mav')}<div><b><span class="notr">${esc(u.verified && u.company ? u.company : u.name || '')}</span>${u.verified && u.company || u.name ? '' : 'حسابي'} ${vb(u)}</b><span>${esc(u.email || '')}</span></div><i class="chev">‹</i></button>`
       : `<button class="mprof" data-account>${avatar(null, 'mav')}<div><b>تسجيل الدخول / حساب جديد</b><span>بالبريد الإلكتروني أو حساب جوجل</span></div><i class="chev">‹</i></button>`}
+    <div class="mtiles">
+      ${tile(I.heart, 'المفضلة', 'data-tab="favs"')}
+      ${tile(I.building, 'عقاراتي', 'data-account')}
+      ${tile(I.plusc, 'أضف أرضك', 'data-addland')}
+      ${tile(I.calendar, 'مواعيدي', u ? 'data-myviews' : 'data-account')}
+    </div>
+    ${isOffice() ? `<button class="mwork" data-tools><span class="mwi">${I.brief}</span><div><b>${u.admin ? 'لوحة الإدارة' : 'أدوات الموظف'}</b><span>العملاء · الإعلانات والتسويق · الفريق والتقارير</span></div><i class="chev">‹</i></button>` : ''}
     <h3 class="msec">نشاطي</h3>
     <div class="mbox">
-      ${row(I.building, 'عقاراتي', 'data-account', u ? '' : '<small>سجّل الدخول</small>')}
-      ${row(I.plusc, 'أضف أرضك للبيع', 'data-addland')}
-      ${row(I.search, 'بحث محفوظ', 'data-saved', `<small>${saved.all().length || ''}</small>`)}
-      ${row(I.heart, 'المفضلة', 'data-tab="favs"')}
-      ${row(I.wallet, 'حاسبة الأقساط', 'data-calc=""')}
-      ${row(I.bell, 'أرض تناسبني', 'data-alerts=""')}
-      ${row(I.search, 'مطلوب أرض', 'data-wanted')}
-      ${row(I.doc, 'دليل الإجراءات العقارية', 'data-guide')}
-      ${row(I.doc, 'الأخبار العقارية', 'data-news', can('news') ? '<small>إدارة الشريط</small>' : '')}
-      ${u && isBroker(u) ? row(I.grid, 'محفظتي', 'data-wallet=""', '<small>صفقاتي وأقساطي وأرباحي</small>') : ''}
-      ${u ? row(I.calendar || I.bell, 'مواعيد المعاينة', 'data-myviews') : ''}
-      ${u && !isOffice() ? row(I.grid, 'إحصائيات إعلاناتي', 'data-mystats') : ''}
+      ${row(I.bookmark, 'بحث محفوظ', 'data-saved', nSaved ? `<small>${nSaved}</small>` : '')}
+      ${row(I.bell, 'أرض تناسبني', 'data-alerts=""', '<small>تنبيه بالأراضي المناسبة لك</small>')}
+      ${row(I.wanted, 'مطلوب أرض', 'data-wanted')}
+      ${u && isBroker(u) ? row(I.wallet, 'محفظتي', 'data-wallet=""', '<small>صفقاتي وأقساطي وأرباحي</small>') : ''}
+      ${u && !isOffice() ? row(I.chart, 'إحصائيات إعلاناتي', 'data-mystats') : ''}
     </div>
-    ${isOffice() ? `<h3 class="msec">${u.admin ? 'الإدارة' : 'أدوات الموظف'}</h3><div class="mbox">
-      ${can('listings') ? row(I.shield, 'لوحة الإدارة', 'data-admin') : ''}
-      ${can('design') ? row(I.image || I.doc, 'تصميم البوستات', 'data-adgen=""', '<small>قوالب الشركة</small>') : ''}
-      ${can('viewings') ? row(I.calendar || I.bell, 'مواعيد المعاينة (الإدارة)', 'data-views') : ''}
-      ${can('leads') ? row(I.user, 'متابعة العملاء', 'data-leads') : ''}
-      ${can('leads') ? row(I.phone, 'سجل التواصل', 'data-contacts') : ''}
-      ${can('leads') ? row(I.star, 'تقييمات الخدمة', 'data-rates', '<small>رأي العملاء بعد التواصل</small>') : ''}
-      ${can('leads') ? row(I.user, 'التسجيل المسبق «قريباً»', 'data-prereg', '<small>من صفحة omaralyassirealestate.com/app</small>') : ''}
-      ${can('chats') ? row(I.chat, 'المحادثات الخاصة', 'data-tab="chats"') : ''}
-      ${can('push') ? row(I.bell, 'إشعار موجّه', 'data-pushc') : ''}
-      ${can('report') ? row(I.grid, 'التقرير الأسبوعي', 'data-report') : ''}
-      ${can('listings') ? row(I.grid, 'مقارنة بالسوق', 'data-market', '<small>أسعارنا مقابل بيوت وبروبرتي فايندر</small>') : ''}
-      ${can('listings') || can('report') ? row(I.grid, 'إحصائيات الإعلانات', 'data-mystats', '<small>مشاهدات وتواصل لكل إعلان</small>') : ''}
-      ${u.admin ? row(I.verified, 'الموظفون', 'data-staff') : ''}
-      ${u.admin ? row(I.doc, 'النشرة البريدية', 'data-mailadm', '<small>أراضٍ مختارة لك — أسبوعياً</small>') : ''}
-    </div>` : ''}
-    <h3 class="msec">الحساب والإعدادات</h3>
+    <h3 class="msec">الإعدادات</h3>
     <div class="mbox">
-      ${row(I.verified, 'توثيق حسابك', u ? 'data-verify' : 'data-account', u ? (u.verified ? '<small class="okv">موثّق</small>' : u.verify && u.verify.status === 'pending' ? '<small>قيد المراجعة</small>' : '') : '')}
-      ${row(I.bell, 'خيارات الإشعارات', 'data-notifs')}
+      ${u ? row(I.verified, 'توثيق حسابك', 'data-verify', u.verified ? '<small class="okv">موثّق</small>' : u.verify && u.verify.status === 'pending' ? '<small>قيد المراجعة</small>' : '') : ''}
+      ${row(I.bell, 'الإشعارات', 'data-notifs')}
       <button class="mrow" data-lang><span class="mi">${I.globe}</span><b class="notr">${H.isEn() ? 'العربية' : 'English'}</b><small class="notr">${H.isEn() ? 'التغيير إلى العربية' : 'Switch to English'}</small><i class="chev">‹</i></button>
-      ${u ? row(I.gear, 'إعدادات', 'data-settings') : ''}
+      ${u ? row(I.gear, 'إعدادات الحساب', 'data-settings') : ''}
     </div>
-    <h3 class="msec">الدعم</h3>
+    <h3 class="msec">المساعدة</h3>
     <div class="mbox">
       ${row(I.phone, 'الاتصال بنا', 'data-contactpg')}
+      ${row(I.book, 'دليل الإجراءات العقارية', 'data-guide')}
+      ${row(I.doc, 'الأخبار العقارية', 'data-news', can('news') ? '<small>إدارة الشريط</small>' : '')}
       ${row(I.info, 'من نحن', `data-web="${H.SITE}/about-us/"`)}
-      ${u ? `<button class="mrow danger" data-logout><span class="mi">${I.logout}</span><b>تسجيل الخروج</b></button>` : ''}
     </div>
+    ${u ? `<button class="mlogout" data-logout>${I.logout} تسجيل الخروج</button>` : ''}
     <p class="mfoot">باستخدامك تطبيق عمر الياسي للعقارات فأنت توافق على <button data-legal="terms">شروط الاستخدام</button> و<button data-legal="privacy">سياسة الخصوصية</button></p>
     <p class="ver">الإصدار ${esc(VER || '1.0')}${canCheckUpdate() ? ` · <button class="linkbtn" data-chkupd>التحقق من التحديثات</button>` : ''}</p>`;
 }
@@ -228,4 +216,32 @@ export function initVerify(pg) {
       H.toast('شكراً لكم، سيتواصل معكم أحد موظفينا في أقرب وقت');
     } catch (ex) { err.textContent = ex.message; err.hidden = false; go.disabled = false; }
   };
+}
+
+/* ================= «لوحة الإدارة / أدوات الموظف»: the office's tools in three groups ================= */
+export function toolsPage() {
+  const { I } = H; const u = session.user() || {};
+  const grp = (title, rows) => { const r = rows.filter(Boolean).join(''); return r ? `<h3 class="msec">${title}</h3><div class="mbox">${r}</div>` : ''; };
+  return `<div class="pad mtools">
+    ${grp('العملاء', [
+      can('leads') && row(I.user, 'متابعة العملاء', 'data-leads'),
+      can('leads') && row(I.phone, 'سجل التواصل', 'data-contacts'),
+      can('viewings') && row(I.calendar, 'مواعيد المعاينة', 'data-views'),
+      can('chats') && row(I.chat, 'المحادثات الخاصة', 'data-tab="chats"'),
+      can('leads') && row(I.star, 'تقييمات الخدمة', 'data-rates'),
+      can('leads') && row(I.users || I.user, 'التسجيل المسبق «قريباً»', 'data-prereg'),
+    ])}
+    ${grp('الإعلانات والتسويق', [
+      can('listings') && row(I.shield, 'مراجعة الإعلانات', 'data-admin', '<small>طلبات العرض والتوثيق</small>'),
+      can('design') && row(I.image, 'تصميم البوستات', 'data-adgen=""'),
+      can('push') && row(I.bell, 'إشعار موجّه', 'data-pushc'),
+      u.admin && row(I.mail, 'النشرة البريدية', 'data-mailadm'),
+      can('listings') && row(I.trend, 'مقارنة بالسوق', 'data-market'),
+    ])}
+    ${grp('الفريق والتقارير', [
+      can('report') && row(I.chart, 'التقرير الأسبوعي', 'data-report'),
+      (can('listings') || can('report')) && row(I.chart, 'إحصائيات الإعلانات', 'data-mystats'),
+      u.admin && row(I.verified, 'الموظفون والصلاحيات', 'data-staff'),
+    ])}
+  </div>`;
 }
