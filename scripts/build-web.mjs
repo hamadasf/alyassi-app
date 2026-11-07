@@ -43,7 +43,7 @@ header{background:#0e1c36;color:#fff;padding:18px;text-align:center}header b{fon
 }
 writeFileSync('web/manifest.webmanifest', JSON.stringify({
   name: 'عمر الياسي للعقارات', short_name: 'عمر الياسي', lang: 'ar', dir: 'rtl',
-  start_url: './', scope: './', display: 'standalone', background_color: '#ffffff', theme_color: '#0e1c36',
+  start_url: './', scope: './', display: 'standalone', background_color: '#0e1c36', theme_color: '#0e1c36',
   icons: [192, 512].map((s) => ({ src: `icons/icon-${s}.png`, sizes: `${s}x${s}`, type: 'image/png', purpose: 'any' })),
 }, null, 1));
 writeFileSync('web/sw.js', `// push notifications (OneSignal) + offline shell — app files cached, data always fetched fresh

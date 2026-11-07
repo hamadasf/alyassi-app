@@ -27,10 +27,34 @@ def place(src, size, frac, bg):
     k = size * frac / max(src.width, src.height)   # scale up or down to fill the box
     s = src.resize((max(1, round(src.width * k)), max(1, round(src.height * k))), Image.LANCZOS)
     c.alpha_composite(s, ((size - s.width) // 2, (size - s.height) // 2)); return c
-# big, clear emblem: fills the icon (adaptive foreground stays inside Android's safe zone)
-place(mark, 1024, .80, (255, 255, 255, 255)).save('resources/icon-only.png')
-place(mark, 1024, .52, (0, 0, 0, 0)).save('resources/icon-foreground.png')
-Image.new('RGBA', (1024, 1024), (255, 255, 255, 255)).save('resources/icon-background.png')
+# app icon: the gold emblem on the company navy (a soft lighter glow in the middle gives it depth)
+NAVY, NAVY_HI = (14, 28, 54), (33, 50, 92)
+def navy_bg(size):
+    import math
+    bg = Image.new('RGBA', (size, size)); px = bg.load(); c = size / 2; rmax = math.hypot(c, c)
+    for y in range(size):
+        for x in range(size):
+            t = min(1, math.hypot(x - c, y - c * .9) / (rmax * .95)); t = t * t * (3 - 2 * t)
+            px[x, y] = tuple(round(NAVY_HI[i] + (NAVY[i] - NAVY_HI[i]) * t) for i in range(3)) + (255,)
+    return bg
+def on_bg(src, size, frac):
+    c = navy_bg(size); c.alpha_composite(place(src, size, frac, (0, 0, 0, 0))); return c
+def icon_mark(src, H=1100):
+    """the emblem for the icon: enlarged with smooth edges (the source file is small) and painted in the app's gold gradient"""
+    from PIL import ImageFilter
+    k = H / src.height; big = src.resize((max(1, round(src.width * k)), H), Image.BICUBIC)
+    a = big.getchannel('A').filter(ImageFilter.GaussianBlur(H / 500))
+    a = a.point(lambda v: 0 if v < 70 else 255 if v > 185 else round((v - 70) * 255 / 115))   # crisp but anti-aliased edge
+    top, bot = (236, 206, 134), (196, 154, 66)
+    g = Image.new('RGBA', big.size); gp = g.load()
+    for y in range(big.height):
+        t = y / max(1, big.height - 1); col = tuple(round(top[i] + (bot[i] - top[i]) * t) for i in range(3)) + (255,)
+        for x in range(big.width): gp[x, y] = col
+    g.putalpha(a); return g
+imark = icon_mark(mark)
+on_bg(imark, 1024, .72).save('resources/icon-only.png')                 # iOS / web / store: full square
+place(imark, 1024, .52, (0, 0, 0, 0)).save('resources/icon-foreground.png')   # Android adaptive: inside the safe zone
+navy_bg(1024).save('resources/icon-background.png')
 for name in ('splash.png', 'splash-dark.png'):
     c = Image.new('RGBA', (2732, 2732), (14, 28, 54, 255))
     s = logo.copy(); s.thumbnail((1100, 1100), Image.LANCZOS)

@@ -74,7 +74,7 @@ jobs:
           cp android-widget/java/NewsWidget.java android/app/src/main/java/com/omaralyassi/realestate/
           cp -r android-widget/res/. android/app/src/main/res/
           npx @capacitor/assets generate --android \
-            --iconBackgroundColor '#ffffff' --iconBackgroundColorDark '#ffffff' \
+            --iconBackgroundColor '#0e1c36' --iconBackgroundColorDark '#0e1c36' \
             --splashBackgroundColor '#0e1c36' --splashBackgroundColorDark '#0e1c36'
           npx cap sync android
 

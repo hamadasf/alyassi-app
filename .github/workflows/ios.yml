@@ -37,7 +37,7 @@ jobs:
       - name: Create iPhone project
         run: |
           npx cap add ios --packagemanager CocoaPods
-          npx @capacitor/assets generate --ios --iconBackgroundColor '#ffffff' --splashBackgroundColor '#0e1c36' --splashBackgroundColorDark '#0e1c36'
+          npx @capacitor/assets generate --ios --iconBackgroundColor '#0e1c36' --splashBackgroundColor '#0e1c36' --splashBackgroundColorDark '#0e1c36'
           P=ios/App/App/Info.plist
           # links: com.omaralyassi.realestate://open/… and Google sign-in (…://auth); Arabic first; photo access for listings
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" $P
