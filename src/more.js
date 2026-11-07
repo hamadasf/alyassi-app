@@ -32,11 +32,13 @@ export function renderMore(el) {
     ${isOffice() ? `<button class="mwork" data-tools><span class="mwi">${I.brief}</span><div><b>${u.admin ? 'لوحة الإدارة' : 'أدوات الموظف'}</b><span>العملاء · الإعلانات والتسويق · الفريق والتقارير</span></div><i class="chev">‹</i></button>` : ''}
     <h3 class="msec">نشاطي</h3>
     <div class="mbox">
+      ${u && !isOffice() ? row(I.home, 'أرضي', 'data-mylands', '<small>أرضك من عمر الياسي ودفعاتها</small>') : ''}
       ${row(I.bookmark, 'بحث محفوظ', 'data-saved', nSaved ? `<small>${nSaved}</small>` : '')}
       ${row(I.bell, 'أرض تناسبني', 'data-alerts=""', '<small>تنبيه بالأراضي المناسبة لك</small>')}
       ${row(I.wanted, 'مطلوب أرض', 'data-wanted')}
       ${u && isBroker(u) ? row(I.wallet, 'محفظتي', 'data-wallet=""', '<small>صفقاتي وأقساطي وأرباحي</small>') : ''}
       ${u && !isOffice() ? row(I.chart, 'إحصائيات إعلاناتي', 'data-mystats') : ''}
+      ${u ? row(I.plusc, 'ادعُ أصدقاءك', 'data-invite', '<small>كود الدعوة الخاص بك</small>') : ''}
     </div>
     <h3 class="msec">الإعدادات</h3>
     <div class="mbox">
@@ -271,6 +273,7 @@ export function toolsPage() {
       can('viewings') && row(I.calendar, 'مواعيد المعاينة', 'data-views'),
       can('chats') && row(I.chat, 'المحادثات الخاصة', 'data-tab="chats"'),
       can('leads') && row(I.star, 'تقييمات الخدمة', 'data-rates'),
+      can('leads') && row(I.plusc, 'دعوات العملاء', 'data-refs'),
       can('leads') && row(I.users || I.user, 'التسجيل المسبق «قريباً»', 'data-prereg'),
     ])}
     ${grp('الإعلانات والتسويق', [

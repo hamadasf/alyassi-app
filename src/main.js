@@ -7,13 +7,14 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { cardModel, buildLandPdf } from './card.js';
 import { paintPlanLoc, paintCardLoc } from './planloc.js';
 import { session, refreshMe, ownerLands, loadOwnerLands, api as accApi, can, isBroker } from './owner.js';
-import { initChat, refreshUnread, renderChatsTab, chatPage, initChatPage, askAbout, myChatPage, initMyChat, groupPage, initGroup, profPage, initProf } from './chat.js';
+import { initChat, refreshUnread, renderChatsTab, chatPage, initChatPage, askAbout, myChatPage, initMyChat, groupPage, initGroup, profPage, initProf, quoteToOffice } from './chat.js';
 import { initNotifs, notifsPage } from './notifs.js';
 import { initNews, loadNews, renderTicker, newsPage, initNewsPage } from './news.js';
 import { initCalc, calcPage, initCalc2 } from './calc.js';
 import { initPlanView, planViewPage, initPlanView2 } from './planview.js';
 import { initAdgen, adgenPage, initAdgen2, initAdgenPick, closeAdgen } from './adgen.js';
 import { track, deviceId } from './track.js';
+import { initGrowth, mylandsPage, initMylands, invitePage, initInvite, refsPage, initRefs } from './growth.js';
 import { initContact, contactBar, refLine, callbackSheet, refOf, waText } from './contact.js';
 import { initViews, setBooking, bookPage, initBook, myViewsPage, initMyViews, viewsPage, initViewsAdm } from './views.js';
 import { staffPage, initStaff } from './owner-ui.js';
@@ -264,6 +265,8 @@ function openFromPush(ev) {
   if (data.open === 'contacts') { closeAll(); showTab('contact'); setTimeout(() => pushPage('contacts'), 300); return; }
   if (data.open === 'wallet') { closeAll(); showTab('contact'); setTimeout(() => pushPage('wallet'), 300); return; }
   if (data.open === 'leads') { closeAll(); showTab('contact'); setTimeout(() => pushPage('leads'), 300); return; }
+  if (data.open === 'lead' && data.id) { closeAll(); showTab('contact'); setTimeout(() => pushPage('lead', String(data.id)), 300); return; }
+  if (data.open === 'mylands' || data.open === 'invite') { closeAll(); showTab('contact'); setTimeout(() => pushPage(data.open), 300); return; }
   if (data.open === 'oland' && data.id) { closeAll(); loadOwnerLands().then(() => pushPage('oland', String(data.id))); return; }
   if (data.open === 'project' && data.id) { closeAll(); showTab('projects'); setTimeout(() => pushPage('project', String(data.id)), 300); return; }
   if (data.open === 'wanted') { closeAll(); setTimeout(() => pushPage('wanted'), 300); return; }
@@ -738,11 +741,26 @@ function renderLandsHead() {
   $('#fProject').innerHTML = '<option value="">كل المشاريع</option>' + projects.map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join('');
   $('#fProject').value = F.project;
 }
+/* «ما يبحث عنه العملاء ولا يجدونه» (the office's demand numbers): a search / filter with no result, described in words —
+   sent once it has stayed unchanged for a few seconds, each description once per opening of the app */
+let nrT = 0; const nrSent = new Set();
+function noteNoResult() {
+  clearTimeout(nrT);
+  nrT = setTimeout(() => {
+    if (filtered().length) return;
+    const p = F.project && DATA().projects.find((x) => x.slug === F.project); const n = (v) => money(+v);
+    const parts = [F.q && `«${String(F.q).trim().slice(0, 40)}»`, F.cat, p && p.name, (F.minP || F.maxP) && `السعر ${F.minP ? 'من ' + n(F.minP) : ''}${F.minP && F.maxP ? ' ' : ''}${F.maxP ? 'حتى ' + n(F.maxP) : ''}`,
+      (F.minA || F.maxA) && `المساحة ${F.minA ? 'من ' + n(F.minA) : ''}${F.minA && F.maxA ? ' ' : ''}${F.maxA ? 'حتى ' + n(F.maxA) : ''} قدم²`, F.own && 'تملّك: ' + F.own, F.ready && 'جاهزة للبناء'].filter(Boolean);
+    const d = parts.join(' · ');
+    if (d && !nrSent.has(d)) { nrSent.add(d); track('nores', d.slice(0, 80)); }
+  }, 2500);
+}
 function renderLands() {
   renderLandsHead();
   const items = filtered();
   $('#lands .count').textContent = DATA().lands.length ? `${items.length} أرض` : '';
   if (!DATA().lands.length) { $('#lands .list').innerHTML = skeleton(4); return; }
+  if (!items.length) noteNoResult();
   renderList($('#lands .list'), items, landCard, `${I.search}<p>مفيش أراضي مطابقة لبحثك</p><p class="sub">جرّب توسّع نطاق السعر أو المساحة، أو فعّل تنبيه يوصلك أول ما تنزل أرض مناسبة</p><button class="btn primary" data-reset>مسح الفلاتر</button><button class="btn ghost" id="emptyAlert" data-alertf>${I.bell} نبهني بأرض مناسبة</button>`);
 }
 
@@ -860,6 +878,9 @@ function pushPage(kind, id) {
   else if (kind === 'notifs') { html = notifsPage(); }
   else if (kind === 'contactpg') { html = contactPage(); }
   else if (kind === 'about') { html = aboutPage(); }
+  else if (kind === 'mylands') { html = mylandsPage(); }
+  else if (kind === 'invite') { html = invitePage(); }
+  else if (kind === 'refs') { html = refsPage(); }
   else if (kind === 'saved') { html = savedPage(); }
   else if (kind === 'legal') { html = legalPage(id); }
   else if (kind === 'verify') { html = verifyPage(); }
@@ -897,7 +918,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { tools: (session.user() || {}).admin ? 'لوحة الإدارة' : 'أدوات الموظف', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { tools: (session.user() || {}).admin ? 'لوحة الإدارة' : 'أدوات الموظف', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -908,6 +929,9 @@ function pushPage(kind, id) {
   if (kind === 'sell') initSell(pg);
   if (kind === 'map') initMapPage(pg);
   if (kind === 'about') initAbout(pg);
+  if (kind === 'mylands') initMylands(pg);
+  if (kind === 'invite') initInvite(pg);
+  if (kind === 'refs') initRefs(pg);
   if (kind === 'rates') initRatesPage(pg);
   if (kind === 'prereg') initPreregPage(pg);
   if (kind === 'admin') initAdmin(pg);
@@ -1091,6 +1115,9 @@ document.addEventListener('click', (e) => {
   if (ds.notifs !== undefined) { pushPage('notifs'); return; }
   if (ds.contactpg !== undefined) { pushPage('contactpg'); return; }
   if (ds.about !== undefined) { pushPage('about'); return; }
+  if (ds.mylands !== undefined) { pushPage('mylands'); return; }
+  if (ds.invite !== undefined) { pushPage('invite'); return; }
+  if (ds.refs !== undefined) { pushPage('refs'); return; }
   if (ds.saved !== undefined) { pushPage('saved'); return; }
   if (ds.legal) { pushPage('legal', ds.legal); return; }
   if (ds.lang !== undefined) { setLang(isEn() ? 'ar' : 'en'); return; }
@@ -1203,6 +1230,7 @@ initViews({ esc, toast, I, money });
 initPlanView({ esc, toast, I, money, canDesign: () => can('design') });
 initAdgen({ toast, api: accApi, myName: () => (session.user() || {}).name || '', landsOf: (slug) => DATA().lands.concat(naLands()).filter((x) => x.project === slug), openPlan: (slug) => pushPage('plan', slug), isAdmin: () => !!(session.user() || {}).admin, tpls: () => (session.user() || {}).tpl || [] });
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
+initGrowth({ esc, toast, I, money, waLink, APP_URL, findLand: (id) => findLand(id), openExternal: (u) => openExternal(u), quoteToOffice: (t) => quoteToOffice(t), pushPage: (k, id) => pushPage(k, id) });
 initCrm({ esc, toast, I, money, waLink, DATA: () => DATA(), pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop() });
 window.__oayPush = push;   // the notification settings page talks to the push service
 initMore({ isEn, setLang, esc, toast, I, pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop(), closeAll: () => closeAll(), waLink, CONTACT, EMBLEM, SITE, LOGO, DATA });
@@ -1229,6 +1257,8 @@ async function boot() {
   if (DATA().lands.length) spHide(); else { (loading || Promise.resolve()).finally(spHide); setTimeout(spHide, 6000); }
   // a staff invitation link (…/?inv=CODE): kept for the sign-up form, or used at once by a signed-in account
   {
+    // a friend's invitation link (?ref=M…): kept for the sign-up form
+    try { const ref = (new URLSearchParams(location.search).get('ref') || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (/^M[A-Z0-9]{6}$/.test(ref)) localStorage.setItem('oay:ref', ref); } catch { /* private mode */ }
     let inv = ''; try { inv = (new URLSearchParams(location.search).get('inv') || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); } catch { inv = ''; }
     if (inv) {
       try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ }

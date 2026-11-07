@@ -25,6 +25,17 @@ export async function initReportPage(pg, weeks = 0) {
       ${kpi('إعلانات جديدة', c.listings, p.listings, '' + ei('doc') + ' ')}${kpi('رسائل خاصة', c.msgs, p.msgs, '' + ei('mail') + ' ')}${kpi('رسائل المجموعة', c.group, p.group, '' + ei('user') + ' ')}</div>
     <div class="pcard"><h4>الزوار يومياً</h4><div class="bars">${c.daily.map((d) => `<div><i style="height:${Math.round((d.dev / maxV) * 100)}%"></i><b>${d.dev}</b><span>${new Date(d.d).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE', { weekday: 'short' })}</span></div>`).join('')}</div></div>
     ${list('الأكثر مشاهدة', c.top.view, 'مشاهدة')}${list('الأكثر سؤالاً عبر واتساب', c.top.wa, 'تواصل')}${list('الأكثر مشاركة', c.top.share, 'مشاركة')}
+    <div id="repDemand"></div>
     <p class="muted cnote">الأرقام مجهولة الهوية: معرّف عشوائي لكل جهاز، بدون أسماء أو أرقام. يصلك إشعار بالتقرير كل يوم أحد صباحاً.</p>`;
+  // demand: what visitors look for and do not find (last 30 days), and the most-viewed lands still for sale
+  api('adm_demand', { weeks }).then((d) => {
+    const box = el.querySelector('#repDemand'); if (!box) return;
+    box.innerHTML = `<div class="pcard"><h4>${ei('search')} يبحثون عنه ولا يجدونه <small class="muted">آخر 30 يوماً</small></h4>
+        ${d.nores.length ? d.nores.map((x, i) => `<div class="rrow"><i>${i + 1}</i><span class="notr">${esc(x.q)}</span><b>${money(x.n)} مرة</b></div>`).join('') : '<p class="muted">لا توجد بيانات بعد — تظهر هنا عمليات البحث والفلاتر التي لم تجد أي أرض</p>'}
+        <p class="muted cnote">يساعدك تعرف نوع الأراضي والمساحات والأسعار المطلوبة اللي ناقصة عندك.</p></div>
+      <div class="pcard"><h4>${ei('eye')} الأكثر مشاهدة ولم تُبع بعد</h4>
+        ${d.unsold.length ? d.unsold.map((x, i) => `<button class="rrow" data-land="${esc(x.id)}"><i>${i + 1}</i><span class="notr">${esc(name(x))}${x.price ? ` · ${money(x.price)} د.إ` : ''}</span><b>${money(x.n)} مشاهدة · ${money(x.wa)} واتساب</b></button>`).join('') : '<p class="muted">لا توجد بيانات بعد</p>'}
+        <p class="muted cnote">مشاهدات كثيرة وتواصل قليل = راجع السعر أو اعمل عليها عرض لفترة محدودة.</p></div>`;
+  }).catch(() => {});
   el.querySelectorAll('[data-w]').forEach((b) => { b.onclick = () => { el.innerHTML = reportPage().replace(/^<div class="pad rep">|<\/div>$/g, ''); initReportPage(pg, +b.dataset.w); }; });
 }

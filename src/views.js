@@ -2,6 +2,7 @@ import { ei } from './icons.js';
 // «احجز معاينة»: the client picks a day and a time for a land; the office confirms, moves or cancels it,
 // and both get a reminder before the visit.
 import { api, session, can } from './owner.js';
+import { askPlayReview } from './growth.js';
 
 let H = null;
 export function initViews(h) { H = h; }
@@ -53,6 +54,7 @@ export async function initBook(pg) {
     e.preventDefault(); if (!date || !time) return; go.disabled = true;
     try {
       await api('view_book', { id: b.id, title: b.title, loc: b.loc || '', date, time, name: f.name.value.trim(), phone: f.phone.value.replace(/[^\d+]/g, ''), notes: f.notes.value.trim() });
+      askPlayReview(2500);
       pg.querySelector('.vbook').innerHTML = `<div class="ccard vdone"><span>✓</span><b>تم إرسال طلب المعاينة</b><p>${H.esc(b.title || '')}</p><p><b>${dayName(date)} · ${t12(time)}</b></p>
         <p class="muted">سيتواصل معك فريقنا لتأكيد الموعد${session.token() ? '، وتجد مواعيدك في «المزيد ← مواعيد المعاينة»' : ''}.</p>
         ${b.loc ? `<a class="btn ghost block" href="${H.esc(b.loc)}" data-ext>${H.I.pin} موقع الأرض على الخريطة</a>` : ''}<button class="btn primary block" data-back>تم</button></div>`;

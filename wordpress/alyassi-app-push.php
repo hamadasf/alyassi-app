@@ -173,6 +173,7 @@ function oay_send_offer( $o ) {
 			'ttl' => 86400, 'priority' => 10,
 		) + oay_push_img( $o ) ),
 	) );
+	do_action( 'oay_offer_sent', $o );   // people who saved this land (alyassi-app-growth.php)
 	return ! is_wp_error( $r ) && wp_remote_retrieve_response_code( $r ) < 300;
 }
 

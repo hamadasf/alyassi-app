@@ -157,11 +157,16 @@ function oay_acc_reg_fields() {
 	if ( email_exists( $f['email'] ) ) { oay_acc_err( 'هذا البريد مسجّل من قبل — سجّل الدخول' ); }
 	return $f;
 }
+/** «كود الدعوة» on the sign-up form: a staff invitation or a member's code */
+function oay_reg_invite_ok( $inv ) {
+	if ( function_exists( 'oay_invite_ok' ) ) { return oay_invite_ok( $inv ); }
+	return ! function_exists( 'oay_invite_get' ) || oay_invite_get( $inv );
+}
 /** Step 1 of signing up: a 6-digit code sent to the e-mail (valid 15 minutes, 5 tries), so only real addresses get accounts. */
 function oay_acc_reg_code() {
 	oay_acc_limit( 'regcode', 6 );
 	$f = oay_acc_reg_fields();
-	$inv = oay_acc_arg( 'invite', 20 ); if ( '' !== $inv && function_exists( 'oay_invite_get' ) && ! oay_invite_get( $inv ) ) { oay_acc_err( 'كود الدعوة غير صحيح أو مستخدم من قبل' ); } $key = 'oay_regc_' . md5( $f['email'] );
+	$inv = oay_acc_arg( 'invite', 20 ); if ( '' !== $inv && ! oay_reg_invite_ok( $inv ) ) { oay_acc_err( 'كود الدعوة غير صحيح أو مستخدم من قبل' ); } $key = 'oay_regc_' . md5( $f['email'] );
 	$old = get_transient( $key );
 	if ( is_array( $old ) && time() - (int) $old['t'] < 55 ) { oay_acc_err( 'انتظر دقيقة قبل طلب كود جديد' ); }
 	$code = (string) wp_rand( 100000, 999999 );
@@ -181,11 +186,12 @@ function oay_acc_register() {
 	if ( (int) $c['n'] >= 5 ) { delete_transient( $key ); oay_acc_err( 'محاولات كثيرة — اطلب كوداً جديداً' ); }
 	if ( ! wp_check_password( $code, $c['h'] ) ) { $c['n'] = (int) $c['n'] + 1; set_transient( $key, $c, 15 * MINUTE_IN_SECONDS ); oay_acc_err( 'الكود غير صحيح' ); }
 	$inv = oay_acc_arg( 'invite', 20 );
-	if ( '' !== $inv && function_exists( 'oay_invite_get' ) && ! oay_invite_get( $inv ) ) { oay_acc_err( 'كود الدعوة غير صحيح أو مستخدم من قبل' ); }
+	if ( '' !== $inv && ! oay_reg_invite_ok( $inv ) ) { oay_acc_err( 'كود الدعوة غير صحيح أو مستخدم من قبل' ); }
 	delete_transient( $key );
 	$uid = oay_acc_new_user( $email, $name, $pass );
 	update_user_meta( $uid, 'oay_email_verified', 1 );
 	if ( '' !== $inv && function_exists( 'oay_invite_apply' ) ) { oay_invite_apply( $uid, $inv ); }   // a staff invitation: joins the office team
+	if ( '' !== $inv ) { do_action( 'oay_registered', $uid, $inv ); }   // a member's invitation code (alyassi-app-growth.php)
 	if ( $phone ) { update_user_meta( $uid, 'oay_phone', $phone ); }
 	oay_acc_ok( array( 'token' => oay_acc_issue_token( $uid ), 'user' => oay_acc_userdata( get_userdata( $uid ) ) ) );
 }
@@ -1113,6 +1119,7 @@ function oay_acc_track() {
 	if ( function_exists( 'oay_aud_note' ) ) { oay_aud_note( $dev, $uid, $ev ); }
 	if ( $uid && function_exists( 'oay_lead_from_track' ) ) { oay_lead_from_track( $uid, $ev ); }
 	if ( function_exists( 'oay_contacts_from_track' ) ) { oay_contacts_from_track( $dev, $tu, $ev ); }
+	do_action( 'oay_tracked', $uid, $dev, $ev );   // «عميل مهتم» and the demand numbers (alyassi-app-growth.php)
 	oay_acc_ok();
 }
 function oay_land_name( $id ) {

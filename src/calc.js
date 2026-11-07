@@ -2,6 +2,7 @@
 // or send to the office. Opened from a land's page (its price and the developer's plan filled in) or from «المزيد».
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
+import { api, session } from './owner.js';
 
 let H = null;
 export function initCalc(h) { H = h; }
@@ -39,6 +40,7 @@ export function calcPage(l) {
       <label>تاريخ أول قسط<input id="cStart" type="date" value="${start}"></label>
     </div>
     <div class="csum" id="cSum"></div>
+    <div class="ccard ccost" id="cCost"></div>
     <h2 class="h2">جدول الدفعات</h2>
     <div class="inst" id="cTable"></div>
     <p class="muted cnote">الحاسبة تقديرية — الخطة المعتمدة والأسعار النهائية تؤكدها الإدارة.</p>
@@ -74,8 +76,46 @@ export function initCalc2(pg, l) {
     $('#cTable').innerHTML = p.price ? `<div class="r head"><span>الدفعة الأولى · عند الحجز</span><b>${money(p.first)} د.إ</b></div>
       ${p.rows.map((r, i) => `<div class="r"><span>القسط ${i + 1} · <bdi>${esc(dmy(r[0]))}</bdi></span><b>${money(r[1])} د.إ</b></div>`).join('')}
       <div class="r total"><span>الإجمالي</span><b>${money(total)} د.إ</b></div>` : '<div class="r"><span>أدخل سعر الأرض لعرض الجدول</span></div>';
+    if ($('#cCost') && typeof drawCost === 'function') drawCost();
     $('#cSend').href = H.waLink((l ? 'مرحباً، أرغب بهذه الخطة:\n' : 'مرحباً، أرغب بالاستفسار عن خطة السداد التالية:\n') + text(p));
   };
+  // «التكلفة الكاملة»: the price + the registration fee + the commission + fixed fees (the admin sets them; kept on the phone)
+  let cfg = (() => { try { return JSON.parse(localStorage.getItem('oay:costcfg')) || null; } catch { return null; } })() || { reg: 2, comm: 2, fixed: [], note: 'النسب تقديرية — تؤكدها الإدارة قبل التوقيع.' };
+  let withComm = true;
+  const isAdmin = !!(session.user() || {}).admin;
+  const drawCost = () => {
+    const box = $('#cCost'); const p = plan(); const price = p.price || 0;
+    const reg = Math.round(price * (+cfg.reg || 0) / 100), comm = withComm ? Math.round(price * (+cfg.comm || 0) / 100) : 0;
+    const fixed = (cfg.fixed || []).filter((f) => f[0] && +f[1] > 0);
+    const total = price + reg + comm + fixed.reduce((a, f) => a + (+f[1] || 0), 0);
+    box.innerHTML = `<h3>${H.I.calc} التكلفة الكاملة</h3>
+      <div class="inst"><div class="r"><span>سعر الأرض</span><b>${money(price)} د.إ</b></div>
+        ${+cfg.reg ? `<div class="r"><span>رسوم التسجيل ونقل الملكية · ${cfg.reg}%</span><b>${money(reg)} د.إ</b></div>` : ''}
+        ${+cfg.comm ? `<div class="r"><label class="cchk"><input type="checkbox" id="cComm" ${withComm ? 'checked' : ''}> عمولة الوساطة · ${cfg.comm}%</label><b>${money(comm)} د.إ</b></div>` : ''}
+        ${fixed.map((f) => `<div class="r"><span>${esc(f[0])}</span><b>${money(+f[1])} د.إ</b></div>`).join('')}
+        <div class="r total"><span>الإجمالي التقريبي</span><b>${money(total)} د.إ</b></div></div>
+      ${price && p.first ? `<p class="cfirst">المطلوب عند الشراء تقريباً: <b>${money(p.first + reg + comm + fixed.reduce((a, f) => a + (+f[1] || 0), 0))} د.إ</b> <small>(الدفعة الأولى + الرسوم)</small></p>` : ''}
+      <p class="muted cnote">${esc(cfg.note || '')}</p>
+      ${isAdmin ? `<button class="btn ghost block" data-costedit>${H.I.gear || ''} تعديل الرسوم (للإدارة)</button>` : ''}`;
+  };
+  api('cost_cfg').then((j) => { if (j && j.cfg) { cfg = j.cfg; try { localStorage.setItem('oay:costcfg', JSON.stringify(cfg)); } catch { /* private mode */ } drawCost(); } }).catch(() => {});
+  pg.addEventListener('change', (e) => { if (e.target.id === 'cComm') { withComm = e.target.checked; drawCost(); } });
+  pg.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-costedit]')) {
+      const box = $('#cCost'); const fx = [...(cfg.fixed || []), ['', 0], ['', 0]].slice(0, 4);
+      box.innerHTML = `<h3>${H.I.calc} رسوم التكلفة الكاملة</h3><div class="cform">
+        <div class="cgrid"><label>رسوم التسجيل %<input id="eReg" inputmode="decimal" value="${cfg.reg}"></label><label>عمولة الوساطة %<input id="eComm" inputmode="decimal" value="${cfg.comm}"></label></div>
+        ${fx.map((f, i) => `<div class="cgrid"><label>رسوم ثابتة ${i + 1}<input data-fxn="${i}" value="${esc(f[0])}" placeholder="مثال: رسوم إصدار سند"></label><label>المبلغ (د.إ)<input data-fxa="${i}" inputmode="numeric" value="${+f[1] || ''}"></label></div>`).join('')}
+        <label>ملاحظة تظهر للعميل<input id="eNote" value="${esc(cfg.note || '')}"></label>
+        <button class="btn primary block" data-costsave>حفظ</button></div>`;
+      return;
+    }
+    if (e.target.closest('[data-costsave]')) {
+      const box = $('#cCost'); const fixed = [...box.querySelectorAll('[data-fxn]')].map((n) => [n.value.trim(), num(box.querySelector(`[data-fxa="${n.dataset.fxn}"]`).value)]).filter((f) => f[0]);
+      try { const j = await api('adm_cost_save', { reg: +String($('#eReg').value).replace(/[^\d.]/g, '') || 0, comm: +String($('#eComm').value).replace(/[^\d.]/g, '') || 0, fixed, note: $('#eNote').value.trim() }); cfg = j.cfg; try { localStorage.setItem('oay:costcfg', JSON.stringify(cfg)); } catch { /* private mode */ } H.toast('تم حفظ الرسوم ✓'); drawCost(); }
+      catch (ex) { H.toast(ex.message); }
+    }
+  });
   pg.querySelectorAll('.cform input, .cform select').forEach((el) => el.addEventListener('input', draw));
   $('#cPrice').addEventListener('blur', () => { const v = num($('#cPrice').value); if (v) $('#cPrice').value = money(v); });
   pg.querySelectorAll('[data-mode]').forEach((b) => { b.onclick = () => { mode = b.dataset.mode; pg.querySelectorAll('[data-mode]').forEach((x) => x.classList.toggle('on', x === b)); $('.cform').hidden = mode === 'dev'; draw(); }; });

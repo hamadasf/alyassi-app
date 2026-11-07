@@ -44,7 +44,7 @@ export function accountPage() {
       <label>البريد الإلكتروني<input name="email" type="email" dir="ltr" autocomplete="email" inputmode="email" maxlength="120"></label>
       <label data-only="register">رقم الجوال${phoneField('phone', '', 'maxlength="16"')}</label>
       <label>كلمة المرور<input name="password" type="password" dir="ltr" autocomplete="current-password" maxlength="200"></label>
-      <label data-only="register" class="invfld">كود دعوة موظف (إن وُجد)<input name="invite" dir="ltr" maxlength="12" autocapitalize="characters" placeholder="مثال: K7Q2M9XA"><small id="invOk"></small></label>
+      <label data-only="register" class="invfld">كود الدعوة (إن وُجد)<input name="invite" dir="ltr" maxlength="12" autocapitalize="characters" placeholder="مثال: M7K2QXA"><small id="invOk"></small></label>
       ${pickersHTML({}, 'register')}
       <div class="codebox" id="codeBox" hidden>
         <b>${I.mail} أرسلنا كود تفعيل من 6 أرقام إلى بريدك</b><span id="codeTo" dir="ltr"></span>
@@ -134,12 +134,14 @@ export async function initAccount(pg, next) {
   const checkInv = async () => {
     const code = invEl.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''); invOk = false; invMsg.textContent = ''; invMsg.className = '';
     if (code.length < 6) { const pk = form.querySelector('.advpicks'); if (pk && mode === 'register') pk.hidden = false; return; }
+    if (/^M[A-Z0-9]{6}$/.test(code)) { invMsg.textContent = '✓ كود دعوة من صديق'; invMsg.className = 'ok'; return; }   // a member's code (checked when signing up)
     try { const r = await api('invite_check', { code }); invOk = true; invMsg.textContent = '✓ دعوة موظف صالحة — الصلاحيات: ' + r.perms.join('، '); invMsg.className = 'ok'; }
     catch (ex) { invMsg.textContent = ex.message; invMsg.className = 'bad'; }
     const pk = form.querySelector('.advpicks'); if (pk && mode === 'register') pk.hidden = invOk;   // staff: no advertiser pictures needed
   };
   invEl.addEventListener('change', checkInv); invEl.addEventListener('input', () => { if (invEl.value.replace(/\W/g, '').length >= 8) checkInv(); });
   { let saved = ''; try { saved = localStorage.getItem('oay:inv') || ''; } catch { /* none */ } if (saved) { invEl.value = saved; setMode('register'); checkInv(); } }
+  { let ref = ''; try { ref = localStorage.getItem('oay:ref') || ''; } catch { /* none */ } if (ref && !invEl.value) { invEl.value = ref; checkInv(); } }   // came from a friend's invitation link
   form.onsubmit = async (e) => {
     e.preventDefault(); err.hidden = true;
     const f = Object.fromEntries(new FormData(form));
@@ -157,7 +159,7 @@ export async function initAccount(pg, next) {
     try {
       const j = await api(mode, mode === 'login' ? { email: f.email, password: f.password } : f);
       session.set(j.token, j.user);
-      if (mode === 'register' && f.invite) { try { localStorage.removeItem('oay:inv'); } catch { /* none */ } toast('أهلاً بك في فريق عمر الياسي للعقارات ✓'); }
+      if (mode === 'register' && f.invite) { try { localStorage.removeItem('oay:inv'); localStorage.removeItem('oay:ref'); } catch { /* none */ } if (invOk) toast('أهلاً بك في فريق عمر الياسي للعقارات ✓'); }
       if (mode === 'register' && pics.photo) { try { await submitAdv(pics); toast(pics.logo ? 'أُرسلت صورتك وشعار الشركة للاعتماد' : 'أُرسلت صورتك للاعتماد'); } catch { /* can be sent again from the account page */ } }
       done(session.user() || j.user);
     } catch (ex) { err.textContent = ex.message; err.hidden = false; if (/انتهت|اطلب كود/.test(ex.message)) resetCode(); }

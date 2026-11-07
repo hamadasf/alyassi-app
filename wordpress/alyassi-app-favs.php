@@ -26,7 +26,9 @@ function oay_acc_favs_sync() {
 	}
 	$m = oay_favs_all();
 	if ( $u && strlen( $dev ) >= 8 ) { unset( $m[ 'd' . $dev ] ); }   // signed in now: one entry per person
+	$before = (array) ( $m[ $who ]['ids'] ?? array() );
 	if ( $ids ) { $m[ $who ] = array( 't' => time(), 'ids' => array_values( array_unique( $ids ) ) ); } else { unset( $m[ $who ] ); }
+	if ( $u && $before ) { foreach ( array_diff( $ids, $before ) as $nid ) { do_action( 'oay_fav_added', $u->ID, $nid ); } }   // a phone's first sync is not «new»
 	if ( count( $m ) > 6000 ) { uasort( $m, function ( $a, $b ) { return ( $b['t'] ?? 0 ) <=> ( $a['t'] ?? 0 ); } ); $m = array_slice( $m, 0, 6000, true ); }
 	update_option( 'oay_favs', $m, false );
 	oay_acc_ok( array( 'n' => count( $ids ) ) );
@@ -56,7 +58,7 @@ add_action( 'oay_plot_changes', function ( $slug, $name, $ch, $new ) {
 				'headers' => array( 'Content-Type' => 'application/json', 'Authorization' => 'Key ' . $key ),
 				'body' => wp_json_encode( array( 'app_id' => OAY_APP_ID, 'target_channel' => 'push', 'include_aliases' => array( 'external_id' => $part ),
 					'headings' => array( 'en' => $title, 'ar' => $title ), 'contents' => array( 'en' => $h['why'], 'ar' => $h['why'] ),
-					'data' => array( 'open' => 'land', 'id' => $id ), 'web_url' => OAY_APP_URL, 'ttl' => 86400 ) ) ) );
+					'data' => array( 'open' => 'land', 'id' => $id ), 'web_url' => OAY_APP_URL, 'ttl' => 86400 ) + ( function_exists( 'oay_push_img' ) ? oay_push_img( array( 'id' => $id ) ) : array() ) ) ) );
 		}
 	}
 }, 30, 4 );

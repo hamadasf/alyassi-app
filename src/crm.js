@@ -124,7 +124,7 @@ export function initAlerts(pg) {
 }
 
 /* =============================== client follow-up (office) =============================== */
-const SRC = { sell: ['' + ei('tag') + ' ', 'أرض للبيع'], form: ['' + ei('mail') + ' ', 'طلب اتصال'], chat: ['' + ei('chat') + ' ', 'محادثة'], wa: ['' + ei('wa') + ' ', 'واتساب'], call: ['' + ei('phone') + ' ', 'اتصال'], wanted: ['' + ei('doc') + ' ', 'طلب شراء'], alert: ['' + ei('bell') + ' ', 'تنبيه'], calc: ['' + ei('calc') + ' ', 'حاسبة'] };
+const SRC = { sell: ['' + ei('tag') + ' ', 'أرض للبيع'], form: ['' + ei('mail') + ' ', 'طلب اتصال'], chat: ['' + ei('chat') + ' ', 'محادثة'], wa: ['' + ei('wa') + ' ', 'واتساب'], call: ['' + ei('phone') + ' ', 'اتصال'], wanted: ['' + ei('doc') + ' ', 'طلب شراء'], alert: ['' + ei('bell') + ' ', 'تنبيه'], calc: ['' + ei('calc') + ' ', 'حاسبة'], hot: ['' + ei('flame') + ' ', 'عميل مهتم — فتح الأرض 3 مرات'], fav: ['' + ei('heart') + ' ', 'أضاف للمفضلة'], ref: ['' + ei('plusc') + ' ', 'دعوة'] };
 const ST = { new: 'جديد', follow: 'قيد المتابعة', won: 'تم البيع', lost: 'غير مهتم' };
 const avatar = (u) => (u.avatar ? `<span class="acc-av img"><img src="${H.esc(u.avatar)}" alt="" referrerpolicy="no-referrer">${u.online ? '<i class="dot"></i>' : ''}</span>` : `<span class="acc-av">${H.esc((u.name || '?').charAt(0))}${u.online ? '<i class="dot"></i>' : ''}</span>`);
 const waUrl = (ph) => { let d = String(ph).replace(/\D/g, ''); if (d.startsWith('00')) d = d.slice(2); if (d.startsWith('0')) d = '971' + d.slice(1); if (/^5\d{8}$/.test(d)) d = '971' + d; return 'https://wa.me/' + d; };
@@ -165,16 +165,25 @@ export async function initLead(pg, id) {
         ${l.notes.length ? `<div class="ltl">${l.notes.map((n) => `<div><time>${day(n.t)}${n.by ? ' · ' + esc(n.by) : ''}</time><p class="notr">${esc(n.text)}</p></div>`).join('')}</div>` : ''}</div>
       <div class="ccard"><h4 class="lh">الاهتمامات (${l.items.length})</h4>${l.items.length ? l.items.map((it) => `<button class="lint" ${/^\d+$/.test(it.lid) ? `data-oland="${esc(it.lid)}"` : it.lid ? `data-land="${esc(it.lid)}"` : ''}><i>${(SRC[it.src] || ['•'])[0]}</i><span><b>${(SRC[it.src] || ['', it.src])[1]}</b> <span class="notr">${esc(it.name || '')}</span></span><time>${ago(it.t)}</time></button>`).join('') : '<p class="muted">—</p>'}</div>
       ${j.wanted.length ? `<div class="ccard"><h4 class="lh">طلبات الشراء</h4>${j.wanted.map((w) => `<p>${ei('doc')} مطلوب ${esc(w.cat || 'أرض')}${w.projectName ? ' · ' + esc(w.projectName) : ''}${w.budget ? ' · حتى ' + H.money(w.budget) + ' د.إ' : ''}</p>`).join('')}</div>` : ''}
-      ${j.alerts.length ? `<div class="ccard"><h4 class="lh">تنبيهات «أرض تناسبني»</h4>${j.alerts.map((a) => `<p>${ei('bell')} ${esc(a.cat || 'أي نوع')}${a.maxPrice ? ' · حتى ' + H.money(a.maxPrice) + ' د.إ' : ''}</p>`).join('')}</div>` : ''}`;
+      ${j.alerts.length ? `<div class="ccard"><h4 class="lh">تنبيهات «أرض تناسبني»</h4>${j.alerts.map((a) => `<p>${ei('bell')} ${esc(a.cat || 'أي نوع')}${a.maxPrice ? ' · حتى ' + H.money(a.maxPrice) + ' د.إ' : ''}</p>`).join('')}</div>` : ''}
+      <div class="ccard mylink"><h4 class="lh">${ei('home')} أراضي العميل — «أرضي»</h4>
+        <p class="muted">اربط الأرض التي اشتراها العميل من الشركة: تظهر له في «أرضي» مع جدول دفعاتها، ويصله تذكير قبل كل قسط بـ 3 أيام وبيوم.</p>
+        <div class="mlist">${(j.mylands || []).map((m) => `<div class="gx-row"><span><b>قطعة ${esc(m.n || '')}</b> · ${esc(m.name || m.id)}${m.total ? ` · ${H.money(m.total)} د.إ` : ''}</span><button data-munlink="${esc(m.id)}" aria-label="إزالة">✕</button></div>`).join('') || '<p class="muted">لا توجد أراضٍ مرتبطة</p>'}</div>
+        <div class="mform"><select id="mProj">${H.DATA().projects.map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join('')}</select>
+          <input id="mPlot" inputmode="numeric" placeholder="رقم القطعة"><button class="btn primary" data-mlink>ربط</button></div></div>`;
   };
   const save = async (body, msg) => { try { const r = await api('adm_lead_save', { id, ...body }); j.lead = r.lead; j.user = r.user; render(); if (msg) H.toast(msg); document.querySelectorAll('.page').forEach((p) => p.dispatchEvent(new Event('oay:refresh'))); } catch (e) { H.toast(e.message); } };
   try { j = await api('adm_lead', { id }); } catch (e) { el.innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
+  try { j.mylands = (await api('adm_mylands', { id })).items; } catch { j.mylands = []; }
   render();
+  const link = async (land, on) => { try { j.mylands = (await api('adm_myland_link', { id, land, on: on ? 1 : 0 })).items; render(); H.toast(on ? 'تم ربط الأرض بحساب العميل ✓' : 'تمت الإزالة'); } catch (e) { H.toast(e.message); } };
   el.addEventListener('click', (e) => {
     const t = e.target.closest('button'); if (!t) return;
     if (t.dataset.st) save({ status: t.dataset.st }, 'تم تحديث الحالة');
     else if (t.dataset.nd !== undefined) { const d = +t.dataset.nd; save({ next: d ? new Date(Date.now() + d * 864e5).setHours(9, 0, 0, 0) : 0, status: d && j.lead.status === 'new' ? 'follow' : j.lead.status }, d ? 'تم ضبط موعد المتابعة ✓' : 'تم إلغاء الموعد'); }
     else if (t.id === 'lsave') { const v = el.querySelector('#lnote').value.trim(); if (v) save({ note: v, status: j.lead.status === 'new' ? 'follow' : j.lead.status }, 'تم حفظ الملاحظة'); }
+    else if (t.dataset.mlink !== undefined) { const n = el.querySelector('#mPlot').value.trim(); if (!n) { H.toast('اكتب رقم القطعة'); return; } link(el.querySelector('#mProj').value + ':' + n, true); }
+    else if (t.dataset.munlink) { if (confirm('إزالة هذه الأرض من «أرضي» لدى العميل؟')) link(t.dataset.munlink, false); }
     else if (t.dataset.apush) { e.stopPropagation(); H.pushPage('apush', 'user:' + t.dataset.apush + ':' + (j.user.name || '')); }
   });
   el.addEventListener('change', (e) => { if (e.target.id === 'lnext' && e.target.value) save({ next: new Date(e.target.value + 'T09:00:00').getTime(), status: j.lead.status === 'new' ? 'follow' : j.lead.status }, 'تم ضبط موعد المتابعة ✓'); });
