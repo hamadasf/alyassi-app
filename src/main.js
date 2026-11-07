@@ -583,7 +583,7 @@ function renderHome() {
     </section>
     ${isBroker() ? '<div id="wHome" class="whomebox"></div>' : ''}
     ${bannerHTML(av, projects)}
-    <div class="qacts"><button data-alerts=""><span>🔔</span>أرض تناسبني</button><button data-wanted><span>📝</span>مطلوب أرض</button><button data-calc=""><span>🧮</span>حاسبة الأقساط</button><button data-guide><span>📘</span>دليل الإجراءات</button></div>
+    <div class="qacts"><button data-alerts=""><span>${I.alert}</span>أرض تناسبني</button><button data-wanted><span>${I.wanted}</span>مطلوب أرض</button><button data-calc=""><span>${I.calc}</span>حاسبة الأقساط</button><button data-guide><span>${I.book}</span>دليل الإجراءات</button></div>
     ${notifCard()}
     ${ofr.length ? `<div class="sec-h ofr-h"><h2>🔥 عروض لفترة محدودة</h2><button data-go="lands" data-offers="1">عرض الكل</button></div>
       <div class="hscroll lands">${ofr.map(landCard).join('')}</div>` : ''}
@@ -768,7 +768,7 @@ function landPage(l) {
       ${isBroker() && l.total && l.status !== 'sold' ? `<button class="btn wbtn block" data-selldeal="${esc(l.id)}">${(session.user() || {}).admin ? '💼 سجّلها بيعاً في محفظة الشركة' : '💼 طلب تسجيل صفقة على هذه الأرض'}</button>` : ''}
       ${can('payplan') && l.total && l.status !== 'sold' ? `<button class="btn ppbtn block" data-payplan="${esc(l.id)}">📄 خطة السداد PDF</button>` : ''}
       ${favs.all().filter((x) => x !== l.id).length >= 1 ? `<button class="btn ghost block cmpbtn" data-compare="${esc(l.id)}">⚖️ قارنها مع أراضي المفضلة</button>` : ''}
-      ${l.status === 'av' || l.status === 'res' ? `<button class="btn calcbtn block" data-calc="${esc(l.id)}">🧮 حاسبة الأقساط${l.total ? '' : ' (أدخل السعر)'}</button>` : ''}
+      ${l.status === 'av' || l.status === 'res' ? `<button class="btn calcbtn block" data-calc="${esc(l.id)}">${I.calc} حاسبة الأقساط${l.total ? '' : ' (أدخل السعر)'}</button>` : ''}
       ${l.sketch && l.sketch !== l.img ? `<h2 class="h2">كروكي القطعة</h2><img class="sketch" src="${esc(l.sketch)}" alt="" loading="lazy" data-web="${esc(l.sketch)}">` : ''}
       <button class="btn primary block" data-plan="${esc(landUrl(l))}" data-pview="${esc(l.project + '|' + l.n)}">${I.map} عرض القطعة على المخطط</button>
       ${l.doc ? `<a class="btn ghost block" href="${esc(l.doc)}" data-ext>${I.pdf} مخطط القطعة (PDF)</a>` : ''}

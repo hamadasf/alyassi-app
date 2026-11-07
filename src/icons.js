@@ -1,5 +1,9 @@
 const s = (d, extra = '') => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
 export const I = {
+  calc: s('<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><rect x="8" y="5.5" width="8" height="4" rx="1"/><path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01M15.5 16.5h.01"/>'),
+  book: s('<path d="M12 6.5C10.3 5 8 4.5 4 4.5v14c4 0 6.3.5 8 2 1.7-1.5 4-2 8-2v-14c-4 0-6.3.5-8 2z"/><path d="M12 6.5v14"/>'),
+  wanted: s('<path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21H11"/><path d="M14 3l5 5h-3.5A1.5 1.5 0 0 1 14 6.5z"/><circle cx="16" cy="16" r="3"/><path d="m18.2 18.2 2.3 2.3"/><path d="M8 9h3M8 13h3"/>'),
+  alert: s('<path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10.3 20a1.9 1.9 0 0 0 3.4 0"/><path d="M19.5 3.5 21 2M4.5 3.5 3 2"/>'),
   home: s('<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'),
   grid: s('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'),
   building: s('<path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 9h3a1 1 0 0 1 1 1v11"/><path d="M8 7h4M8 11h4M8 15h4M2 21h20"/>'),
