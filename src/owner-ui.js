@@ -20,13 +20,13 @@ export function accountPage() {
     return `<div class="pad acc">
       <div class="acc-card"><div class="acc-av">${esc((u.name || u.email || '?').trim().charAt(0))}</div>
         <div><b>${esc(u.name || '')}</b><span>${esc(u.email || '')}</span>${u.phone ? `<span dir="ltr">${esc(u.phone)}</span>` : ''}</div></div>
-      ${u.admin ? `<button class="btn primary block share-big" data-admin>🛡️ لوحة الإدارة</button>` : ''}
+      ${u.admin ? `<button class="btn primary block share-big" data-tools>${I.shield} لوحة الإدارة</button>` : ''}
       <div class="pts"><b>${u.admin ? '∞' : u.points || 0}</b><span>${u.admin ? 'نقاط غير محدودة للإدارة · تمييز الإعلان يجعله يظهر أولاً في الصفحة الرئيسية' : u.verified ? 'نقطة في رصيدك · تمييز الإعلان بـ 70 نقطة يجعله يظهر أولاً في الصفحة الرئيسية' : 'تمييز الإعلانات متاح للمكاتب الموثّقة — وثّق حسابك واحصل على 500 نقطة'}</span></div>
-      ${advMissing(u) ? `<button class="advnote" data-advmine><b>📷 أضف صورتك الشخصية</b><span>تظهر على إعلاناتك (والشركات تضيف شعارها) — تعتمدها الإدارة</span></button>` : u.adv && u.adv.status === 'rejected' ? `<button class="advnote bad" data-advmine><b>لم تُعتمد صورتك</b><span>${esc(u.adv.note || 'اضغط لإرسال صورة أخرى')}</span></button>` : u.adv && u.adv.status === 'pending' ? `<button class="advnote wait" data-advmine><b>⏳ صورتك بانتظار اعتماد الإدارة</b></button>` : ''}
+      ${advMissing(u) ? `<button class="advnote" data-advmine><b>${I.user} أضف صورتك الشخصية</b><span>تظهر على إعلاناتك (والشركات تضيف شعارها) — تعتمدها الإدارة</span></button>` : u.adv && u.adv.status === 'rejected' ? `<button class="advnote bad" data-advmine><b>لم تُعتمد صورتك</b><span>${esc(u.adv.note || 'اضغط لإرسال صورة أخرى')}</span></button>` : u.adv && u.adv.status === 'pending' ? `<button class="advnote wait" data-advmine><b>⏳ صورتك بانتظار اعتماد الإدارة</b></button>` : ''}
       ${!u.admin && !u.verified ? `<button class="btn ghost block" data-verify>${I.verified} توثيق حساب المكتب العقاري</button>` : ''}
-      ${isBroker(u) ? `<button class="btn block wbtn" data-wallet="">💼 محفظتي — صفقاتي وأقساطي وأرباحي</button>` : ''}
-      <button class="btn gold block share-big" data-addland>${I.plus || '＋'} أضف أرضاً للبيع</button>
-      ${!u.admin ? `<button class="btn ghost block stbtn" data-mystats>📊 إحصائيات إعلاناتي</button>` : ''}
+      ${isBroker(u) ? `<button class="btn block wbtn" data-wallet="">${I.brief} محفظتي — صفقاتي وأقساطي وأرباحي</button>` : ''}
+      <button class="btn gold block share-big" data-addfull>${I.plusc} أضف أرضاً للبيع</button>
+      ${!u.admin ? `<button class="btn ghost block stbtn" data-mystats>${I.chart} إحصائيات إعلاناتي</button>` : ''}
       <h2 class="h2">طلباتي</h2>
       <div id="myList"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>
       ${!u.admin ? '<button class="linkbtn invlink" data-redeem>لديك كود دعوة موظف؟</button>' : ''}
@@ -45,7 +45,7 @@ export function accountPage() {
       <label data-only="register" class="invfld">كود دعوة موظف (إن وُجد)<input name="invite" dir="ltr" maxlength="12" autocapitalize="characters" placeholder="مثال: K7Q2M9XA"><small id="invOk"></small></label>
       ${pickersHTML({}, 'register')}
       <div class="codebox" id="codeBox" hidden>
-        <b>📧 أرسلنا كود تفعيل من 6 أرقام إلى بريدك</b><span id="codeTo" dir="ltr"></span>
+        <b>${I.mail} أرسلنا كود تفعيل من 6 أرقام إلى بريدك</b><span id="codeTo" dir="ltr"></span>
         <input name="code" id="regCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" dir="ltr" placeholder="••••••">
         <small>لم يصلك؟ تحقق من مجلد الرسائل غير المرغوبة (Spam)، أو <button type="button" class="linkbtn" id="resend">أعد الإرسال</button></small>
       </div>
@@ -78,7 +78,7 @@ export async function initAccount(pg, next) {
         <div><b class="notr">${esc(x.title)}</b><span>${x.area ? money(x.area) + ' قدم²' : ''}${x.price ? ' · ' + money(x.price) + ' د.إ' : ''}</span>
           <span class="pills"><i class="pill ${REVIEW[x.review][1]}">${REVIEW[x.review][0]}</i>${featPills(x)}${x.onPlan ? '<i class="pill plan">على المخطط</i>' : ''}</span>
           ${x.note ? `<small>السبب: ${esc(x.note)}</small>` : ''}
-          ${x.review !== 'rejected' ? `<button class="btn ghost feat" data-feat="${x.id}">${x.featured ? '⏫ تمديد / ترقية التمييز' : '⭐ باقات التمييز'}</button>` : ''}</div>
+          ${x.review !== 'rejected' ? `<button class="btn ghost feat" data-feat="${x.id}">${x.featured ? 'تمديد / ترقية التمييز' : 'باقات التمييز'}</button>` : ''}</div>
         ${x.review === 'approved' ? `<button class="back" data-oland="${x.id}" aria-label="عرض">‹</button>` : ''}</div>`).join('')
         : '<p class="muted">لم تضف أي أرض بعد.</p>';
       box._items = j.items;

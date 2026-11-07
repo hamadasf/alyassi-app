@@ -29,7 +29,7 @@ export function shrink(file, max = 700) {
 export function pickersHTML(cur = {}, only = '') {
   const kind = cur.kind === 'company' ? 'company' : 'person';
   const one = (k, title, hint, src) => `<label class="advpick${k === 'photo' ? ' round' : ''}"${k === 'logo' && kind !== 'company' ? ' hidden' : ''}>
-      <span class="advpv">${src ? `<img src="${esc(src)}" alt="">` : `<i>${k === 'photo' ? '👤' : '🏢'}</i>`}</span>
+      <span class="advpv">${src ? `<img src="${esc(src)}" alt="">` : `<i>${k === 'photo' ? '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>' : '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M5 21V8l7-5 7 5v13"/><path d="M10 21v-5h4v5"/></svg>'}</i>`}</span>
       <span class="advtx"><b>${title}</b><small>${hint}</small></span>
       <input type="file" accept="image/*" data-advk="${k}" hidden></label>`;
   return `<div class="advpicks"${only ? ` data-only="${only}"` : ''}>

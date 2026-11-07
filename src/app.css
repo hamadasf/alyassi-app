@@ -1249,3 +1249,4 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .mlogout svg { width: 20px; height: 20px; }
 .mfoot { margin-top: 18px; }
 .mav svg, .acc-av svg { width: 55%; height: 55%; color: var(--navy); }
+.codebox b svg, .advnote b svg { width: 16px; height: 16px; vertical-align: -3px; }
