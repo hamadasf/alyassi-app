@@ -427,6 +427,44 @@ function projectPdf(p) {
   }
   return projPdfCache.get(p.slug);
 }
+/* management: «المخطط بدون حالات» — made on the phone, then saved to the phone or shared */
+function openCleanPlan(p) {
+  document.querySelector('.ssheet')?.remove();
+  const el = document.createElement('div'); el.className = 'ssheet';
+  el.innerHTML = `<div class="ss-scrim" data-ssclose></div><div class="ss-box">
+    <div class="ss-grip"></div>
+    <h3>مخطط ${esc(p.name)} — بدون حالات</h3>
+    <p class="ss-sub">المخطط ودليل الألوان فقط، بدون متاح / محجوز / مباع وبدون أسعار</p>
+    <div class="ss-state"><i class="spin"></i><span>جارِ تجهيز المخطط…</span></div>
+    <button class="btn primary block" data-cpsave disabled>${I.pdf} حفظ PDF على الجهاز</button>
+    <button class="btn wa block" data-cpshare disabled>${I.share} مشاركة</button>
+  </div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('open'));
+  const close = () => { el.classList.remove('open'); setTimeout(() => el.remove(), 250); };
+  el.querySelector('[data-ssclose]').onclick = close;
+  const st = el.querySelector('.ss-state'), bSave = el.querySelector('[data-cpsave]'), bShare = el.querySelector('[data-cpshare]');
+  let pdf = null;
+  buildCleanPlanPdf(p, { emblem: 'assets/mark.png' }).then((x) => {
+    pdf = x; bSave.disabled = false; bShare.disabled = false;
+    if (!native && !(navigator.canShare && navigator.canShare({ files: [new File([x.bytes], 'a.pdf', { type: 'application/pdf' })] }))) bShare.hidden = true;
+    st.innerHTML = `<b class="ok">✓</b><span>المخطط جاهز (${(x.bytes.length / 1048576).toFixed(1)} MB)</span>`;
+  }).catch((er) => { st.innerHTML = `<span>تعذّر تجهيز المخطط${er && er.message && er.message.length < 60 ? ': ' + esc(er.message) : ''}</span>`; });
+  bSave.onclick = async () => {
+    if (!pdf) return;
+    if (!native) {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([pdf.bytes], { type: 'application/pdf' })); a.download = pdf.name;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000); close(); return;
+    }
+    try {
+      await Filesystem.writeFile({ path: 'عمر الياسي/' + pdf.name, data: b64(pdf.bytes), directory: Directory.Documents, recursive: true });
+      toast('تم حفظ المخطط في: المستندات ← عمر الياسي'); close();
+    } catch {   // no access to the phone's folders: the share sheet has «حفظ في الملفات / Drive»
+      try { await shareFile(pdf, `مخطط ${p.name}`, `مخطط ${p.name}`); close(); } catch { /* cancelled */ }
+    }
+  };
+  bShare.onclick = async () => { if (!pdf) return; try { await shareFile(pdf, `مخطط ${p.name}`, `مخطط ${p.name}`); close(); } catch { /* cancelled */ } };
+}
 function openProjectShare(p) {
   document.querySelector('.ssheet')?.remove();
   const el = document.createElement('div'); el.className = 'ssheet';
@@ -797,7 +835,7 @@ function projectPage(p) {
         ${p.pdf ? `<a class="btn ghost" href="${esc(p.pdf)}" data-ext>${I.pdf} ملف المشروع PDF</a>` : ''}
         <a class="btn wa" href="${esc(waLink(`مرحباً، أرغب بالاستفسار عن مشروع ${p.name}\n${p.plan}`))}" data-ext>${I.wa} استفسر</a>
       </div>
-      ${(session.user() || {}).admin && p.map ? `<button class="btn ghost block cleanpdf" data-cleanpdf="${esc(p.slug)}">${I.pdf} تحميل المخطط بدون حالات PDF <small>للإدارة</small></button>` : ''}
+      ${(session.user() || {}).admin && p.map ? `<button class="btn ghost block cleanpdf" data-cleanpdf="${esc(p.slug)}">${I.pdf} المخطط بدون حالات PDF — حفظ أو مشاركة <small>للإدارة</small></button>` : ''}
       ${Object.keys(types).length ? `<h2 class="h2">الأنواع المتاحة</h2><div class="tlist">${Object.entries(types).map(([k, v]) => `<div>${dot(v.c)}<span>${esc(k)}</span><b>${v.n}</b></div>`).join('')}</div>` : ''}
       ${p.updated ? `<p class="upd">آخر تحديث للبيانات: <bdi>${esc(fmtDate(p.updated))}</bdi></p>` : ''}
       <h2 class="h2">الأراضي المتاحة (${av.length})</h2>
@@ -1060,19 +1098,7 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (ds.callback) { e.stopPropagation(); callbackSheet(ds.callback, ds.cbt || '', ds.ref || ''); return; }
-  if (ds.cleanpdf) {   // management: the plan with no status colours / prices
-    const p = DATA().projects.find((x) => x.slug === ds.cleanpdf); if (!p || t.disabled) return;
-    const old = t.innerHTML; t.disabled = true; t.innerHTML = `<i class="spin"></i> جارِ تجهيز المخطط…`;
-    buildCleanPlanPdf(p, { emblem: 'assets/mark.png' })
-      .then(async (pdf) => {
-        if (native) { await shareFile(pdf, `مخطط ${p.name}`, `مخطط ${p.name}`); return; }   // the phone's sheet: save to Files, Drive, WhatsApp…
-        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([pdf.bytes], { type: 'application/pdf' })); a.download = pdf.name;
-        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-      })
-      .catch((er) => { if (!/cancel|abort/i.test(String(er && er.message))) toast('تعذّر تجهيز المخطط' + (er && er.message && er.message.length < 60 ? ': ' + er.message : '')); })
-      .finally(() => { t.disabled = false; t.innerHTML = old; });
-    return;
-  }
+  if (ds.cleanpdf) { const p = DATA().projects.find((x) => x.slug === ds.cleanpdf); if (p) openCleanPlan(p); return; }   // management: the plan with no status colours / prices
   if (ds.pshare) { e.stopPropagation(); const p = DATA().projects.find((x) => x.slug === ds.pshare); if (p) openProjectShare(p); return; }
   if (ds.notify !== undefined) { push.enable(); return; }
   if (ds.account !== undefined) { pushPage('account'); return; }
