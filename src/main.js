@@ -544,6 +544,8 @@ function askSignIn(why = 'price') {
   const T = { price: ['سجّل دخولك لعرض السعر', 'الأسعار وخطط السداد متاحة للأعضاء — التسجيل مجاني ويأخذ ثوانٍ بحساب جوجل أو بالإيميل.'],
     fav: ['سجّل دخولك لحفظ الأراضي', 'احفظ الأراضي التي تعجبك ويصلك تنبيه عند نزول سعرها أو عليها عرض.'],
     tools: ['سجّل دخولك لاستخدام هذه الميزة', 'الحاسبة والمقارنة والتنبيهات والمحادثات متاحة للأعضاء — التسجيل مجاني.'],
+    lands: ['سجّل دخولك لعرض الأراضي', 'قوائم الأراضي وأرقامها ومساحاتها وأسعارها متاحة للأعضاء — التسجيل مجاني ويأخذ ثوانٍ.'],
+    land: ['سجّل دخولك لعرض تفاصيل القطعة', 'المساحة والسعر وخطة السداد ومخطط القطعة متاحة للأعضاء — التسجيل مجاني ويأخذ ثوانٍ.'],
     share: ['سجّل دخولك لمشاركة تفاصيل الأرض', 'تفاصيل الأرض وسعرها ومخططها متاحة للأعضاء — ويمكنك مشاركة ملف المشروع من صفحة المشروع.'] }[why] || [];
   const el = document.createElement('div'); el.className = 'ssheet';
   el.innerHTML = `<div class="ss-scrim" data-ssclose></div><div class="ss-box signin-ask"><div class="ss-grip"></div>
@@ -660,6 +662,28 @@ function renderHome() {
   const best = av.filter((l) => l.total).sort((a, b) => a.total - b.total).slice(0, 10);
   const cats = [...new Set(av.map((l) => l.cat))];
   const el = $('#home .content');
+  if (guest()) {   // guests: the company and its projects — download / share a project, open its interactive plan
+    el.innerHTML = `
+    <section class="hero">
+      <div class="hero-top"><img class="hero-logo" src="${LOGO}" alt="عمر الياسي للعقارات">
+        <div class="hero-acts"><button class="hbtn hlang notr" data-lang aria-label="Language">${isEn() ? 'AR' : 'EN'}</button></div></div>
+      <p>أراضٍ ومشاريع في الشارقة بخطط سداد مرنة ومواقع استراتيجية</p>
+      <div class="stats">
+        <div><b>${av.length || '—'}</b><span>أرض متاحة</span></div>
+        <div><b>${projects.length || '—'}</b><span>مشروع</span></div>
+        <div><b>${lands.filter((l) => l.status === 'sold').length || '—'}</b><span>تم بيعها</span></div>
+      </div>
+    </section>
+    <button class="guestjoin" data-account="">${I.user}<span><b>سجّل دخولك لعرض الأراضي والأسعار</b><small>مجاناً — بحساب جوجل أو بالإيميل</small></span>${I.back}</button>
+    <div class="sec-h"><h2>مشاريعنا</h2><button data-pmap="">${I.map} على الخريطة</button></div>
+    <div class="list gproj">${projects.length ? projects.map((p) => projectCard(p, true)).join('') : skeleton(2)}</div>
+    <section class="cta">
+      <div><h3>عندك أرض للبيع؟</h3><p>عبّئ بيانات أرضك وسنتواصل معك</p></div>
+      <button class="btn gold" data-addland>أضف أرضك</button>
+    </section>`;
+    startBanner();
+    return;
+  }
   el.innerHTML = `
     <section class="hero">
       <div class="hero-top">
@@ -860,8 +884,9 @@ function projectPage(p) {
       ${(session.user() || {}).admin && p.map ? `<button class="btn ghost block cleanpdf" data-cleanpdf="${esc(p.slug)}">${I.pdf} المخطط بدون حالات PDF — حفظ أو مشاركة <small>للإدارة</small></button>` : ''}
       ${Object.keys(types).length ? `<h2 class="h2">الأنواع المتاحة</h2><div class="tlist">${Object.entries(types).map(([k, v]) => `<div>${dot(v.c)}<span>${esc(k)}</span><b>${v.n}</b></div>`).join('')}</div>` : ''}
       ${p.updated ? `<p class="upd">آخر تحديث للبيانات: <bdi>${esc(fmtDate(p.updated))}</bdi></p>` : ''}
-      <h2 class="h2">الأراضي المتاحة (${av.length})</h2>
-      <div class="list" id="projList"></div>
+      ${guest() ? `<button class="lockbox" data-signin="lands">${I.lock}<b>سجّل دخولك لعرض الأراضي المتاحة${av.length ? ` (${av.length})` : ''}</b><span>أرقام القطع ومساحاتها وأسعارها وخطط السداد — مجاناً للأعضاء</span></button>`
+        : `<h2 class="h2">الأراضي المتاحة (${av.length})</h2>
+      <div class="list" id="projList"></div>`}
     </div>`;
 }
 
@@ -873,6 +898,20 @@ function planboxHTML(l) {
         <div class="inst"><div class="r head"><span>الدفعة الأولى</span><b>${money(l.first)} د.إ</b></div>
         ${l.inst.map((x, i) => `<div class="r"><span>القسط ${i + 1} · <bdi>${esc(fmtDate(x[0]))}</bdi></span><b>${money(x[1])} د.إ</b></div>`).join('')}
         <div class="r total"><span>الإجمالي</span><b>${money(l.first + sumInst)} د.إ</b></div></div>` : ''}`;
+}
+/* a guest who opens a land (a shared link, a plot on the plan): where it is and its status — the details after signing in */
+function guestLandPage(l) {
+  const st = STATUS[l.status] || STATUS.av;
+  const proj = DATA().projects.find((p) => p.slug === l.project);
+  const loc = proj && proj.map && ((l.poly && l.poly.length > 2) || l.pc) ? '<canvas class="planloc-cv"></canvas>' : '';
+  return `<div class="hero-img land${loc ? ' planloc' : ''}">${loc || `<img src="${esc(proj ? proj.poster : '')}" alt="" onerror="this.style.opacity=0">`}<span class="badge ${st.cls}">${st.label}</span></div>
+    <div class="pad">
+      <h1>قطعة رقم ${esc(l.n)}</h1>
+      <button class="meta link" data-project="${esc(l.project)}">${I.pin}<span>مشروع ${esc(l.projectName)}</span></button>
+      <button class="lockbox" data-signin="land">${I.lock}<b>سجّل دخولك لعرض تفاصيل القطعة</b><span>المساحة والسعر وخطة السداد ومخطط القطعة — مجاناً للأعضاء</span></button>
+      <a class="btn wa block" data-ext href="${waLink(`مرحباً، أرغب بالاستفسار عن القطعة رقم ${l.n} في مشروع ${l.projectName}`)}">${I.wa} استفسر عن القطعة على واتساب</a>
+      <button class="btn ghost block" data-project="${esc(l.project)}">${I.building} تفاصيل المشروع</button>
+    </div>`;
 }
 function landPage(l) {
   const st = STATUS[l.status] || STATUS.av;
@@ -984,7 +1023,7 @@ function pushPage(kind, id) {
   else if (kind === 'aad') { html = admAdPage(id); if (!html) return; }
   else if (kind === 'auser') { html = admUserPage(); }
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
-  else { l = findLand(id); if (!l) return; html = landPage(l); }
+  else { l = findLand(id); if (!l) return; html = guest() ? guestLandPage(l) : landPage(l); }
   const pg = document.createElement('section');
   const TITLE = { tools: (session.user() || {}).admin ? 'لوحة الإدارة' : 'أدوات الموظف', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
@@ -1042,7 +1081,7 @@ function pushPage(kind, id) {
   if (kind === 'aad') initAdmAd(pg, id);
   if (kind === 'auser') initAdmUser(pg, id);
   if (l && (l.poly || l.pc)) { const cv = pg.querySelector('.planloc-cv'), proj = d.projects.find((x) => x.slug === l.project); if (cv && proj) requestAnimationFrame(() => paintPlanLoc(cv, l, proj.lands, proj.map).then(() => cv.classList.add('on')).catch(() => { const im = document.createElement('img'); im.src = l.img; im.alt = ''; cv.replaceWith(im); pg.querySelector('.planloc-cap')?.remove(); })); }
-  if (p && kind === 'project') renderList($('#projList', pg), p.lands.filter((x) => x.status === 'av').sort((a, b) => (!!offerFor(b) - !!offerFor(a)) || (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12))), landCard, 'لا توجد أراضٍ متاحة حالياً في هذا المشروع');
+  if (p && kind === 'project' && $('#projList', pg)) renderList($('#projList', pg), p.lands.filter((x) => x.status === 'av').sort((a, b) => (!!offerFor(b) - !!offerFor(a)) || (b.featured - a.featured) || ((a.total || 9e12) - (b.total || 9e12))), landCard, 'لا توجد أراضٍ متاحة حالياً في هذا المشروع');
   push.render();
   requestAnimationFrame(() => pg.classList.add('in'));
   pg._id = kind === 'land' || kind === 'oland' ? String(id) : '';
@@ -1113,6 +1152,7 @@ document.addEventListener('click', (e) => {
   if (ds.signin) { e.stopPropagation(); askSignIn(ds.signin); return; }
   if (guest()) {   // personal tools need an account
     if (ds.fav) { e.stopPropagation(); askSignIn('fav'); return; }
+    if (ds.tab === 'lands' || ds.go === 'lands' || ds.cat || ds.olands !== undefined || ds.changes !== undefined) { e.stopPropagation(); askSignIn('lands'); return; }
     if (ds.share && ds.share.startsWith('land:')) { e.stopPropagation(); askSignIn('share'); return; }
     if (ds.calc !== undefined || ds.compare !== undefined || ds.alertf !== undefined || ds.alerts !== undefined || ds.saved !== undefined || ds.favs !== undefined || ds.mychat !== undefined || ds.wanted !== undefined || ds.selldeal) { e.stopPropagation(); askSignIn('tools'); return; }
   }
@@ -1312,8 +1352,9 @@ initMore({ isEn, setLang, esc, toast, I, pushPage: (k, id) => pushPage(k, id), c
 const syncNav = () => {
   const b = document.querySelector('.nwallet'); if (b) b.hidden = !isBroker();
   const g = guest(); document.body.classList.toggle('guest', g);
-  const c = document.querySelector('.nav [data-tab="chats"]'); if (c) c.hidden = g;   // guests: a simpler bar (home · lands · projects · more)
-  if (g && current === 'chats') showTab('home');
+  const c = document.querySelector('.nav [data-tab="chats"]'); if (c) c.hidden = g;   // guests: a simpler bar (home · projects · more)
+  const ln = document.querySelector('.nav [data-tab="lands"]'); if (ln) ln.hidden = g;
+  if (g && (current === 'chats' || current === 'lands')) showTab('home');
 };
 let wasGuest = guest();
 /* after signing in (or out): the open land / project pages show (or hide) prices without reopening */
