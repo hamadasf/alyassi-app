@@ -39,6 +39,7 @@ const PZ_THEMES = {
     plot: '#1D2B4F', lbox: '#FFFFFF', ltext: '#3E3438', lline: '#C47C80', mapLine: '#C67F85', cap: 'rgba(70,66,74,.82)', capText: '#FFFFFF', picLine: '#D0C6C6', bar: '#CB7C7F', blob: '#F9E1E1', phoneInk: '#5A4A4C', addr: '#FFFFFF', pinIcon: '#F9E1E1', phone: '0564080004' },
 };
 PZ_THEMES.aya = Object.assign({}, PZ_THEMES.pk, { name: 'قالب آية الجديد', layout: 'aya', bar: '#B4525C', logo: null, phone: '0564080004' });
+PZ_THEMES.ayk = Object.assign({}, PZ_THEMES.aya, { name: 'قالب آية كامل', ayaCol: 'plum', bar: '#5E1E51', ink: '#4A0D3C', price: '#4A0D3C', icon: '#5E1E51', phone: '0508600740' });
 let TH = PZ_THEMES.co;
 const AD_W = 1600, AD_H = 2000;
 
@@ -47,9 +48,14 @@ const ayaArt = {}; let ayaReady = null;
 function ayaLoad() {
   if (ayaReady) return ayaReady;
   const ld = (n) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = './assets/ad/' + n; });
-  return (ayaReady = Promise.all([ld('aya-base.jpg'), ld('aya-icons.png'), ld('oy-flag.png'), ld('ar-icons.png'), ld('ar-avatar.jpg')]).then(([b, i, f, ai, av]) => { ayaArt.base = b; ayaArt.icons = i; ayaArt.oyFlag = f; ayaArt.arIcons = ai; ayaArt.arAv = av; }));
+  return (ayaReady = Promise.all([ld('aya-base.jpg'), ld('aya-icons.png'), ld('oy-flag.png'), ld('ar-icons.png'), ld('ar-avatar.jpg'), ld('ayk-base.jpg'), ld('ayk-icons.png')]).then(([b, i, f, ai, av, kb, ki]) => { ayaArt.pbase = ayaArt.base = b; ayaArt.picons = ayaArt.icons = i; ayaArt.oyFlag = f; ayaArt.arIcons = ai; ayaArt.arAv = av; ayaArt.kbase = kb; ayaArt.kicons = ki; }));
 }
-const AYA = { kick: '#A85E5E', title: '#655454', proj: '#A3504D', sub: '#605050', card: '#F0E5E1', cTitle: '#3E3330', cVal: '#A85E5D', tag: '#46372F', phone: '#A95F5E', addr: '#6A4E4A', plot: '#A2474F' };
+const AYA_PINK = { kick: '#A85E5E', title: '#655454', proj: '#A3504D', sub: '#605050', card: '#F0E5E1', cTitle: '#3E3330', cVal: '#A85E5D', tag: '#46372F', phone: '#A95F5E', addr: '#6A4E4A', plot: '#A2474F',
+  ground: '#EFE3DC', wash: 'rgba(250,232,228,0.32)', pinA: '#E7A3A8', pinB: '#B4525C', labBg: 'rgba(180,82,92,.94)', shadow: 'rgba(120,70,70,.14)', cardLine: '' };
+/* «قالب آية كامل»: the same layout in her plum and lavender */
+const AYA_PLUM = { kick: '#4A0D3C', title: '#3D4246', proj: '#4A0A3D', sub: '#3D4246', card: '#EEEDEB', cTitle: '#4A0D3C', cVal: '#4A0D3C', tag: '#3A2238', phone: '#FFFFFF', addr: '#FFFFFF', plot: '#4A0A3D',
+  ground: '#ECE4EF', wash: 'rgba(240,230,246,0.22)', pinA: '#4A0A3D', pinB: '#4A0A3D', labBg: 'rgba(74,10,61,.94)', shadow: 'rgba(74,10,61,.12)', cardLine: '#5E1E51', downCard: 1, tagDy: -46, tagDx: 20 };
+let AYA = AYA_PINK;
 const AYA_CARDS = [156, 422, 691, 952, 1222], AYA_CW = 226, AYA_CY = 1347, AYA_CH = 260;
 
 /* ---------- the plot and plan, from the app's data ---------- */
@@ -91,10 +97,10 @@ function ayaFade(c, y0, hh, fromTop) {
 function ayaMap(c, p, x, y, w, h, v) {
   const k = 2.4 * (+v.zoom || 1), uw = w / k, uh = h / k, px = x + w / 2, py = y + 360;
   const x0 = p.c[0] - (px - x) / k - (+v.mx || 0) / k, y0 = p.c[1] - (py - y) / k - (+v.my || 0) / k;
-  c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip(); c.fillStyle = '#EFE3DC'; c.fillRect(x, y, w, h);
+  c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip(); c.fillStyle = AYA.ground; c.fillRect(x, y, w, h);
   c.save(); c.translate(x, y); c.scale(k, k); c.translate(-x0, -y0);
   drawPlan(c, x0, y0, x0 + uw, y0 + uh, k);
-  c.fillStyle = 'rgba(250,232,228,0.32)'; c.fillRect(x0, y0, uw, uh);   // the template's soft pink over the plan
+  c.fillStyle = AYA.wash; c.fillRect(x0, y0, uw, uh);   // the template's soft tint over the plan
   c.beginPath(); p.p.forEach((q, i) => (i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1]))); c.closePath(); c.lineJoin = 'round'; c.fillStyle = AYA.plot; c.fill(); c.lineWidth = 3.2 / k * 2.4; c.strokeStyle = '#fff'; c.stroke();
   c.save(); c.translate(p.c[0], p.c[1]); c.rotate(p.r * Math.PI / 180); c.direction = 'ltr'; txt(c, p.n, 0, 2.4, FD(800, 6.6), '#fff', 'center'); c.restore();
   c.restore(); c.restore();
@@ -106,24 +112,27 @@ function ayaPin(c, sx, tip, K) {
   c.save(); c.translate(sx, tip); c.scale(K, K);
   const R = 58, cy = -128;
   c.shadowColor = 'rgba(90,30,40,.28)'; c.shadowBlur = 16; c.shadowOffsetY = 6;
-  const g = c.createLinearGradient(0, cy - R, 0, 0); g.addColorStop(0, '#E7A3A8'); g.addColorStop(1, '#B4525C');
+  const g = c.createLinearGradient(0, cy - R, 0, 0); g.addColorStop(0, AYA.pinA); g.addColorStop(1, AYA.pinB);
   c.fillStyle = g; c.beginPath(); c.arc(0, cy, R, Math.PI * 0.82, Math.PI * 0.18); c.lineTo(0, 0); c.closePath(); c.fill();
   c.shadowColor = 'transparent';
-  c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.arc(0, cy, R * 0.8, 0, 7); c.fill();
-  c.fillStyle = '#B4525C'; c.beginPath(); c.arc(0, cy, R * 0.68, 0, 7); c.fill();
+  c.fillStyle = AYA.cardLine ? '#FFFFFF' : 'rgba(255,255,255,.55)'; c.beginPath(); c.arc(0, cy, R * 0.8, 0, 7); c.fill();
+  c.fillStyle = AYA.pinB; c.beginPath(); c.arc(0, cy, R * 0.68, 0, 7); c.fill();
   c.fillStyle = '#fff'; c.beginPath(); c.moveTo(0, cy - 26); c.lineTo(-27, cy - 2); c.lineTo(-19, cy - 2); c.lineTo(-19, cy + 22); c.lineTo(19, cy + 22); c.lineTo(19, cy - 2); c.lineTo(27, cy - 2); c.closePath(); c.fill();
-  c.fillStyle = '#B4525C'; c.fillRect(-6, cy + 6, 12, 16);
+  c.fillStyle = AYA.pinB; c.fillRect(-6, cy + 6, 12, 16);
   c.restore();
 }
 function ayaCard(c, i, title, val, sub, num) {
   const x = AYA_CARDS[i], cx = x + AYA_CW / 2, v = ad.v;
-  c.save(); c.shadowColor = 'rgba(120,70,70,.14)'; c.shadowBlur = 22; c.shadowOffsetY = 5; c.fillStyle = AYA.card; box(c, x, AYA_CY, AYA_CW, AYA_CH, 30); c.fill(); c.restore();
+  c.save(); c.shadowColor = AYA.shadow; c.shadowBlur = 22; c.shadowOffsetY = 5; c.fillStyle = AYA.card; box(c, x, AYA_CY, AYA_CW, AYA_CH, 30); c.fill(); c.restore();
+  if (AYA.cardLine) { c.save(); c.strokeStyle = AYA.cardLine; c.lineWidth = 2.2; box(c, x + 1, AYA_CY + 1, AYA_CW - 2, AYA_CH - 2, 29); c.stroke(); c.restore(); }
   if (ayaArt.icons) c.drawImage(ayaArt.icons, i * 84, 0, 84, 74, cx - 42, 1364, 84, 74);
   PZS = v.fsL; adFitV(c, title, cx, 1441, 1480, AYA_CW - 24, 40, 700, AYA.cTitle, 'center');
   PZS = v.fsN; if (num) c.direction = 'ltr'; adFitV(c, val, cx, 1493, 1538, AYA_CW - 18, 48, 700, AYA.cVal, 'center'); c.direction = 'rtl';
   PZS = v.fsL; adFitV(c, sub, cx, 1545, 1577, AYA_CW - 24, 28, 600, AYA.cTitle, 'center', FB);
 }
 function ayaDraw(c, v, p, at) {
+  const plum = TH.ayaCol === 'plum'; AYA = plum ? AYA_PLUM : AYA_PINK;
+  ayaArt.base = plum ? ayaArt.kbase : ayaArt.pbase; ayaArt.icons = plum ? ayaArt.kicons : ayaArt.picons;
   if (ayaArt.base) c.drawImage(ayaArt.base, 0, 0, AD_W, AD_H); else { c.fillStyle = '#F6E4E2'; c.fillRect(0, 0, AD_W, AD_H); }
   PZS = v.fsL; const o = v.o.map || [0, 0];
   c.save(); c.translate(o[0], o[1]); const m = ayaMap(c, p, 92, 812, 1416, 660, v); c.restore();
@@ -134,7 +143,7 @@ function ayaDraw(c, v, p, at) {
   if (v.lab && (v.label1 || v.label2)) {   // an optional label beside the marker
     const lo = v.o.lab || [0, 0]; c.font = FD(700, 34); const tw = Math.max(c.measureText(v.label1 || '').width, (c.font = FB(600, 30), c.measureText(v.label2 || '').width));
     const bw = Math.min(600, tw + 50), bh = v.label1 && v.label2 ? 100 : 62; let bx = sx + 90 + lo[0]; const by = sy - 250 + lo[1]; if (bx + bw > 1490) bx = sx - 90 - bw + lo[0];
-    c.fillStyle = 'rgba(180,82,92,.94)'; box(c, bx, by, bw, bh, 14); c.fill();
+    c.fillStyle = AYA.labBg; box(c, bx, by, bw, bh, 14); c.fill();
     if (v.label1) adFitV(c, v.label1, bx + bw / 2, by + 8, by + (v.label2 ? 52 : bh - 8), bw - 26, 34, 700, '#fff', 'center');
     if (v.label2) adFitV(c, v.label2, bx + bw / 2, by + (v.label1 ? 54 : 8), by + bh - 8, bw - 26, 30, 600, '#fff', 'center', FB);
     ad.hits.push({ k: 'lab', x: bx, y: by, w: bw, h: bh });
@@ -144,7 +153,8 @@ function ayaDraw(c, v, p, at) {
   at('cards', AYA_CARDS[0], AYA_CY, AYA_CARDS[4] + AYA_CW - AYA_CARDS[0], AYA_CH, () => {
     ayaCard(c, 0, 'التصريح', v.a_use, v.a_fl);
     ayaCard(c, 1, 'المساحة', v.area, 'قدم مربع', 1);
-    ayaCard(c, 2, 'الموقع', v.a_loc, v.a_city);
+    if (AYA.downCard) { if (v.mode === 'inst') ayaCard(c, 2, 'دفعة أولى', v.down, v.a_ds || 'درهم فقط', 1); else ayaCard(c, 2, 'الدفع', v.a_cV || 'كاش', v.a_cS || 'دفعة واحدة'); }
+    else ayaCard(c, 2, 'الموقع', v.a_loc, v.a_city);
     ayaCard(c, 3, 'السعر', v.price, v.a_ps, 1);
     if (v.mode === 'inst') ayaCard(c, 4, v.a_iT || (n ? n + ' أقساط' : 'أقساط'), v.until, v.a_iS); else ayaCard(c, 4, v.a_cT, v.a_cV, v.a_cS);
   });
@@ -158,7 +168,7 @@ function ayaDraw(c, v, p, at) {
   at('proj', 400, 494, 800, 162, () => adFitV(c, v.proj, 800, 498, 654, 790, 150, 800, AYA.proj, 'center'));
   at('sub', 352, 700, 896, 92, () => adFitV(c, v.sub, 800, 710, 786, 890, 72, 700, AYA.sub, 'center'));
   PZS = v.fsC;
-  at('more', 560, 1650, 480, 72, () => adFitV(c, v.a_tag, 800, 1662, 1712, 396, 46, 500, AYA.tag, 'center', FB));
+  { const dy = AYA.tagDy || 0, dx = AYA.tagDx || 0; at('more', 560 + dx, 1650 + dy, 480, 72, () => adFitV(c, v.a_tag, 800 + dx, 1662 + dy, 1712 + dy, 396, 46, 500, AYA.tag, 'center', FB)); }
   at('bar', 330, 1748, 1000, 158, () => {
     adFitV(c, v.a_clbl, 542, 1772, 1802, 300, 28, 600, AYA.addr, 'center', FB);
     c.direction = 'ltr'; adFitV(c, v.phone, 542, 1816, 1890, 330, 66, 800, AYA.phone, 'center'); c.direction = 'rtl';
@@ -330,6 +340,7 @@ const AYA_FIELDS = [
   ['a_tag', 'السطر فوق التواصل'], ['a_clbl', 'عنوان التواصل'], ['phone', 'رقم التواصل'], ['a_addr', 'العنوان (سطران، Enter بينهما)', '', 1],
 ];
 
+const AYK_FIELDS = AYA_FIELDS.flatMap((f) => (f[0] === 'a_loc' ? [['down', 'بطاقة الدفعة الأولى (درهم)', 'inst'], ['a_ds', 'بطاقة الدفعة الأولى · السطر الصغير', 'inst']] : f[0] === 'a_city' ? [] : [f]));
 const AD_KEEP = ['more', 'addr', 'a_tag', 'a_addr', 'a_city'];   // remembered on this phone from one ad to the next
 const store = () => { try { return JSON.parse(localStorage.getItem('dnp-ad') || '{}') || {}; } catch { return {}; } };
 function pzPhone(t) { const s = store(); return (s.phones && s.phones[t]) || PZ_THEMES[t].phone; }
@@ -414,7 +425,7 @@ function adDefaults(p) {
   const s = store();
   AD_KEEP.forEach((k) => { if (typeof s[k] === 'string' && s[k]) v[k] = s[k]; });
   v.theme = PZ_THEMES[s.theme] ? s.theme : allowed()[0]; if (!allowed().includes(v.theme)) v.theme = allowed()[0];
-  v.phone = pzPhone(v.theme); if (v.theme === 'aya') v.lab = false;
+  v.phone = pzPhone(v.theme); if (layoutOf(v.theme) === 'aya') v.lab = false;
   return v;
 }
 
@@ -934,7 +945,7 @@ function pzForm() {
   const sv = ad.saved && ad.saved[v.theme];
   $('pzForm').innerHTML = (sv ? `<div class="pz-saved">${ei('bookmark')} تصميم محفوظ لهذا القالب · <span class="num">${esc(dmy(sv.t))}</span>${sv.by ? ' · ' + esc(sv.by) : ''}<span class="rowbtns"><button type="button" class="btn sm" data-pznew>بدء تصميم جديد</button><button type="button" class="btn sm danger" data-pzunsave>حذف المحفوظ</button></span></div>` : '') + `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · إصبعان لتكبيره أو تصغيره · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', only ? '١. نوع الدفع' : '١. القالب ونوع الدفع', `<div class="pz-th"${only ? ' hidden' : ''}>${Object.entries(PZ_THEMES).filter(([k]) => okT.includes(k)).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
     <div class="seg"><button type="button" data-pzmode="cash" class="${v.mode === 'cash' ? 'on' : ''}">قالب الكاش</button><button type="button" data-pzmode="inst" class="${v.mode === 'inst' ? 'on' : ''}">قالب الأقساط</button></div>`, true)
-    + sec('tx', '٢. الكتابة والأسعار', `<label class="fld pz-ppf">سعر القدم (درهم) — يحسب الإجمالي تلقائياً<input type="text" inputmode="decimal" data-ppf value="${esc(v.ppf || '')}" placeholder="مثلاً 143"></label><p class="help" id="pzTot">${ppfHelp()}</p>${(aya ? AYA_FIELDS : oy ? OY_FIELDS : ar ? AR_FIELDS : AD_FIELDS).map(f).join('')}
+    + sec('tx', '٢. الكتابة والأسعار', `<label class="fld pz-ppf">سعر القدم (درهم) — يحسب الإجمالي تلقائياً<input type="text" inputmode="decimal" data-ppf value="${esc(v.ppf || '')}" placeholder="مثلاً 143"></label><p class="help" id="pzTot">${ppfHelp()}</p>${(aya ? (ad.v.theme === 'ayk' ? AYK_FIELDS : AYA_FIELDS) : oy ? OY_FIELDS : ar ? AR_FIELDS : AD_FIELDS).map(f).join('')}
     ${oy ? `<p class="help">السطران الأبيضان خاصّان بكل مشروع (جاهز للبناء، تملّك حر للعرب أو لكل الجنسيات، البنية التحتية…)${ad.pl ? '' : ' — لم تُحدَّد بعد لهذا المشروع'}.</p>${H.isAdmin && H.isAdmin() ? `<button type="button" class="btn sm" data-pzpl>${ei('bookmark')} اجعل السطرين الأبيضين لكل بوستات مشروع ${esc(ad.p.l.projectName)}</button>` : ''}` : ''}
     <h3>موقع القطعة في العنوان</h3>
     <div class="seg pz-side">${[['', 'عادية'], ['زاوية', 'زاوية'], ['سكة', 'سكة']].map(([k, l]) => `<button type="button" data-pzside="${k}" class="${(v.side || '') === k ? 'on' : ''}">${l}${ad.rawOk && (v.auto || '') === k ? ' ✓' : ''}</button>`).join('')}</div>
