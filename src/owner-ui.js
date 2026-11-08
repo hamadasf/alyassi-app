@@ -399,7 +399,7 @@ export function initAdmAd(pg, id) {
     catch (ex) { err.textContent = ex.message; err.hidden = false; go.disabled = false; go.textContent = 'حفظ التعديلات'; }
   };
 }
-export const TPLS = { oy: 'قالب عمر الياسي', ar: 'قالب عبد الرحمن', co: 'قالب الشركة', gr: 'قالب عبادة', pk: 'قالب آية الجابري', aya: 'قالب آية الجديد' };
+export const TPLS = { oy: 'قالب عمر الياسي', ar: 'قالب عبد الرحمن', co: 'قالب الشركة', gr: 'قالب عبادة', pk: 'قالب آية الجابري', aya: 'قالب آية الجديد', ayk: 'قالب آية كامل' };
 export const STAFF = { chats: 'الرد على المحادثات', leads: 'متابعة العملاء وسجل التواصل', viewings: 'مواعيد المعاينة', listings: 'مراجعة الإعلانات وطلبات الشراء', news: 'الأخبار والدليل', push: 'الإشعارات الموجّهة', report: 'التقرير الأسبوعي', payplan: 'إرسال خطة السداد', design: 'تصميم البوستات' };
 /* ---------- the office team (admin only) ---------- */
 export function staffPage() { return '<div class="pad acc" id="staffl"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>'; }
