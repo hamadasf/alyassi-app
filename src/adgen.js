@@ -901,6 +901,7 @@ export function adgenPage(l, projects) {
     return `<div class="pad adg-pick">
       <ol class="adg-steps"><li>اختر المشروع</li><li>اختر القطعة من المخطط أو من القائمة</li><li>عدّل الكتابة إن أردت، ثم شارك البوست أو احفظه</li></ol>
       <label class="fld">١. المشروع<select id="adgProj">${projects.filter((p) => p.map).map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join('')}</select></label>
+      ${H.ownerOf && H.ownerOf('*') ? '<label class="fld">المالك<select id="adgOwn"><option value="">كل الملاك</option></select></label>' : ''}
       <button class="btn primary block" id="adgPlan">${ei('map')} اختر القطعة من المخطط</button>
       <div class="adg-or"><span>أو</span></div>
       <label class="fld">٢. رقم القطعة<input id="adgN" inputmode="numeric" placeholder="اكتب الرقم أو اختر من القائمة"></label>
@@ -1093,11 +1094,18 @@ export function initAdgenPick(pg, projects, open) {
     const p = proj(); if (!p) return;
     const q = inp.value.trim().replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
     const rank = { av: 0, res: 1, sold: 2, na: 3 }, pool = H.landsOf ? H.landsOf(p.slug) : p.lands;   // every plot of the plan, offered or not
-    const ls = pool.filter((l) => (l.poly || l.pc) && (!q || l.n.startsWith(q))).sort((a, b) => (rank[a.status] ?? 4) - (rank[b.status] ?? 4) || (+a.n || 0) - (+b.n || 0)).slice(0, q ? 60 : 40);
-    list.innerHTML = ls.map((l) => `<button type="button" class="chip ${l.status}" data-adg="${esc(l.id)}">${esc(l.n)}<small>${l.status === 'av' ? 'متاحة' : l.status === 'res' ? 'محجوزة' : l.status === 'sold' ? 'مباعة' : 'غير معروضة'}</small></button>`).join('') || '<p class="muted">لا توجد قطعة بهذا الرقم في القطع المعروضة.</p>';
+    const own = pg.querySelector('#adgOwn');
+    if (own) {   // the owners in this project (staff with «رؤية اسم مالك الأرض»)
+      const names = [...new Set(pool.map((l) => H.ownerOf(l.id)).filter(Boolean))].sort();
+      const keep = own.value; own.innerHTML = '<option value="">كل الملاك</option>' + names.map((o) => `<option${o === keep ? ' selected' : ''}>${esc(o)}</option>`).join('');
+    }
+    const wo = own ? own.value : '';
+    const ls = pool.filter((l) => (l.poly || l.pc) && (!q || l.n.startsWith(q)) && (!wo || H.ownerOf(l.id) === wo)).sort((a, b) => (rank[a.status] ?? 4) - (rank[b.status] ?? 4) || (+a.n || 0) - (+b.n || 0)).slice(0, q ? 60 : 40);
+    list.innerHTML = ls.map((l) => `<button type="button" class="chip ${l.status}" data-adg="${esc(l.id)}">${esc(l.n)}<small>${l.status === 'av' ? 'متاحة' : l.status === 'res' ? 'محجوزة' : l.status === 'sold' ? 'مباعة' : 'غير معروضة'}</small>${H.ownerOf && H.ownerOf(l.id) ? `<em class="adg-own">${esc(H.ownerOf(l.id))}</em>` : ''}</button>`).join('') || '<p class="muted">لا توجد قطعة بهذا الرقم في القطع المعروضة.</p>';
   };
   try { const last = localStorage.getItem('oay:adgproj'); if (last && projects.some((p) => p.slug === last && p.map)) sel.value = last; } catch { /* ignore */ }
   sel.onchange = () => { try { localStorage.setItem('oay:adgproj', sel.value); } catch { /* ignore */ } show(); }; inp.oninput = show; show();
+  { const o = pg.querySelector('#adgOwn'); if (o) o.onchange = show; }
   list.onclick = (e) => { const b = e.target.closest('[data-adg]'); if (b) open(b.dataset.adg); };
   pg.querySelector('#adgPlan').onclick = () => { const p = proj(); if (p && H.openPlan) H.openPlan(p.slug); };
   inp.onkeydown = (e) => { if (e.key !== 'Enter') return; const p = proj(), q = inp.value.trim().replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)); const l = p && (H.landsOf ? H.landsOf(p.slug) : p.lands).find((x) => x.n === q && (x.poly || x.pc)); if (l) open(l.id); else H.toast('لا توجد قطعة بهذا الرقم — اختر من القائمة'); };

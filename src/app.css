@@ -1387,3 +1387,16 @@ body.guest #sheet .pricef, body.guest #rngP, body.guest #sheet .memf { display: 
 .pe-row .pe-i { width: 26px; height: 26px; border-radius: 50%; background: #eef1f7; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: var(--navy); }
 .pe-row input { padding: 8px; font-size: 14px; } .pe-row button { width: 30px; height: 30px; border-radius: 50%; background: #fee2e2; color: #b91c1c; }
 .pe-save { margin-top: 4px; } .plotadd { margin-bottom: 8px; }
+
+/* land owners (staff) and the Excel import */
+.ownerln { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 8px 0; padding: 9px 12px; border-radius: 12px; background: #f3eefb; color: #4a2d6b; font-size: 14px; }
+.ownerln svg { width: 17px; height: 17px; } .ownerln small { color: var(--mute); font-size: 11.5px; margin-inline-start: auto; }
+.adg-own { display: block; font-style: normal; font-size: 10.5px; color: #6b4a8c; margin-top: 1px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.limp h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font: 800 16px AJ, Tajawal, sans-serif; color: var(--navy); } .limp h3 svg { width: 20px; height: 20px; color: var(--gold); }
+.limp-r { margin: 6px 0 12px; padding-inline-start: 18px; line-height: 1.9; font-size: 13px; } .limp-f { cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.limp .ccard { margin-bottom: 12px; } .limp-k { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 6px 0 10px; }
+.limp-k div { background: #f7f8fb; border-radius: 12px; padding: 10px 4px; text-align: center; } .limp-k b { display: block; font: 800 20px AJ, Tajawal, sans-serif; color: var(--navy); } .limp-k span { font-size: 11.5px; color: var(--mute); }
+.limp-g { margin: 8px 0; border-radius: 12px; border: 1px solid #e3e6ec; padding: 8px 10px; } .limp-g summary { cursor: pointer; font-size: 14px; } .limp-g summary b { color: var(--navy); }
+.limp-g.add { border-color: #bbe5c8; background: #f3fbf5; } .limp-g.bad { border-color: #f5c2c2; background: #fffafa; }
+.limp-g > div { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; max-height: 320px; overflow: auto; font-size: 13px; } .limp-g > div span { padding: 4px 0; border-bottom: 1px dashed #eceff4; }
+.limp-g i.st { font-style: normal; font-weight: 700; } .limp-g i.st.av { color: #15803d; } .limp-g i.st.res { color: #b45309; } .limp-g i.st.sold { color: #b91c1c; }

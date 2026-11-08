@@ -275,6 +275,7 @@ export function toolsPage() {
       can('leads') && row(I.star, 'تقييمات الخدمة', 'data-rates'),
       can('leads') && row(I.plusc, 'دعوات العملاء', 'data-refs'),
       (session.user() || {}).admin && row(I.building, 'إضافة / تعديل قطعة على المخطط', 'data-plotedit=""'),
+      (session.user() || {}).admin && row(I.doc || I.building, 'استيراد ملف الأراضي (Excel)', 'data-limport=""'),
       can('leads') && row(I.users || I.user, 'التسجيل المسبق «قريباً»', 'data-prereg'),
     ])}
     ${grp('الإعلانات والتسويق', [

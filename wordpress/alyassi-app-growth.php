@@ -292,3 +292,56 @@ function oay_acc_adm_plot_save() {
 	update_option( 'oay_plot_log', array_slice( $log, 0, 300 ), false );
 	oay_acc_ok( array( 'plot' => oay_plot_out( $n, oay_plan_plot( $slug, $n ) ) ) );
 }
+
+/* ======================================================================================
+ * 8. Land owners (the partner in charge of each plot) — staff only, never in the public plan data —
+ *    and the Excel import: owners for every plot in the sheet; plots not yet on the plan are added with
+ *    their status and total price (plots already on the plan are left exactly as they are).
+ * ==================================================================================== */
+foreach ( array( 'owners_get', 'adm_import' ) as $a ) { add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a ); add_action( 'wp_ajax_nopriv_oay_acc_' . $a, 'oay_acc_' . $a ); }
+/* the new «رؤية اسم مالك الأرض» permission: every member of staff has it to start with (the admin can take it away) */
+add_action( 'init', function () {
+	if ( get_option( 'oay_owners_mig' ) ) { return; }
+	foreach ( get_users( array( 'meta_key' => 'oay_staff', 'fields' => 'ID', 'number' => 500 ) ) as $uid ) {
+		$p = get_user_meta( $uid, 'oay_staff', true ); if ( is_array( $p ) && $p && ! in_array( 'owners', $p, true ) ) { $p[] = 'owners'; update_user_meta( $uid, 'oay_staff', $p ); }
+	}
+	update_option( 'oay_owners_mig', 1, false );
+}, 30 );
+function oay_owners() { $o = get_option( 'oay_owners', array() ); return is_array( $o ) ? $o : array(); }
+function oay_acc_owners_get() {
+	$u = oay_acc_need_user(); if ( ! oay_acc_can( $u, 'owners' ) ) { oay_acc_err( 'غير مسموح', 403 ); }
+	oay_acc_ok( array( 'owners' => (object) oay_owners() ) );
+}
+function oay_acc_adm_import() {
+	oay_acc_need_admin(); $in = oay_acc_in(); $dry = ! empty( $in['dry'] );
+	if ( ! function_exists( 'oay_plan_plot' ) || ! function_exists( 'dnp_projects' ) ) { oay_acc_err( 'المخططات غير متاحة' ); }
+	$ps = dnp_projects(); $owners = oay_owners(); $res = array(); $add = array(); $seen = array();
+	foreach ( array_slice( (array) ( $in['rows'] ?? array() ), 0, 3000 ) as $r ) {
+		$slug = sanitize_key( (string) ( $r['p'] ?? '' ) ); $n = trim( preg_replace( '/[^\w\-]/u', '', (string) ( $r['n'] ?? '' ) ) );
+		$o = mb_substr( sanitize_text_field( (string) ( $r['o'] ?? '' ) ), 0, 60 );
+		$s = in_array( $r['s'] ?? '', array( 'av', 'res', 'sold' ), true ) ? $r['s'] : 'av'; $t = max( 0, (int) round( (float) ( $r['t'] ?? 0 ) ) );
+		$k = $slug . ':' . $n;
+		if ( ! $slug || empty( $ps[ $slug ] ) ) { $res[] = array( 'k' => $k, 'r' => 'noproj' ); continue; }
+		if ( isset( $seen[ $k ] ) ) { $res[] = array( 'k' => $k, 'r' => 'dup' ); continue; } $seen[ $k ] = 1;
+		$i = oay_plan_plot( $slug, $n ); if ( ! $i ) { $res[] = array( 'k' => $k, 'r' => 'noplot' ); continue; }
+		if ( $o ) { $owners[ $k ] = $o; }
+		if ( ! empty( $i['cur']['s'] ) ) { $res[] = array( 'k' => $k, 'r' => 'exists', 's' => $i['cur']['s'] ); continue; }
+		$res[] = array( 'k' => $k, 'r' => 'add', 's' => $s, 't' => $t ); $add[ $slug ][ $n ] = array( $s, $t, (float) ( $i['plot']['ft'] ?? 0 ) );
+	}
+	if ( ! $dry ) {
+		update_option( 'oay_owners', $owners, false );
+		$GLOBALS['oay_quiet_import'] = 1;
+		foreach ( $add as $slug => $list ) {
+			oay_plan_write( $ps[ $slug ], function ( &$st ) use ( $list ) {
+				foreach ( $list as $n => $x ) {
+					$e = isset( $st['plots'][ (string) $n ] ) && is_array( $st['plots'][ (string) $n ] ) ? $st['plots'][ (string) $n ] : array();
+					if ( ! empty( $e['s'] ) ) { continue; }   // listed meanwhile: leave it
+					$e['s'] = $x[0]; if ( $x[1] ) { $e['total'] = $x[1]; if ( $x[2] ) { $e['ppf'] = (int) round( $x[1] / $x[2] ); } }
+					$st['plots'][ (string) $n ] = $e;
+				}
+			} );
+		}
+		unset( $GLOBALS['oay_quiet_import'] );
+	}
+	oay_acc_ok( array( 'dry' => $dry, 'items' => $res ) );
+}

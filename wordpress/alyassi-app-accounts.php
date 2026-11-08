@@ -96,7 +96,7 @@ function oay_no_phones( $t ) {
 }
 function oay_acc_is_admin( $u ) { return $u && user_can( $u, 'manage_options' ); }
 /* ---------------- staff: members the office gives some of its powers ---------------- */
-const OAY_STAFF_PERMS = array( 'chats' => 'الرد على المحادثات', 'leads' => 'متابعة العملاء وسجل التواصل', 'viewings' => 'مواعيد المعاينة', 'listings' => 'مراجعة الإعلانات وطلبات الشراء', 'news' => 'الأخبار والدليل', 'push' => 'الإشعارات الموجّهة', 'report' => 'التقرير الأسبوعي', 'payplan' => 'إرسال خطة السداد', 'design' => 'تصميم البوستات' );
+const OAY_STAFF_PERMS = array( 'chats' => 'الرد على المحادثات', 'leads' => 'متابعة العملاء وسجل التواصل', 'viewings' => 'مواعيد المعاينة', 'listings' => 'مراجعة الإعلانات وطلبات الشراء', 'news' => 'الأخبار والدليل', 'push' => 'الإشعارات الموجّهة', 'report' => 'التقرير الأسبوعي', 'payplan' => 'إرسال خطة السداد', 'design' => 'تصميم البوستات', 'owners' => 'رؤية اسم مالك الأرض' );
 /** the post designer's templates; a member with «تصميم البوستات» designs in the ones the office chose for them (none chosen: قالب عمر الياسي) */
 const OAY_TPLS = array( 'co' => 'قالب الشركة', 'gr' => 'قالب عبادة', 'pk' => 'قالب آية الجابري', 'aya' => 'قالب آية الجديد', 'ayk' => 'قالب آية كامل', 'oy' => 'قالب عمر الياسي', 'ar' => 'قالب عبد الرحمن' );
 function oay_user_tpls( $uid ) { $t = get_user_meta( $uid, 'oay_tpl', true ); $t = is_array( $t ) ? array_values( array_intersect( $t, array_keys( OAY_TPLS ) ) ) : array(); return $t ? $t : array( 'oy' ); }

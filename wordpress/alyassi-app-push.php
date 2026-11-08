@@ -45,6 +45,7 @@ function oay_plots( $v ) {
 }
 
 function oay_handle_change( $slug, $name, $old, $new ) {
+	if ( ! empty( $GLOBALS['oay_quiet_import'] ) ) { return; }   // a bulk import from Excel: no notification storm
 	$a = oay_plots( $old ); $b = oay_plots( $new );
 	if ( ! $b ) { return; }
 	$now = (int) round( microtime( true ) * 1000 ); $ch = array();
