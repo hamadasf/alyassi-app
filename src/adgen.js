@@ -53,8 +53,9 @@ function ayaLoad() {
 const AYA_PINK = { kick: '#A85E5E', title: '#655454', proj: '#A3504D', sub: '#605050', card: '#F0E5E1', cTitle: '#3E3330', cVal: '#A85E5D', tag: '#46372F', phone: '#A95F5E', addr: '#6A4E4A', plot: '#A2474F',
   ground: '#EFE3DC', wash: 'rgba(250,232,228,0.32)', pinA: '#E7A3A8', pinB: '#B4525C', labBg: 'rgba(180,82,92,.94)', shadow: 'rgba(120,70,70,.14)', cardLine: '' };
 /* «قالب آية كامل»: the same layout in her plum and lavender */
-const AYA_PLUM = { kick: '#4A0D3C', title: '#3D4246', proj: '#4A0A3D', sub: '#3D4246', card: '#EEEDEB', cTitle: '#4A0D3C', cVal: '#4A0D3C', tag: '#3A2238', phone: '#FFFFFF', addr: '#FFFFFF', plot: '#4A0A3D',
-  ground: '#ECE4EF', wash: 'rgba(240,230,246,0.22)', pinA: '#4A0A3D', pinB: '#4A0A3D', labBg: 'rgba(74,10,61,.94)', shadow: 'rgba(74,10,61,.12)', cardLine: '#5E1E51', downCard: 1, tagDy: -46, tagDx: 20 };
+const AYA_PLUM = { kick: '#4A0D3C', proj: '#4A0A3D', card: '#EEEDEB', cVal: '#4A0D3C', tag: '#3A2238', phone: '#FFFFFF', addr: '#FFFFFF', plot: '#4A0A3D',
+  ground: '#ECE4EF', wash: 'rgba(240,230,246,0.34)', pinA: '#4A0A3D', pinB: '#4A0A3D', labBg: 'rgba(74,10,61,.94)', shadow: 'rgba(74,10,61,.12)', cardLine: '#5E1E51', downCard: 1, tagDy: -46, tagDx: 20,
+  title: '#4A4F55', titleW: 700, subBig: 1, sub: '#3D4246', zoom: 3.2, sharpTop: 1, pinK: 1.25, barDy: -40, cTitle: '#4A3346', cSub: '#3D4246', cSubPx: 34, subY2: 1585 };
 let AYA = AYA_PINK;
 const AYA_CARDS = [156, 422, 691, 952, 1222], AYA_CW = 226, AYA_CY = 1347, AYA_CH = 260;
 
@@ -95,7 +96,7 @@ function ayaFade(c, y0, hh, fromTop) {
   g.fillStyle = gr; g.fillRect(0, 0, AD_W, hh); c.drawImage(cv, 0, y0);
 }
 function ayaMap(c, p, x, y, w, h, v) {
-  const k = 2.4 * (+v.zoom || 1), uw = w / k, uh = h / k, px = x + w / 2, py = y + 360;
+  const k = (AYA.zoom || 2.4) * (+v.zoom || 1), uw = w / k, uh = h / k, px = x + w / 2, py = y + 360;
   const x0 = p.c[0] - (px - x) / k - (+v.mx || 0) / k, y0 = p.c[1] - (py - y) / k - (+v.my || 0) / k;
   c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip(); c.fillStyle = AYA.ground; c.fillRect(x, y, w, h);
   c.save(); c.translate(x, y); c.scale(k, k); c.translate(-x0, -y0);
@@ -128,7 +129,7 @@ function ayaCard(c, i, title, val, sub, num) {
   if (ayaArt.icons) c.drawImage(ayaArt.icons, i * 84, 0, 84, 74, cx - 42, 1364, 84, 74);
   PZS = v.fsL; adFitV(c, title, cx, 1441, 1480, AYA_CW - 24, 40, 700, AYA.cTitle, 'center');
   PZS = v.fsN; if (num) c.direction = 'ltr'; adFitV(c, val, cx, 1493, 1538, AYA_CW - 18, 48, 700, AYA.cVal, 'center'); c.direction = 'rtl';
-  PZS = v.fsL; adFitV(c, sub, cx, 1545, 1577, AYA_CW - 24, 28, 600, AYA.cTitle, 'center', FB);
+  PZS = v.fsL; adFitV(c, sub, cx, 1545, AYA.subY2 || 1577, AYA_CW - 24, AYA.cSubPx || 28, 600, AYA.cSub || AYA.cTitle, 'center', FB);
 }
 function ayaDraw(c, v, p, at) {
   const plum = TH.ayaCol === 'plum'; AYA = plum ? AYA_PLUM : AYA_PINK;
@@ -136,9 +137,9 @@ function ayaDraw(c, v, p, at) {
   if (ayaArt.base) c.drawImage(ayaArt.base, 0, 0, AD_W, AD_H); else { c.fillStyle = '#F6E4E2'; c.fillRect(0, 0, AD_W, AD_H); }
   PZS = v.fsL; const o = v.o.map || [0, 0];
   c.save(); c.translate(o[0], o[1]); const m = ayaMap(c, p, 92, 812, 1416, 660, v); c.restore();
-  ayaFade(c, 806, 46, true); ayaFade(c, 1290, 184, false);
+  if (!AYA.sharpTop) ayaFade(c, 806, 46, true); ayaFade(c, 1290, 184, false);
   ad.hits.push({ k: 'map', pan: 1, x: 92, y: 812, w: 1416, h: 535 });
-  const sx = m.sx + o[0], K = +v.pinK || 1;
+  const sx = m.sx + o[0], K = (+v.pinK || 1) * (AYA.pinK || 1);
   const sy = m.sy + o[1];
   if (v.lab && (v.label1 || v.label2)) {   // an optional label beside the marker
     const lo = v.o.lab || [0, 0]; c.font = FD(700, 34); const tw = Math.max(c.measureText(v.label1 || '').width, (c.font = FB(600, 30), c.measureText(v.label2 || '').width));
@@ -164,17 +165,19 @@ function ayaDraw(c, v, p, at) {
     c.font = FD(800, px); const w = c.measureText(v.a_kick).width; c.strokeStyle = AYA.kick; c.lineWidth = 3; c.lineCap = 'round';
     c.beginPath(); c.moveTo(800 - w / 2 - 20, 309); c.lineTo(800 - w / 2 - 70, 309); c.moveTo(800 + w / 2 + 20, 309); c.lineTo(800 + w / 2 + 70, 309); c.stroke();
   });
-  at('title', 400, 348, 800, 126, () => adFitV(c, v.a_title, 800, 352, 472, 780, 96, 800, AYA.title, 'center'));
+  at('title', 400, 348, 800, 126, () => adFitV(c, v.a_title, 800, 352, 472, 780, 96, AYA.titleW || 800, AYA.title, 'center'));
   at('proj', 400, 494, 800, 162, () => adFitV(c, v.proj, 800, 498, 654, 790, 150, 800, AYA.proj, 'center'));
-  at('sub', 352, 700, 896, 92, () => adFitV(c, v.sub, 800, 710, 786, 890, 72, 700, AYA.sub, 'center'));
+  if (AYA.subBig) at('sub', 260, 676, 1080, 100, () => adFitV(c, v.sub, 800, 680, 772, 1070, 84, 700, AYA.sub, 'center'));
+  else at('sub', 352, 700, 896, 92, () => adFitV(c, v.sub, 800, 710, 786, 890, 72, 700, AYA.sub, 'center'));
   PZS = v.fsC;
   { const dy = AYA.tagDy || 0, dx = AYA.tagDx || 0; at('more', 560 + dx, 1650 + dy, 480, 72, () => adFitV(c, v.a_tag, 800 + dx, 1662 + dy, 1712 + dy, 396, 46, 500, AYA.tag, 'center', FB)); }
-  at('bar', 330, 1748, 1000, 158, () => {
-    adFitV(c, v.a_clbl, 542, 1772, 1802, 300, 28, 600, AYA.addr, 'center', FB);
-    c.direction = 'ltr'; adFitV(c, v.phone, 542, 1816, 1890, 330, 66, 800, AYA.phone, 'center'); c.direction = 'rtl';
+  const by = AYA.barDy || 0;   // the plum bar sits a little higher than the pink one
+  at('bar', 330, 1748 + by, 1000, 158, () => {
+    adFitV(c, v.a_clbl, 542, 1772 + by, 1802 + by, 300, 28, 600, AYA.addr, 'center', FB);
+    c.direction = 'ltr'; adFitV(c, v.phone, 542, 1816 + by, 1890 + by, 330, 66, 800, AYA.phone, 'center'); c.direction = 'rtl';
     const L = String(v.a_addr || '').split('\n').filter(Boolean).slice(0, 2);
-    if (L.length === 1) adFitV(c, L[0], 1100, 1808, 1860, 380, 38, 700, AYA.addr, 'center', FB);
-    else L.forEach((t, i) => adFitV(c, t, 1100, i ? 1838 : 1792, i ? 1874 : 1830, 380, 36, 700, AYA.addr, 'center', FB));
+    if (L.length === 1) adFitV(c, L[0], 1100, 1808 + by, 1860 + by, 380, 38, 700, AYA.addr, 'center', FB);
+    else L.forEach((t, i) => adFitV(c, t, 1100, (i ? 1838 : 1792) + by, (i ? 1874 : 1830) + by, 380, 36, 700, AYA.addr, 'center', FB));
   });
 }
 /* «قالب عمر الياسي» (the website's): the plan across the whole picture, the facts in coloured boxes over it, an arrow and a ring on the plot */
