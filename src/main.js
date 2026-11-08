@@ -15,6 +15,7 @@ import { initPlanView, planViewPage, initPlanView2 } from './planview.js';
 import { initAdgen, adgenPage, initAdgen2, initAdgenPick, closeAdgen } from './adgen.js';
 import { track, deviceId } from './track.js';
 import { buildCleanPlanPdf } from './cleanplan.js';
+import { initPlotEdit, plotEditPage, initPlotEditPage } from './plotedit.js';
 import { initGrowth, mylandsPage, initMylands, invitePage, initInvite, refsPage, initRefs } from './growth.js';
 import { initContact, contactBar, refLine, callbackSheet, refOf, waText } from './contact.js';
 import { initViews, setBooking, bookPage, initBook, myViewsPage, initMyViews, viewsPage, initViewsAdm } from './views.js';
@@ -881,6 +882,7 @@ function projectPage(p) {
         ${p.pdf ? `<a class="btn ghost" href="${esc(p.pdf)}" data-ext>${I.pdf} ملف المشروع PDF</a>` : ''}
         <a class="btn wa" href="${esc(waLink(`مرحباً، أرغب بالاستفسار عن مشروع ${p.name}\n${p.plan}`))}" data-ext>${I.wa} استفسر</a>
       </div>
+      ${(session.user() || {}).admin ? `<button class="btn primary block plotadd" data-plotedit="${esc(p.slug)}">${I.plusc} إضافة / تعديل قطعة <small>للإدارة</small></button>` : ''}
       ${(session.user() || {}).admin && p.map ? `<button class="btn ghost block cleanpdf" data-cleanpdf="${esc(p.slug)}">${I.pdf} المخطط بدون حالات PDF — حفظ أو مشاركة <small>للإدارة</small></button>` : ''}
       ${Object.keys(types).length ? `<h2 class="h2">الأنواع المتاحة</h2><div class="tlist">${Object.entries(types).map(([k, v]) => `<div>${dot(v.c)}<span>${esc(k)}</span><b>${v.n}</b></div>`).join('')}</div>` : ''}
       ${p.updated ? `<p class="upd">آخر تحديث للبيانات: <bdi>${esc(fmtDate(p.updated))}</bdi></p>` : ''}
@@ -929,6 +931,7 @@ function landPage(l) {
       <button class="meta link" data-project="${esc(l.project)}">${I.pin}<span>مشروع ${esc(l.projectName)}</span></button>
       ${refLine(l.id)}${ownPills(l.project)}
       <button class="btn wa block share-big" data-share="land:${esc(l.id)}">${I.wa} مشاركة التفاصيل + مخطط الأرض PDF</button>
+      ${(session.user() || {}).admin ? `<button class="btn ghost block" data-plotedit="${esc(l.project + '|' + l.n)}">${I.edit || I.plusc} تعديل القطعة — الحالة والسعر والدفعات <small>للإدارة</small></button>` : ''}
       ${o ? `<div class="ofr-box"><b>${I.flame} عرض لفترة محدودة</b>${o.note ? `<span>${esc(o.note)}</span>` : ''}<div class="ofr-t2">${I.clock} <span data-until="${o.until}">${leftText(o.until)}</span> · حتى ${dmy(o.until)}</div></div>` : ''}
       ${priceboxHTML(l)}
       <div class="spec-grid">
@@ -988,6 +991,7 @@ function pushPage(kind, id) {
   else if (kind === 'mylands') { html = mylandsPage(); }
   else if (kind === 'invite') { html = invitePage(); }
   else if (kind === 'refs') { html = refsPage(); }
+  else if (kind === 'plotedit') { html = plotEditPage(); }
   else if (kind === 'saved') { html = savedPage(); }
   else if (kind === 'legal') { html = legalPage(id); }
   else if (kind === 'verify') { html = verifyPage(); }
@@ -1025,7 +1029,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = guest() ? guestLandPage(l) : landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { tools: (session.user() || {}).admin ? 'لوحة الإدارة' : 'أدوات الموظف', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { tools: (session.user() || {}).admin ? 'لوحة الإدارة' : 'أدوات الموظف', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', plotedit: 'إضافة / تعديل قطعة', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -1039,6 +1043,7 @@ function pushPage(kind, id) {
   if (kind === 'mylands') initMylands(pg);
   if (kind === 'invite') initInvite(pg);
   if (kind === 'refs') initRefs(pg);
+  if (kind === 'plotedit') initPlotEditPage(pg, id || '');
   if (kind === 'rates') initRatesPage(pg);
   if (kind === 'prereg') initPreregPage(pg);
   if (kind === 'admin') initAdmin(pg);
@@ -1233,6 +1238,7 @@ document.addEventListener('click', (e) => {
   if (ds.mylands !== undefined) { pushPage('mylands'); return; }
   if (ds.invite !== undefined) { pushPage('invite'); return; }
   if (ds.refs !== undefined) { pushPage('refs'); return; }
+  if (ds.plotedit !== undefined) { pushPage('plotedit', ds.plotedit); return; }
   if (ds.saved !== undefined) { pushPage('saved'); return; }
   if (ds.legal) { pushPage('legal', ds.legal); return; }
   if (ds.lang !== undefined) { setLang(isEn() ? 'ar' : 'en'); return; }
@@ -1345,6 +1351,7 @@ initViews({ esc, toast, I, money });
 initPlanView({ esc, toast, I, money, canDesign: () => can('design'), guest: () => guest() });
 initAdgen({ toast, api: accApi, myName: () => (session.user() || {}).name || '', landsOf: (slug) => DATA().lands.concat(naLands()).filter((x) => x.project === slug), openPlan: (slug) => pushPage('plan', slug), isAdmin: () => !!(session.user() || {}).admin, tpls: () => (session.user() || {}).tpl || [] });
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
+initPlotEdit({ esc, toast, I, money, DATA: () => DATA(), findLand: (id) => findLand(id), refreshData: () => refresh(true) });
 initGrowth({ esc, toast, I, money, waLink, APP_URL, findLand: (id) => findLand(id), openExternal: (u) => openExternal(u), quoteToOffice: (t) => quoteToOffice(t), pushPage: (k, id) => pushPage(k, id) });
 initCrm({ esc, toast, I, money, waLink, DATA: () => DATA(), pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop() });
 window.__oayPush = push;   // the notification settings page talks to the push service

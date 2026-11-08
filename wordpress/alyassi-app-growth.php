@@ -242,3 +242,53 @@ add_action( 'oay_offer_sent', function ( $o ) {
 				'data' => array( 'open' => 'land', 'id' => $o['id'] ), 'web_url' => OAY_APP_URL, 'ttl' => 86400 ) + ( function_exists( 'oay_push_img' ) ? oay_push_img( $o ) : array() ) ) ) );
 	}
 } );
+
+/* ======================================================================================
+ * 7. Management: add / edit a company plot on a project's plan from the app —
+ *    status (متاحة / محجوزة / مباعة, or off the plan), price, area, «مميزة» and the payment plan.
+ *    Writes the same plan data the website's plan editor writes (pictures, documents and the rest are kept).
+ * ==================================================================================== */
+foreach ( array( 'adm_plot_get', 'adm_plot_save' ) as $a ) { add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a ); add_action( 'wp_ajax_nopriv_oay_acc_' . $a, 'oay_acc_' . $a ); }
+function oay_plot_args() {
+	$slug = sanitize_key( oay_acc_arg( 'project', 60 ) ); $n = trim( preg_replace( '/[^\w\-]/u', '', (string) oay_acc_arg( 'n', 20 ) ) );
+	if ( ! $slug || '' === $n || ! function_exists( 'oay_plan_plot' ) ) { oay_acc_err( 'اختر المشروع واكتب رقم القطعة' ); }
+	$i = oay_plan_plot( $slug, $n ); if ( ! $i ) { oay_acc_err( 'القطعة رقم ' . $n . ' غير موجودة في مخطط هذا المشروع' ); }
+	return array( $slug, $n, $i );
+}
+function oay_plot_out( $n, $i ) {
+	$c = is_array( $i['cur'] ) ? $i['cur'] : array(); $q = $i['plot'];
+	return array( 'n' => (string) $n, 'listed' => ! empty( $c['s'] ), 's' => (string) ( $c['s'] ?? '' ), 'total' => (int) ( $c['total'] ?? 0 ), 'ppf' => (float) ( $c['ppf'] ?? 0 ),
+		'ft' => (float) ( $c['ft'] ?? 0 ), 'planFt' => (float) ( $q['ft'] ?? 0 ), 'fe' => ! empty( $c['fe'] ), 'lo' => (string) ( $c['lo'] ?? '' ),
+		'inst' => array_values( array_filter( (array) ( $c['inst'] ?? array() ), 'is_array' ) ), 'type' => (string) ( $q['t'] ?? '' ) );
+}
+function oay_acc_adm_plot_get() { oay_acc_need_admin(); list( , $n, $i ) = oay_plot_args(); oay_acc_ok( array( 'plot' => oay_plot_out( $n, $i ) ) ); }
+function oay_acc_adm_plot_save() {
+	$me = oay_acc_need_admin(); list( $slug, $n, $i ) = oay_plot_args(); $in = oay_acc_in();
+	$s = (string) ( $in['s'] ?? '' ); if ( ! in_array( $s, array( 'av', 'res', 'sold', '' ), true ) ) { oay_acc_err( 'حالة غير صحيحة' ); }
+	$total = max( 0, (int) round( (float) ( $in['total'] ?? 0 ) ) ); $ppf = max( 0, round( (float) ( $in['ppf'] ?? 0 ), 2 ) ); $ft = max( 0, round( (float) ( $in['ft'] ?? 0 ), 2 ) );
+	$inst = array();
+	foreach ( array_slice( (array) ( $in['inst'] ?? array() ), 0, 120 ) as $x ) {
+		if ( ! is_array( $x ) ) { continue; } $d = substr( preg_replace( '/[^\d\-]/', '', (string) ( $x[0] ?? '' ) ), 0, 10 ); $a = max( 0, (float) ( $x[1] ?? 0 ) );
+		if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $d ) && $a > 0 ) { $inst[] = array( $d, $a ); }
+	}
+	usort( $inst, function ( $a, $b ) { return strcmp( $a[0], $b[0] ); } );
+	$area = $ft ?: (float) ( $i['plot']['ft'] ?? 0 );
+	if ( ! $total && $ppf && $area ) { $total = (int) round( $ppf * $area ); }
+	if ( $total && ! $ppf && $area ) { $ppf = (int) round( $total / $area ); }
+	if ( $inst && $total && array_sum( array_column( $inst, 1 ) ) > $total ) { oay_acc_err( 'مجموع الأقساط أكبر من سعر الأرض' ); }
+	$lo = esc_url_raw( (string) ( $in['lo'] ?? '' ) ); $lo = preg_match( '#^https://#', $lo ) ? $lo : '';
+	$ok = oay_plan_write( $i['proj'], function ( &$st ) use ( $n, $s, $total, $ppf, $ft, $inst, $in, $lo ) {
+		$e = isset( $st['plots'][ (string) $n ] ) && is_array( $st['plots'][ (string) $n ] ) ? $st['plots'][ (string) $n ] : array();   // keeps pictures, documents, sketches
+		if ( '' === $s ) { unset( $e['s'] ); } else { $e['s'] = $s; }
+		foreach ( array( 'total' => $total, 'ppf' => $ppf, 'ft' => $ft ) as $k => $v ) { if ( $v ) { $e[ $k ] = $v; } else { unset( $e[ $k ] ); } }
+		if ( $inst ) { $e['inst'] = $inst; } else { unset( $e['inst'] ); }
+		if ( ! empty( $in['fe'] ) ) { $e['fe'] = 1; } else { unset( $e['fe'] ); }
+		if ( $lo ) { $e['lo'] = $lo; } elseif ( array_key_exists( 'lo', $in ) ) { unset( $e['lo'] ); }
+		if ( $e ) { $st['plots'][ (string) $n ] = $e; } else { unset( $st['plots'][ (string) $n ] ); }
+	} );
+	if ( ! $ok ) { oay_acc_err( 'تعذّر حفظ المخطط — حاول مرة أخرى' ); }
+	$log = get_option( 'oay_plot_log', array() ); $log = is_array( $log ) ? $log : array();
+	array_unshift( $log, array( 't' => oay_g_ms(), 'uid' => (int) $me->ID, 'id' => $slug . ':' . $n, 's' => $s, 'total' => $total ) );
+	update_option( 'oay_plot_log', array_slice( $log, 0, 300 ), false );
+	oay_acc_ok( array( 'plot' => oay_plot_out( $n, oay_plan_plot( $slug, $n ) ) ) );
+}

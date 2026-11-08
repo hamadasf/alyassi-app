@@ -1,0 +1,107 @@
+// Management: add / edit a company plot on a project's plan — status, price, area, «مميزة» and the payment plan.
+// Saved to the website's plan data (the same the website's plan editor uses), so the website, the app and the
+// notifications all follow.
+import { api } from './owner.js';
+
+let H = null;
+export function initPlotEdit(h) { H = h; }
+const n0 = (v) => +String(v ?? '').replace(/[^\d.]/g, '') || 0;
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const addMonths = (s, k) => { const d = new Date(s + 'T00:00:00'); const day = d.getDate(); d.setDate(1); d.setMonth(d.getMonth() + k); d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())); return ymd(d); };
+const ST = [['av', 'متاحة', 'ok'], ['res', 'محجوزة', 'res'], ['sold', 'مباعة', 'sold'], ['', 'غير معروضة', 'off']];
+
+export function plotEditPage() { return '<div class="pad pled"></div>'; }
+export function initPlotEditPage(pg, id = '') {
+  const { esc, money, I } = H; const el = pg.querySelector('.pled');
+  const [slug0, n0s] = String(id || '').split('|');
+  const projects = H.DATA().projects;
+  let cur = null, inst = [], stt = 'av';
+  el.innerHTML = `<div class="ccard">
+      <div class="cgrid"><label>المشروع<select id="peProj">${projects.map((p) => `<option value="${esc(p.slug)}"${p.slug === slug0 ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+        <label>رقم القطعة<span class="pe-n"><input id="peN" inputmode="numeric" value="${esc(n0s || '')}" placeholder="مثال: 4701"><button class="btn primary" data-peload>عرض</button></span></label></div>
+      <p class="muted pe-info" id="peInfo">اكتب رقم القطعة كما في مخطط المشروع ثم اضغط «عرض».</p></div>
+    <div id="peForm" hidden></div>`;
+  const $ = (s) => el.querySelector(s);
+  const area = () => n0($('#peFt') && $('#peFt').value) || (cur && cur.planFt) || 0;
+  const total = () => n0($('#peTotal') && $('#peTotal').value);
+  const drawSum = () => {
+    if (!$('#peSum')) return;
+    const sum = inst.reduce((a, x) => a + (n0(x[1]) || 0), 0), t = total(), first = t ? t - sum : 0;
+    $('#peSum').innerHTML = t ? `<span>الدفعة الأولى: <b class="${first < 0 ? 'bad' : ''}">${money(Math.max(0, first))} د.إ</b>${t ? ` <small>(${Math.round(Math.max(0, first) / t * 100)}%)</small>` : ''}</span><span>الأقساط: <b>${money(sum)} د.إ</b> · ${inst.length} قسط</span>${first < 0 ? '<em class="bad">مجموع الأقساط أكبر من السعر</em>' : ''}` : '<span class="muted">اكتب السعر لحساب الدفعة الأولى</span>';
+  };
+  const drawInst = () => {
+    const box = $('#peInst'); if (!box) return;
+    box.innerHTML = inst.map((x, i) => `<div class="pe-row"><span class="pe-i">${i + 1}</span><input type="date" data-id="${i}" value="${esc(x[0] || '')}"><input data-ia="${i}" inputmode="numeric" value="${x[1] ? money(n0(x[1])) : ''}" placeholder="المبلغ"><button data-idel="${i}" aria-label="حذف">✕</button></div>`).join('')
+      || '<p class="muted">لا توجد أقساط — السعر يُدفع مرة واحدة.</p>';
+    drawSum();
+  };
+  const form = () => {
+    const c = cur;
+    $('#peForm').hidden = false;
+    $('#peForm').innerHTML = `<div class="ccard">
+        <h3>الحالة</h3><div class="pe-st">${ST.map(([k, l, cls]) => `<button class="${cls}${k === stt ? ' on' : ''}" data-pst="${k}">${l}</button>`).join('')}</div>
+        <h3>السعر والمساحة</h3>
+        <div class="cgrid"><label>سعر الأرض (د.إ)<input id="peTotal" inputmode="numeric" value="${c.total ? money(c.total) : ''}"></label>
+          <label>سعر القدم (د.إ)<input id="pePpf" inputmode="decimal" value="${c.ppf || ''}"></label></div>
+        <div class="cgrid"><label>المساحة (قدم²) <small>اختياري</small><input id="peFt" inputmode="decimal" value="${c.ft || ''}" placeholder="${c.planFt ? 'من المخطط: ' + money(c.planFt) : ''}"></label>
+          <label class="pe-chk"><input type="checkbox" id="peFe" ${c.fe ? 'checked' : ''}> أرض مميزة ⭐</label></div>
+        <label>رابط موقع القطعة <small>اختياري</small><input id="peLo" dir="ltr" value="${esc(c.lo || '')}" placeholder="https://maps.app.goo.gl/..."></label></div>
+      <div class="ccard"><h3>خطة السداد</h3>
+        <div class="pe-sum" id="peSum"></div>
+        <details class="pe-gen"><summary>${I.calc} توليد الأقساط تلقائياً</summary>
+          <div class="cgrid"><label>الدفعة الأولى %<input id="gFirst" inputmode="decimal" value="20"></label><label>عدد الأقساط<input id="gN" inputmode="numeric" value="12"></label></div>
+          <div class="cgrid"><label>كل<select id="gEvery"><option value="1">شهر</option><option value="3" selected>3 أشهر</option><option value="6">6 أشهر</option><option value="12">سنة</option></select></label>
+            <label>تاريخ أول قسط<input type="date" id="gStart" value="${addMonths(ymd(new Date()), 1)}"></label></div>
+          <button class="btn ghost block" data-pegen>توليد</button></details>
+        <div id="peInst"></div>
+        <button class="btn ghost block" data-iadd>+ إضافة قسط</button></div>
+      <button class="btn primary block pe-save" data-pesave>${I.check || ''} حفظ القطعة على المخطط</button>
+      <p class="muted cnote">يظهر التعديل في الموقع والتطبيق خلال دقائق، ويصل إشعار للعملاء عند إضافة أرض متاحة أو تغيّر الحالة أو السعر.</p>`;
+    drawInst();
+  };
+  const load = async () => {
+    const n = $('#peN').value.trim(); if (!n) { H.toast('اكتب رقم القطعة'); return; }
+    $('#peInfo').innerHTML = '<i class="spin"></i> جارِ التحميل…';
+    try {
+      const j = await api('adm_plot_get', { project: $('#peProj').value, n });
+      cur = j.plot; inst = (cur.inst || []).map((x) => [x[0], +x[1] || 0]); stt = cur.listed ? cur.s : 'av';
+      const p = projects.find((x) => x.slug === $('#peProj').value), l = H.findLand($('#peProj').value + ':' + n);
+      $('#peInfo').innerHTML = `<b>قطعة ${esc(cur.n)}</b> · ${esc(p ? p.name : '')}${l && l.use ? ' · ' + esc(l.use) : ''}${cur.planFt ? ` · ${money(cur.planFt)} قدم² في المخطط` : ''}<br>${cur.listed ? `معروضة حالياً: <b>${{ av: 'متاحة', res: 'محجوزة', sold: 'مباعة' }[cur.s] || cur.s}</b>` : '<b class="newp">غير معروضة — ستُضاف للمخطط عند الحفظ</b>'}`;
+      form();
+    } catch (e) { $('#peInfo').innerHTML = `<span class="bad">${esc(e.message)}</span>`; $('#peForm').hidden = true; }
+  };
+  el.addEventListener('click', async (e) => {
+    const t = e.target.closest('button'); if (!t) return; const d = t.dataset;
+    if (d.peload !== undefined) { load(); return; }
+    if (d.pst !== undefined) { stt = d.pst; el.querySelectorAll('[data-pst]').forEach((b) => b.classList.toggle('on', b === t)); return; }
+    if (d.iadd !== undefined) { const last = inst.length ? inst[inst.length - 1][0] : ''; inst.push([last ? addMonths(last, 3) : addMonths(ymd(new Date()), 1), 0]); drawInst(); return; }
+    if (d.idel !== undefined) { inst.splice(+d.idel, 1); drawInst(); return; }
+    if (d.pegen !== undefined) {
+      const T = total(); if (!T) { H.toast('اكتب سعر الأرض أولاً'); return; }
+      const k = Math.max(1, Math.min(120, Math.round(n0($('#gN').value)))), ev = +$('#gEvery').value || 1, start = $('#gStart').value || addMonths(ymd(new Date()), 1);
+      const first = Math.round(T * Math.min(100, n0($('#gFirst').value)) / 100), rest = T - first, each = Math.floor(rest / k / 100) * 100;
+      inst = [...Array(k)].map((_, i) => [addMonths(start, i * ev), i === k - 1 ? rest - each * (k - 1) : each]);
+      el.querySelector('.pe-gen').open = false; drawInst(); return;
+    }
+    if (d.pesave !== undefined) {
+      if (!cur) return;
+      const body = { project: $('#peProj').value, n: cur.n, s: stt, total: total(), ppf: n0($('#pePpf').value), ft: n0($('#peFt').value), fe: $('#peFe').checked ? 1 : 0, lo: $('#peLo').value.trim(), inst: inst.filter((x) => x[0] && n0(x[1]) > 0).map((x) => [x[0], n0(x[1])]) };
+      if (stt && stt !== 'sold' && !body.total && !body.ppf && !confirm('لم تكتب سعراً — ستظهر «السعر عند الاستفسار». متابعة؟')) return;
+      if (!stt && !confirm('ستُزال القطعة من العرض في الموقع والتطبيق. متابعة؟')) return;
+      t.disabled = true; const old = t.innerHTML; t.innerHTML = '<i class="spin"></i> جارِ الحفظ…';
+      try { const j = await api('adm_plot_save', body); cur = j.plot; H.toast('تم حفظ القطعة على المخطط ✓'); H.refreshData(); load(); }
+      catch (ex) { H.toast(ex.message); }
+      finally { t.disabled = false; t.innerHTML = old; }
+    }
+  });
+  el.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.dataset.id !== undefined) { inst[+t.dataset.id][0] = t.value; return; }
+    if (t.dataset.ia !== undefined) { inst[+t.dataset.ia][1] = n0(t.value); drawSum(); return; }
+    if (t.id === 'peTotal') { const a = area(); if (a && total()) $('#pePpf').value = Math.round(total() / a); drawSum(); }
+    if (t.id === 'pePpf') { const a = area(); if (a && n0(t.value)) $('#peTotal').value = money(Math.round(n0(t.value) * a)); drawSum(); }
+    if (t.id === 'peFt') { const a = area(); if (a && n0($('#pePpf').value)) { $('#peTotal').value = money(Math.round(n0($('#pePpf').value) * a)); drawSum(); } }
+  });
+  el.addEventListener('keydown', (e) => { if (e.target.id === 'peN' && e.key === 'Enter') load(); });
+  if (n0s) load();
+}

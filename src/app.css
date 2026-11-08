@@ -1368,3 +1368,22 @@ body.guest #sheet .pricef, body.guest #rngP, body.guest #sheet .memf { display: 
 .guestjoin > svg:last-child { width: 18px; height: 18px; transform: scaleX(-1); flex: none; }
 [dir="ltr"] .guestjoin > svg:last-child { transform: none; }
 .gproj { padding: 0 16px; display: flex; flex-direction: column; gap: 14px; } .gproj .card.proj { width: 100%; }
+
+/* management: add / edit a plot */
+.pled .ccard { margin-bottom: 12px; } .pled h3 { margin: 4px 0 10px; font: 800 15px AJ, Tajawal, sans-serif; color: var(--navy); }
+.pled .cgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.pled label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--mute); font-weight: 700; } .pled label small { font-weight: 400; }
+.pled input, .pled select { font: inherit; font-size: 15px; color: var(--ink); border: 1.5px solid #dfe3ea; border-radius: 10px; padding: 9px 10px; background: #fff; min-width: 0; }
+.pe-n { display: flex; gap: 6px; } .pe-n input { flex: 1; } .pe-n .btn { padding: 0 14px; }
+.pe-info { margin: 4px 0 0; line-height: 1.8; } .pe-info .newp { color: #b45309; } .bad { color: #b91c1c !important; }
+.pe-st { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 14px; }
+.pe-st button { padding: 10px 4px; border-radius: 12px; border: 1.5px solid #dfe3ea; background: #fff; font: 700 13.5px AJ, Tajawal, sans-serif; color: var(--ink); }
+.pe-st button.on.ok { background: #16a34a; border-color: #16a34a; color: #fff; } .pe-st button.on.res { background: #d97706; border-color: #d97706; color: #fff; }
+.pe-st button.on.sold { background: #dc2626; border-color: #dc2626; color: #fff; } .pe-st button.on.off { background: #475569; border-color: #475569; color: #fff; }
+.pe-chk { flex-direction: row !important; align-items: center; gap: 8px !important; padding-top: 20px; color: var(--ink) !important; } .pe-chk input { width: 20px; height: 20px; accent-color: var(--gold); }
+.pe-sum { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 12px; border-radius: 12px; background: #fbf6ea; font-size: 13.5px; margin-bottom: 10px; } .pe-sum b { color: var(--navy); } .pe-sum em { font-style: normal; font-weight: 700; width: 100%; }
+.pe-gen { margin-bottom: 10px; border: 1px dashed #d9bf7f; border-radius: 12px; padding: 8px 10px; } .pe-gen summary { cursor: pointer; font-weight: 700; color: var(--navy); display: flex; align-items: center; gap: 6px; } .pe-gen summary svg { width: 18px; height: 18px; color: var(--gold); } .pe-gen[open] summary { margin-bottom: 10px; }
+.pe-row { display: grid; grid-template-columns: 26px 1.1fr 1fr 30px; gap: 6px; align-items: center; margin-bottom: 6px; }
+.pe-row .pe-i { width: 26px; height: 26px; border-radius: 50%; background: #eef1f7; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: var(--navy); }
+.pe-row input { padding: 8px; font-size: 14px; } .pe-row button { width: 30px; height: 30px; border-radius: 50%; background: #fee2e2; color: #b91c1c; }
+.pe-save { margin-top: 4px; } .plotadd { margin-bottom: 8px; }
