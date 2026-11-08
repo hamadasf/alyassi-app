@@ -1353,3 +1353,13 @@ span.telf input.telno:focus { border: 0; box-shadow: none; }
 
 /* Google Play rating request */
 .playrev .rs-st.on5 { display: flex; justify-content: center; gap: 4px; margin: 6px 0 14px; } .playrev .rs-st.on5 i { color: #f5b301; } .playrev .rs-st.on5 svg { width: 28px; height: 28px; }
+
+/* guests: prices and payment plans behind sign-in */
+.price.lock { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #fbf3df; color: #8a6514; font: 700 13px AJ, Tajawal, sans-serif; border: 1px solid #ecd9a8; cursor: pointer; white-space: nowrap; }
+.price.lock svg { width: 15px; height: 15px; flex: none; }
+.pricebox .price.lock { font-size: 15px; padding: 9px 16px; }
+.lockbox { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; padding: 18px 14px; border-radius: 16px; border: 1.5px dashed #d9bf7f; background: linear-gradient(180deg, #fffaf0, #fff); color: var(--navy); text-align: center; }
+.lockbox svg { width: 30px; height: 30px; color: var(--gold); margin-bottom: 4px; } .lockbox b { font: 800 15px AJ, Tajawal, sans-serif; } .lockbox span { font-size: 12.5px; color: var(--mute); }
+.signin-ask { text-align: center; } .signin-ask .sa-ic { width: 60px; height: 60px; margin: 4px auto 8px; border-radius: 18px; background: #fbf3df; display: grid; place-items: center; color: var(--gold); } .signin-ask .sa-ic svg { width: 30px; height: 30px; }
+.signin-ask h3 { margin: 0 0 4px; } .signin-ask .btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+body.guest #sheet .pricef, body.guest #rngP, body.guest #sheet .memf { display: none; }

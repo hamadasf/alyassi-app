@@ -71,7 +71,7 @@ export async function initPlanView2(pg, p, focusN) {
     const st = { av: 'متاحة', res: 'محجوزة', sold: 'مباعة', na: 'غير متوفرة' }[sel.status] || '';
     card.innerHTML = `<button class="pvx" aria-label="إغلاق">✕</button>
       <div class="pvc1"><b>قطعة رقم ${esc(sel.n)}</b><span class="pvst ${sel.status}">${st}</span></div>
-      <div class="pvc2"><span>${esc(sel.use || '')}</span><span>${sel.ft ? money(sel.ft) + ' قدم²' : ''}</span>${sel.status !== 'sold' && sel.total ? `<b>${money(sel.total)} د.إ</b>` : ''}</div>
+      <div class="pvc2"><span>${esc(sel.use || '')}</span><span>${sel.ft ? money(sel.ft) + ' قدم²' : ''}</span>${sel.status !== 'sold' && sel.total && !(H.guest && H.guest()) ? `<b>${money(sel.total)} د.إ</b>` : ''}</div>
       <button class="btn primary block" data-land="${esc(sel.id)}">تفاصيل الأرض</button>
       ${H.canDesign && H.canDesign() && (sel.poly || sel.pc) ? `<button class="btn adgbtn block" data-adgen="${esc(sel.id)}">${H.I.image} تصميم بوست</button>` : ''}`;
     card.querySelector('.pvx').onclick = (e) => { e.stopPropagation(); sel = null; showCard(); full(); };

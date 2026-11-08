@@ -75,21 +75,21 @@
       <label class="fchk"><span>الجاهزية</span><span class="fchkb"><input type="checkbox" id="fReady"> جاهزة للبناء فقط</span></label></div>
     <div class="two">
       <label>الحالة<select id="fStatus"><option value="av">متاحة</option><option value="res">محجوزة</option><option value="sold">مباعة</option><option value="na">غير متوفرة</option><option value="">الكل</option></select></label>
-      <label>الترتيب<select id="fSort"><option value="default">المميزة أولاً</option><option value="price-asc">السعر: الأقل أولاً</option><option value="price-desc">السعر: الأعلى أولاً</option><option value="area-desc">المساحة: الأكبر أولاً</option><option value="area-asc">المساحة: الأصغر أولاً</option></select></label>
+      <label>الترتيب<select id="fSort"><option value="default">المميزة أولاً</option><option value="price-asc" class="pricef">السعر: الأقل أولاً</option><option value="price-desc" class="pricef">السعر: الأعلى أولاً</option><option value="area-desc">المساحة: الأكبر أولاً</option><option value="area-asc">المساحة: الأصغر أولاً</option></select></label>
     </div>
     <div class="two">
       <label>المساحة من (قدم²)<input id="fminA" inputmode="numeric" placeholder="0"></label>
       <label>إلى<input id="fmaxA" inputmode="numeric" placeholder="أي مساحة"></label>
     </div>
     <div id="rngA"></div>
-    <div class="two">
+    <div class="two pricef">
       <label>السعر من (د.إ)<input id="fminP" inputmode="numeric" placeholder="0"></label>
       <label>إلى<input id="fmaxP" inputmode="numeric" placeholder="أي سعر"></label>
     </div>
     <div id="rngP"></div>
     <div class="two btns"><button class="btn ghost" id="resetF">مسح</button><button class="btn primary" id="applyF">عرض النتائج</button></div>
-    <button class="btn ghost block savef" id="saveF"><span data-i="bookmark"></span> حفظ هذا البحث</button>
-    <button class="btn ghost block savef" id="alertF"><span data-i="bell"></span> نبهني بأراضٍ جديدة مثل هذا البحث</button>
+    <button class="btn ghost block savef memf" id="saveF"><span data-i="bookmark"></span> حفظ هذا البحث</button>
+    <button class="btn ghost block savef memf" id="alertF"><span data-i="bell"></span> نبهني بأراضٍ جديدة مثل هذا البحث</button>
   </div>
   <div id="toast"></div>
   <script src="app.js"></script>
