@@ -37,4 +37,5 @@ const missing = index.filter((p) => !d.projects.some((x) => x.slug === p.slug)).
 if (!d.projects.length || missing.length) { console.error('missing projects: ' + missing.join(', ')); process.exit(1); }
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, JSON.stringify({ at: Date.now(), projects: d.projects }));
+for (const p of d.projects) console.log(`loc: ${p.slug} | ${p.name} | ${p.loc || '-'}`);
 console.log(`snapshot: ${d.projects.length} projects, ${d.lands.length} plots -> ${out}`);
