@@ -549,7 +549,7 @@ export function oLandCard(x) {
       <span class="badge av">للبيع</span>${x.featured ? `<span class="badge star">⭐ مميز</span>` : ''}${x.slider ? '<span class="badge slid">🎞️ مختار</span>' : ''}</div>
     <div class="body">
       ${advStrip(x.adv)}
-      <div class="row between"><h3 class="notr">${esc(x.title)}</h3>${x.price ? (session.token() ? `<div class="price">${money(x.price)} <small>د.إ</small></div>` : `<span class="price lock" data-signin="price">${I.lock} سجّل لعرض السعر</span>`) : ''}</div>
+      <div class="row between"><h3 class="notr">${esc(x.title)}</h3>${x.price ? `<div class="price">${money(x.price)} <small>د.إ</small></div>` : ''}</div>
       ${x.project || x.location ? `<div class="meta">${I.pin}<span>${esc(x.project || x.location)}</span></div>` : ''}
       ${x.seller ? `<div class="seller">${I.verified}<span class="notr">${esc(x.seller)}</span>${x.rating && x.rating.n ? `<span class="srate">★ ${x.rating.avg.toFixed(1)} <small>(${x.rating.n})</small></span>` : ''}</div>` : ''}
       <div class="specs">${x.area ? `<span>${I.area}${money(x.area)} قدم²</span>` : ''}${x.type ? `<span>${I.tag}${esc(x.type)}</span>` : ''}</div>
@@ -570,7 +570,7 @@ export function oLandPage(x) {
       ${can('listings') || can('report') ? `<button class="btn ghost block stbtn" data-stats="${x.id}">📊 إحصائيات الإعلان</button>` : ''}
       ${session.user() && x.by && +x.by === +session.user().id ? `<button class="btn wbtn block" data-owndeal="${x.id}">${I.wallet} سجّلها بيعاً في محفظتي</button>` : ''}
       ${x.seller ? `<div class="seller big">${I.verified}<span>${esc(x.seller)} · مكتب عقاري موثّق</span></div>` : ''}
-      ${x.price ? (session.token() ? `<div class="pricebox"><div class="price big">${money(x.price)} <small>د.إ</small></div></div>` : `<div class="pricebox"><span class="price lock" data-signin="price">${I.lock} سجّل لعرض السعر</span></div>`) : ''}
+      ${x.price ? `<div class="pricebox"><div class="price big">${money(x.price)} <small>د.إ</small></div></div>` : ''}
       <div class="inst">${rows.map((r) => `<div class="r"><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}</div>
       ${x.description ? `<p class="odesc notr">${esc(x.description)}</p>` : ''}
       ${x.maps ? `<a class="btn ghost block" href="${esc(x.maps)}" data-ext>${I.pin} الموقع على الخريطة</a>` : ''}

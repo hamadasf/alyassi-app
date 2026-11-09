@@ -1362,7 +1362,7 @@ span.telf input.telno:focus { border: 0; box-shadow: none; }
 .lockbox svg { width: 30px; height: 30px; color: var(--gold); margin-bottom: 4px; } .lockbox b { font: 800 15px AJ, Tajawal, sans-serif; } .lockbox span { font-size: 12.5px; color: var(--mute); }
 .signin-ask { text-align: center; } .signin-ask .sa-ic { width: 60px; height: 60px; margin: 4px auto 8px; border-radius: 18px; background: #fbf3df; display: grid; place-items: center; color: var(--gold); } .signin-ask .sa-ic svg { width: 30px; height: 30px; }
 .signin-ask h3 { margin: 0 0 4px; } .signin-ask .btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
-body.guest #sheet .pricef, body.guest #rngP, body.guest #sheet .memf { display: none; }
+body.guest #sheet .memf { display: none; }
 .guestjoin { display: flex; align-items: center; gap: 12px; width: calc(100% - 32px); margin: 16px 16px 4px; padding: 14px 16px; border-radius: 18px; background: linear-gradient(135deg, #c9a14a, #e6c77f); color: var(--navy); text-align: start; box-shadow: 0 8px 20px rgba(201,161,74,.3); }
 .guestjoin > svg:first-child { width: 26px; height: 26px; flex: none; } .guestjoin span { flex: 1; display: flex; flex-direction: column; gap: 2px; } .guestjoin b { font: 800 15.5px AJ, Tajawal, sans-serif; } .guestjoin small { font-size: 12.5px; opacity: .8; }
 .guestjoin > svg:last-child { width: 18px; height: 18px; transform: scaleX(-1); flex: none; }
