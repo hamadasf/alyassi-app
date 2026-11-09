@@ -1200,6 +1200,8 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .pmap-admf { width: 100%; background: #fff; border-radius: 16px; padding: 12px; box-shadow: 0 8px 24px rgba(14,28,54,.25); display: grid; gap: 8px; }
 .pmap-admf b small { color: #c9a14a; font-size: 11px; } .pmap-admf select { width: 100%; padding: 9px; border-radius: 10px; border: 1px solid #d8dce6; font: 600 14px AJ, Tajawal, sans-serif; }
 .pmap-admf p { margin: 0; font-size: 12px; } .pmap-admr { display: flex; gap: 6px; flex-wrap: wrap; } .pmap-admr .btn { flex: 1 1 auto; padding: 8px 10px; font-size: 13px; }
+.pplan { position: absolute; transform-origin: 50% 50%; transition: opacity .25s; box-shadow: 0 0 0 2px rgba(201,161,74,.9), 0 6px 20px rgba(0,0,0,.35); border-radius: 4px; cursor: pointer; }
+.pmap-rng { display: grid; grid-template-columns: auto 1fr 44px; align-items: center; gap: 8px; font: 700 12px AJ, Tajawal, sans-serif; } .pmap-rng output { font-size: 12px; text-align: center; color: var(--navy); }
 .pmk.new { background: #E0040B !important; color: #fff !important; }
 .pmap-card { position: absolute; z-index: 1000; left: 12px; right: 12px; bottom: calc(var(--sb) + 14px); background: #fff; border-radius: 20px; box-shadow: 0 12px 34px rgba(14,28,54,.25); display: flex; gap: 12px; padding: 12px; }
 .pmap-card[hidden] { display: none; }

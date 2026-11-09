@@ -80,7 +80,8 @@ function oay_acc_adm_proj_pin() {
 	else {
 		$lat = (float) ( $in['lat'] ?? 0 ); $lng = (float) ( $in['lng'] ?? 0 );
 		if ( ! ( $lat > 22 && $lat < 27 && $lng > 51 && $lng < 57 ) ) { oay_acc_err( 'الموقع خارج الإمارات' ); }
-		$pins[ $slug ] = array( round( $lat, 6 ), round( $lng, 6 ) );
+		$rot = max( -180, min( 180, (float) ( $in['rot'] ?? 0 ) ) ); $k = max( 0.3, min( 3, (float) ( $in['k'] ?? 1 ) ) );
+		$pins[ $slug ] = array( round( $lat, 6 ), round( $lng, 6 ), round( $rot, 1 ), round( $k, 3 ) );
 	}
 	update_option( 'oay_proj_pins', $pins, false );
 	oay_acc_ok( array( 'pins' => (object) $pins ) );
