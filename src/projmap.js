@@ -84,7 +84,7 @@ export async function initMapPage(pg) {
   if (!pins.length && !admin) { loadEl.innerHTML = `${I.map}<span>مواقع المشاريع غير متوفرة بعد — حاول لاحقاً</span>`; return; }
   loadEl.remove();
   const map = L.map(pg.querySelector('#pmapEl'), { zoomControl: false, attributionControl: true }).setView(pins.length ? pins[0].c : [25.33, 55.55], 11);
-  L.control.zoom({ position: 'bottomleft' }).addTo(map);
+  L.control.zoom({ position: 'topright' }).addTo(map);
   // Esri tiles: no key needed (CARTO now answers apps with an «API KEY REQUIRED» picture). Street map + satellite toggle.
   const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
   const street = L.tileLayer(ESRI + 'World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles © Esri' });
@@ -107,7 +107,7 @@ export async function initMapPage(pg) {
   const bounds = [], marks = [];
   const layers = {};
   for (const { p, c, g } of pins) {
-    const lay = planLayer(L, p, g); if (lay) { lay.addTo(map).on('click', () => show(p)); layers[p.slug] = lay; }
+    const lay = planLayer(L, p, g); if (lay) { lay.addTo(map).on('click', () => { if (!(H.editing && H.editing())) show(p); }); layers[p.slug] = lay; }
     const av = p.available || 0;
     const icon = L.divIcon({ className: 'pmk-w', html: `<div class="pmk${av ? '' : ' none'}"><b>${esc(p.name)}</b>${av ? `<i>${av}</i>` : ''}</div>`, iconSize: null, iconAnchor: [0, 0] });
     const m = L.marker(c, { icon, riseOnHover: true }).addTo(map).on('click', () => { show(p); map.flyTo(c, Math.max(map.getZoom(), 15), { duration: .6 }); });
@@ -130,6 +130,7 @@ export async function initMapPage(pg) {
   if (bounds.length > 1) map.fitBounds(bounds, { padding: [60, 60], maxZoom: 13 });
   setTimeout(declutter, 50);
   map.on('click', () => { card.hidden = true; });
+  H.editing = null;
   card.addEventListener('click', (e) => { if (e.target.closest('[data-pmx]')) { e.stopPropagation(); card.hidden = true; } });
   setTimeout(() => map.invalidateSize(), 300);
   if (admin) adminPins(pg, map, L, projects, have, layers);
@@ -142,49 +143,90 @@ function adminPins(pg, map, L, projects, have, layers) {
   const bar = document.createElement('div'); bar.className = 'pmap-adm';
   const closed = () => `<button class="pmap-admb" data-pmadm>${I.pin || I.map} تحديد موقع مشروع${missing.length ? ` <em>${missing.length} بدون موقع</em>` : ''}</button>`;
   bar.innerHTML = closed(); pg.querySelector('.pmap').appendChild(bar);
-  let pick = null, tmp = null;
+  let pos = null, tmp = null, rot = 0, k = 1;   // the chosen project's centre, turn and size while editing
+  const $ = (q) => bar.querySelector(q);
   const open = () => {
     const first = (missing[0] || projects[0] || {}).slug;
-    bar.innerHTML = `<div class="pmap-admf"><b>تحديد موقع مشروع <small>للإدارة</small></b>
+    bar.innerHTML = `<div class="pmap-admf"><div class="pmap-admh"><b>تحديد موقع مشروع <small>للإدارة</small></b><button class="pmap-min" data-pmmin aria-label="تصغير">—</button></div>
+      <div class="pmap-body">
       <select data-pmsel>${projects.map((p) => `<option value="${esc(p.slug)}"${p.slug === first ? ' selected' : ''}>${esc(p.name)}${have[p.slug] && have[p.slug].c ? '' : ' — بدون موقع'}</option>`).join('')}</select>
-      <p class="muted" data-pmhint>اضغط على الخريطة في وسط المشروع، ثم لفّ المخطط وكبّره حتى ينطبق على الشوارع</p>
-      <label class="pmap-rng">تدوير المخطط <input type="range" min="-180" max="180" step="1" value="0" data-pmrot><output data-pmrv>0°</output></label>
-      <label class="pmap-rng">حجم المخطط <input type="range" min="50" max="200" step="1" value="100" data-pmk><output data-pmkv>100%</output></label>
+      <p class="muted" data-pmhint>اسحب المخطط بإصبعك أو حرّكه بالأسهم (مشروع بدون موقع: اضغط مكانه في الخريطة أولاً)</p></div>
+      <div class="pmap-ctl">
+        <div class="pmap-pad"><button data-mv="0,-1" aria-label="فوق">▲</button><button data-mv="1,0" aria-label="يمين">▶</button><button data-mv="0,1" aria-label="تحت">▼</button><button data-mv="-1,0" aria-label="يسار">◀</button><span data-step title="الخطوة">${'خطوة'}<b data-stepv>صغيرة</b></span></div>
+        <div class="pmap-tw">
+          <div class="pmap-row"><span>تدوير</span><button data-rt="-1">↺</button><output data-pmrv>0°</output><button data-rt="1">↻</button></div>
+          <div class="pmap-row"><span>حجم</span><button data-kk="-1">−</button><output data-pmkv>100%</output><button data-kk="1">+</button></div>
+        </div>
+      </div>
       <div class="pmap-admr"><button class="btn primary" data-pmsave disabled>حفظ الموقع</button><button class="btn ghost" data-pmclr>إزالة التحديد اليدوي</button><button class="btn ghost" data-pmx2>إغلاق</button></div></div>`;
-    pick = null; sync();
+    sync();
   };
-  const cur = () => { const sl = bar.querySelector('[data-pmsel]'); return sl ? sl.value : ''; };
-  const sync = () => {   // the sliders follow the chosen project's saved turn and size
-    const v = have[cur()] && have[cur()].c; const r = bar.querySelector('[data-pmrot]'), k = bar.querySelector('[data-pmk]'); if (!r) return;
-    r.value = v ? +v[2] || 0 : 0; k.value = Math.round((v ? +v[3] || 1 : 1) * 100); outs();
-    if (v) { pick = null; map.flyTo([v[0], v[1]], Math.max(map.getZoom(), 15), { duration: .5 }); bar.querySelector('[data-pmsave]').disabled = false; }
+  const cur = () => { const sl = $('[data-pmsel]'); return sl ? sl.value : ''; };
+  let big = false;   // arrow step: small (fine) or big
+  const outs = () => { if (!$('[data-pmrv]')) return; $('[data-pmrv]').textContent = (Math.round(rot * 10) / 10) + '°'; $('[data-pmkv]').textContent = Math.round(k * 100) + '%'; $('[data-stepv]').textContent = big ? 'كبيرة' : 'صغيرة'; };
+  const live = () => {
+    outs(); if (!pos) return;
+    let lay = layers[cur()];
+    if (!lay) { const p = projects.find((x) => x.slug === cur()); lay = p && planLayer(L, p, { c: pos, rot, k }); if (lay) { lay.addTo(map); layers[cur()] = lay; } }
+    if (lay) { lay.set({ c: pos, rot, k }); bindDrag(lay); }
+    if (tmp) tmp.setLatLng(pos); else tmp = L.marker(pos, { icon: L.divIcon({ className: 'pmk-w', html: '<div class="pmk new"><b>وسط المشروع</b></div>', iconSize: null, iconAnchor: [0, 0] }), interactive: false }).addTo(map);
+    $('[data-pmsave]').disabled = false;
   };
-  const outs = () => { bar.querySelector('[data-pmrv]').textContent = bar.querySelector('[data-pmrot]').value + '°'; bar.querySelector('[data-pmkv]').textContent = bar.querySelector('[data-pmk]').value + '%'; };
-  const live = () => { let lay = layers[cur()]; outs();
-    if (!lay && pick) { const p = projects.find((x) => x.slug === cur()); lay = p && planLayer(L, p, { c: [pick.lat, pick.lng], rot: 0, k: 1 }); if (lay) { lay.addTo(map); layers[cur()] = lay; } } if (lay) lay.set({ rot: +bar.querySelector('[data-pmrot]').value, k: bar.querySelector('[data-pmk]').value / 100, ...(pick ? { c: [pick.lat, pick.lng] } : {}) }); };
-  bar.addEventListener('input', (e) => { if (e.target.matches('[data-pmrot],[data-pmk]')) live(); });
-  bar.addEventListener('change', (e) => { if (e.target.matches('[data-pmsel]')) { if (tmp) { map.removeLayer(tmp); tmp = null; } sync(); } });
-  const onMap = (e) => {
-    if (!bar.querySelector('[data-pmsave]')) return;
-    pick = e.latlng; if (tmp) tmp.setLatLng(pick); else tmp = L.marker(pick, { icon: L.divIcon({ className: 'pmk-w', html: '<div class="pmk new"><b>هنا</b></div>', iconSize: null, iconAnchor: [0, 0] }) }).addTo(map);
-    bar.querySelector('[data-pmsave]').disabled = false; live();
-    bar.querySelector('[data-pmhint]').textContent = `${pick.lat.toFixed(5)}, ${pick.lng.toFixed(5)} — اضغط «حفظ الموقع»`;
+  const sync = () => {   // follow the chosen project's saved place, turn and size
+    const v = have[cur()] && have[cur()].c;
+    pos = v ? [v[0], v[1]] : null; rot = v ? +v[2] || 0 : 0; k = v ? +v[3] || 1 : 1;
+    if (tmp) { map.removeLayer(tmp); tmp = null; }
+    if (pos) { map.flyTo(pos, Math.max(map.getZoom(), 15), { duration: .5 }); live(); } else { outs(); $('[data-pmsave]').disabled = true; }
   };
-  map.on('click', onMap);
+  // move the plan by screen pixels (so a step is the same on screen at any zoom)
+  const nudge = (dx, dy) => { if (!pos) { H.toast('اضغط على الخريطة في مكان المشروع أولاً'); return; } const pt = map.latLngToContainerPoint(pos); const ll = map.containerPointToLatLng([pt.x + dx, pt.y + dy]); pos = [ll.lat, ll.lng]; live(); };
+  // drag the plan itself with a finger
+  const bindDrag = (lay) => {
+    const el = lay._el; if (!el || el._pmDrag) return; el._pmDrag = 1;
+    let st = null;
+    el.addEventListener('pointerdown', (e) => {
+      if (!$('[data-pmsel]') || layers[cur()] !== lay) return;
+      e.preventDefault(); e.stopPropagation(); map.dragging.disable();
+      st = { x: e.clientX, y: e.clientY, pt: map.latLngToContainerPoint(pos) }; el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener('pointermove', (e) => { if (!st) return; const ll = map.containerPointToLatLng([st.pt.x + e.clientX - st.x, st.pt.y + e.clientY - st.y]); pos = [ll.lat, ll.lng]; live(); });
+    const end = () => { if (!st) return; st = null; map.dragging.enable(); };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  };
+  H.editing = () => !!$('[data-pmsel]');
+  bar.addEventListener('change', (e) => { if (e.target.matches('[data-pmsel]')) sync(); });
+  map.on('click', (e) => {
+    if (!$('[data-pmsel]') || pos) return;   // once placed, the plan moves only by dragging it or with the arrows
+    pos = [e.latlng.lat, e.latlng.lng]; live();
+    $('[data-pmhint]').textContent = 'اسحب المخطط أو استخدم الأسهم حتى ينطبق على الشوارع، ثم «حفظ الموقع»';
+  });
   const send = async (body, msg) => {
     try { await api('adm_proj_pin', body); H.toast(msg); lsSet('pgeoAt', 0); H.reopen && H.reopen(); }
     catch (ex) { H.toast(ex.message); }
   };
+  // press and hold an arrow / turn / size button to keep going
+  let rep = null;
+  const act = (t) => {
+    const d = t.dataset, f = big ? 5 : 1;
+    if (d.mv) { const [x, y] = d.mv.split(',').map(Number); nudge(x * 4 * f, y * 4 * f); }
+    else if (d.rt) { rot = Math.max(-180, Math.min(180, rot + +d.rt * (big ? 2 : 0.25))); live(); }
+    else if (d.kk) { k = Math.max(0.3, Math.min(3, k * (1 + +d.kk * (big ? 0.03 : 0.005)))); live(); }
+  };
+  bar.addEventListener('pointerdown', (e) => {
+    const t = e.target.closest('[data-mv],[data-rt],[data-kk]'); if (!t) return;
+    e.preventDefault(); act(t); clearInterval(rep); let n = 0; rep = setInterval(() => { if (++n > 4) act(t); }, 70);
+  });
+  const stop = () => { clearInterval(rep); rep = null; };
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => bar.addEventListener(ev, stop));
   bar.addEventListener('click', (e) => {
-    e.stopPropagation(); L.DomEvent && L.DomEvent.stopPropagation(e);
-    const t = e.target.closest('button'); if (!t) return;
+    e.stopPropagation();
+    const t = e.target.closest('button, [data-step]'); if (!t) return;
     if (t.dataset.pmadm !== undefined) { open(); return; }
+    if (t.dataset.step !== undefined) { big = !big; outs(); return; }
+    if (t.dataset.pmmin !== undefined) { bar.querySelector('.pmap-admf').classList.toggle('min'); return; }
     const slug = cur();
     if (t.dataset.pmx2 !== undefined) { bar.innerHTML = closed(); if (tmp) { map.removeLayer(tmp); tmp = null; } return; }
-    if (t.dataset.pmsave !== undefined) {
-      const v = have[slug] && have[slug].c, c = pick ? [pick.lat, pick.lng] : v ? [v[0], v[1]] : null; if (!c) return;
-      t.disabled = true; send({ slug, lat: c[0], lng: c[1], rot: +bar.querySelector('[data-pmrot]').value, k: bar.querySelector('[data-pmk]').value / 100 }, 'تم حفظ موقع المشروع ✓'); return;
-    }
+    if (t.dataset.pmsave !== undefined) { if (!pos) return; t.disabled = true; send({ slug, lat: pos[0], lng: pos[1], rot, k }, 'تم حفظ موقع المشروع ✓'); return; }
     if (t.dataset.pmclr !== undefined) send({ slug, clear: 1 }, 'رجع الموقع من رابط المشروع');
   });
   L.DomEvent.disableClickPropagation(bar); L.DomEvent.disableScrollPropagation(bar);

@@ -1201,6 +1201,16 @@ body.offline .ticker, body.offline .hero { margin-top: 0; }
 .pmap-admf b small { color: #c9a14a; font-size: 11px; } .pmap-admf select { width: 100%; padding: 9px; border-radius: 10px; border: 1px solid #d8dce6; font: 600 14px AJ, Tajawal, sans-serif; }
 .pmap-admf p { margin: 0; font-size: 12px; } .pmap-admr { display: flex; gap: 6px; flex-wrap: wrap; } .pmap-admr .btn { flex: 1 1 auto; padding: 8px 10px; font-size: 13px; }
 .pplan { position: absolute; transform-origin: 50% 50%; transition: opacity .25s; box-shadow: 0 0 0 2px rgba(201,161,74,.9), 0 6px 20px rgba(0,0,0,.35); border-radius: 4px; cursor: pointer; }
+.pmap-adm { top: auto; bottom: 14px; } .pmap-adm:has(.pmap-admb) { top: 58px; bottom: auto; }
+.pmap-admh { display: flex; align-items: center; justify-content: space-between; } .pmap-min { border: 0; background: #eef1f6; border-radius: 8px; width: 30px; height: 26px; font-weight: 800; }
+.pmap-admf.min .pmap-body, .pmap-admf.min .pmap-admr { display: none; }
+.pmap-ctl { display: flex; gap: 10px; align-items: center; justify-content: space-between; direction: ltr; }
+.pmap-pad { display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 34px); gap: 4px; }
+.pmap-pad button, .pmap-row button { border: 0; background: var(--navy); color: #fff; border-radius: 9px; font-size: 15px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.pmap-pad [data-mv="0,-1"] { grid-area: 1 / 2; } .pmap-pad [data-mv="-1,0"] { grid-area: 2 / 1; } .pmap-pad [data-mv="1,0"] { grid-area: 2 / 3; } .pmap-pad [data-mv="0,1"] { grid-area: 3 / 2; }
+.pmap-pad [data-step] { grid-area: 2 / 2; display: flex; flex-direction: column; align-items: center; justify-content: center; font: 700 9px AJ, Tajawal, sans-serif; color: #6b7280; cursor: pointer; line-height: 1.1; } .pmap-pad [data-step] b { color: #c9a14a; font-size: 10px; }
+.pmap-tw { display: grid; gap: 6px; direction: rtl; flex: 1; }
+.pmap-row { display: grid; grid-template-columns: 38px 38px 1fr 38px; align-items: center; gap: 5px; font: 700 12px AJ, Tajawal, sans-serif; } .pmap-row button { height: 34px; font-size: 17px; } .pmap-row output { text-align: center; font: 800 13px AJ, Tajawal, sans-serif; color: var(--navy); }
 .pmap-rng { display: grid; grid-template-columns: auto 1fr 44px; align-items: center; gap: 8px; font: 700 12px AJ, Tajawal, sans-serif; } .pmap-rng output { font-size: 12px; text-align: center; color: var(--navy); }
 .pmk.new { background: #E0040B !important; color: #fff !important; }
 .pmap-card { position: absolute; z-index: 1000; left: 12px; right: 12px; bottom: calc(var(--sb) + 14px); background: #fff; border-radius: 20px; box-shadow: 0 12px 34px rgba(14,28,54,.25); display: flex; gap: 12px; padding: 12px; }
