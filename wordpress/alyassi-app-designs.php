@@ -64,6 +64,7 @@ function oay_proj_lines_seed() {   // from the office: who may own in each proje
 		'al-ruwaidat'        => array( 'p1' => '', 'p2' => $all ),
 		'muhathab'           => array( 'p1' => '', 'p2' => $all ),
 		'industrial4'        => array( 'p1' => '', 'p2' => $all ),
+		'rawdat-al-qurt'     => array( 'p1' => '', 'p2' => 'تملّك حر لجميع العرب' ),
 	);
 }
 function oay_proj_lines_all() { $m = get_option( 'oay_proj_lines', null ); return is_array( $m ) ? $m + oay_proj_lines_seed() : oay_proj_lines_seed(); }
@@ -83,7 +84,7 @@ function oay_acc_proj_public() {
 	$out = array();
 	foreach ( oay_proj_lines_all() as $slug => $l ) {
 		$txt = ( $l['p1'] ?? '' ) . ' ' . ( $l['p2'] ?? '' ) . ' ' . ( $l['sub'] ?? '' );
-		$own = false !== mb_strpos( $txt, 'جميع الجنسيات' ) || false !== mb_strpos( $txt, 'لكل الجنسيات' ) ? 'all' : ( false !== mb_strpos( $txt, 'للعرب' ) ? 'arab' : '' );
+		$own = false !== mb_strpos( $txt, 'جميع الجنسيات' ) || false !== mb_strpos( $txt, 'لكل الجنسيات' ) ? 'all' : ( false !== mb_strpos( $txt, 'للعرب' ) || false !== mb_strpos( $txt, 'جميع العرب' ) ? 'arab' : '' );
 		$out[ $slug ] = array( 'own' => $own, 'ready' => false !== mb_strpos( $txt, 'جاهز' ), 'note' => mb_substr( (string) ( $l['p1'] ?? '' ), 0, 60 ) );
 	}
 	header( 'Cache-Control: public, max-age=600' );
