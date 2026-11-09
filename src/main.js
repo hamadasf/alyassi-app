@@ -754,6 +754,7 @@ function bannerHTML(av, projects) {
   const s = [];
   ownerLands().filter((x) => x.slider).slice(0, 4).forEach((x) => s.push(slide(`data-oland="${esc(x.id)}"`, x.photos[0] || 'assets/villa-invest.jpg', 'إعلان مميز', esc(x.title), `${x.price ? money(x.price) + ' د.إ' : ''}${x.area ? ' · ' + money(x.area) + ' قدم²' : ''}${x.seller ? ' · ' + esc(x.seller) : ''}`, 'التفاصيل')));
   if (ofr.length) s.push(slide('data-go="lands" data-offers="1"', ofr[0].img, 'لفترة محدودة', 'عروض خاصة', `${ofr.length} ${ofr.length > 2 ? 'أراضٍ' : 'أرض'} بأسعار مميزة`, 'شاهد العروض', 'gold'));
+  if (projects.length) s.push(slide('data-pmap=""', 'assets/projmap.jpg', 'خريطة تفاعلية', 'خريطة المشاريع', `${projects.length} مشروع · اعرف مكان كل مشروع`, `${I.map} افتح الخريطة`, 'pmapsl'));
   projects.slice().sort((a, b) => b.available - a.available).slice(0, 3).forEach((p) => {
     if (p.available) s.push(slide(`data-project="${esc(p.slug)}"`, p.poster, 'مشروع', esc(p.name), `${p.available} أرض متاحة${p.sub ? ' · ' + esc(p.sub.split('،')[0]) : ''}`, 'تصفح المشروع'));
   });
@@ -1360,7 +1361,7 @@ initAdvUI({ toast, closeTop: () => closeTop() });
 initStats({ toast });
 initMailAdm({ toast, esc });
 initMarket({ toast, I, projects: () => DATA().projects });
-initProjMap({ esc, I, projects: () => DATA().projects });
+initProjMap({ esc, I, toast, projects: () => DATA().projects, isAdmin: () => !!(session.user() || {}).admin, reopen: () => { closeTop(); setTimeout(() => pushPage('map'), 400); } });
 initExtras({ esc, I, toast, native, shareFile: (f, t, ti) => shareFile(f, t, ti) });
 initSellMod({ esc, toast });
 initFavx({ DATA, esc, money, toast, I, findLand: (id) => findLand(id) });

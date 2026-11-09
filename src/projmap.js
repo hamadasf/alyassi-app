@@ -15,15 +15,16 @@ function loadLeaflet() {
     const js = document.createElement('script'); js.src = 'leaflet/leaflet.js'; js.onload = () => ok(window.L); js.onerror = () => { leafletP = null; no(new Error('map')); }; document.head.appendChild(js);
   }));
 }
-/** coordinates of the projects: [slug] → [lat, lng] (from this phone first, then the website for the missing ones) */
-async function coords(projects) {
-  const have = lsGet('pgeo', {});
-  const want = projects.filter((p) => p.loc && !(have[p.slug] && have[p.slug].loc === p.loc));
-  if (want.length) {
+/** coordinates of the projects: [slug] → [lat, lng] — kept on this phone, asked again from the website every hour (the
+ *  website reads each project's Google Maps link, finds named places, and the admin's own pins win) */
+async function coords(projects, force) {
+  const have = lsGet('pgeo2', {}), at = lsGet('pgeoAt', 0);
+  const stale = force || Date.now() - at > 3600e3 || projects.some((p) => !have[p.slug] || have[p.slug].loc !== (p.loc || ''));
+  if (stale) {
     try {
-      const j = await api('proj_geo', { items: want.slice(0, 40).map((p) => ({ slug: p.slug, loc: p.loc })) });
-      for (const p of want) { const c = (j.items || {})[p.slug]; if (c) have[p.slug] = { loc: p.loc, c }; }
-      lsSet('pgeo', have);
+      const j = await api('proj_geo', { items: projects.slice(0, 60).map((p) => ({ slug: p.slug, loc: p.loc || '' })) });
+      for (const p of projects) { const c = (j.items || {})[p.slug]; have[p.slug] = { loc: p.loc || '', c: c || (have[p.slug] && have[p.slug].loc === (p.loc || '') ? have[p.slug].c : null) }; }
+      lsSet('pgeo2', have); lsSet('pgeoAt', Date.now());
     } catch { /* offline: show what we have */ }
   }
   return have;
@@ -33,14 +34,14 @@ export function mapPage() {
   return `<div class="pmap"><div id="pmapEl"></div><div class="pmap-load">${H.I.map}<span>جارِ تحميل الخريطة…</span></div><div class="pmap-card" hidden></div></div>`;
 }
 export async function initMapPage(pg) {
-  const { esc, I } = H; const projects = H.projects().filter((p) => p.loc);
+  const { esc, I } = H; const projects = H.projects(); const admin = H.isAdmin && H.isAdmin();
   const loadEl = pg.querySelector('.pmap-load'), card = pg.querySelector('.pmap-card');
   let L, have;
   try { [L, have] = await Promise.all([loadLeaflet(), coords(projects)]); } catch { loadEl.innerHTML = `${I.wifi}<span>تعذّر تحميل الخريطة — تأكد من الاتصال بالإنترنت</span>`; return; }
   const pins = projects.map((p) => ({ p, c: have[p.slug] && have[p.slug].c })).filter((x) => x.c);
-  if (!pins.length) { loadEl.innerHTML = `${I.map}<span>مواقع المشاريع غير متوفرة بعد — حاول لاحقاً</span>`; return; }
+  if (!pins.length && !admin) { loadEl.innerHTML = `${I.map}<span>مواقع المشاريع غير متوفرة بعد — حاول لاحقاً</span>`; return; }
   loadEl.remove();
-  const map = L.map(pg.querySelector('#pmapEl'), { zoomControl: false, attributionControl: true }).setView(pins[0].c, 11);
+  const map = L.map(pg.querySelector('#pmapEl'), { zoomControl: false, attributionControl: true }).setView(pins.length ? pins[0].c : [25.33, 55.55], 11);
   L.control.zoom({ position: 'bottomleft' }).addTo(map);
   // Esri tiles: no key needed (CARTO now answers apps with an «API KEY REQUIRED» picture). Street map + satellite toggle.
   const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
@@ -87,4 +88,44 @@ export async function initMapPage(pg) {
   map.on('click', () => { card.hidden = true; });
   card.addEventListener('click', (e) => { if (e.target.closest('[data-pmx]')) { e.stopPropagation(); card.hidden = true; } });
   setTimeout(() => map.invalidateSize(), 300);
+  if (admin) adminPins(pg, map, L, projects, have);
+}
+
+/* management: put a project on the map by hand — pick it, tap its place on the map, save */
+function adminPins(pg, map, L, projects, have) {
+  const { esc, I } = H;
+  const missing = projects.filter((p) => !(have[p.slug] && have[p.slug].c));
+  const bar = document.createElement('div'); bar.className = 'pmap-adm';
+  const closed = () => `<button class="pmap-admb" data-pmadm>${I.pin || I.map} تحديد موقع مشروع${missing.length ? ` <em>${missing.length} بدون موقع</em>` : ''}</button>`;
+  bar.innerHTML = closed(); pg.querySelector('.pmap').appendChild(bar);
+  let pick = null, tmp = null;
+  const open = () => {
+    const first = (missing[0] || projects[0] || {}).slug;
+    bar.innerHTML = `<div class="pmap-admf"><b>تحديد موقع مشروع <small>للإدارة</small></b>
+      <select data-pmsel>${projects.map((p) => `<option value="${esc(p.slug)}"${p.slug === first ? ' selected' : ''}>${esc(p.name)}${have[p.slug] && have[p.slug].c ? '' : ' — بدون موقع'}</option>`).join('')}</select>
+      <p class="muted" data-pmhint>اضغط على الخريطة في مكان المشروع</p>
+      <div class="pmap-admr"><button class="btn primary" data-pmsave disabled>حفظ الموقع</button><button class="btn ghost" data-pmclr>إزالة التحديد اليدوي</button><button class="btn ghost" data-pmx2>إغلاق</button></div></div>`;
+    pick = null;
+  };
+  const onMap = (e) => {
+    if (!bar.querySelector('[data-pmsave]')) return;
+    pick = e.latlng; if (tmp) tmp.setLatLng(pick); else tmp = L.marker(pick, { icon: L.divIcon({ className: 'pmk-w', html: '<div class="pmk new"><b>هنا</b></div>', iconSize: null, iconAnchor: [0, 0] }) }).addTo(map);
+    bar.querySelector('[data-pmsave]').disabled = false;
+    bar.querySelector('[data-pmhint]').textContent = `${pick.lat.toFixed(5)}, ${pick.lng.toFixed(5)} — اضغط «حفظ الموقع»`;
+  };
+  map.on('click', onMap);
+  const send = async (body, msg) => {
+    try { await api('adm_proj_pin', body); H.toast(msg); lsSet('pgeoAt', 0); H.reopen && H.reopen(); }
+    catch (ex) { H.toast(ex.message); }
+  };
+  bar.addEventListener('click', (e) => {
+    e.stopPropagation(); L.DomEvent && L.DomEvent.stopPropagation(e);
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.pmadm !== undefined) { open(); return; }
+    const slug = bar.querySelector('[data-pmsel]') && bar.querySelector('[data-pmsel]').value;
+    if (t.dataset.pmx2 !== undefined) { bar.innerHTML = closed(); if (tmp) { map.removeLayer(tmp); tmp = null; } return; }
+    if (t.dataset.pmsave !== undefined && pick) { t.disabled = true; send({ slug, lat: pick.lat, lng: pick.lng }, 'تم حفظ موقع المشروع ✓'); return; }
+    if (t.dataset.pmclr !== undefined) send({ slug, clear: 1 }, 'رجع الموقع من رابط المشروع');
+  });
+  L.DomEvent.disableClickPropagation(bar); L.DomEvent.disableScrollPropagation(bar);
 }

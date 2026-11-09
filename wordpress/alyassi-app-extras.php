@@ -50,22 +50,59 @@ function oay_geo_resolve( $loc ) {
 	}
 	return $u ? oay_geo_parse( $u ) : null;
 }
+/** a place name from a search-style link (…/maps/search/?api=1&query=الفلاح+الشارقة, ?q=…) when it carries no coordinates */
+function oay_geo_query_text( $loc ) {
+	$q = array(); parse_str( (string) wp_parse_url( $loc, PHP_URL_QUERY ), $q );
+	foreach ( array( 'query', 'q', 'destination', 'daddr' ) as $k ) { if ( ! empty( $q[ $k ] ) && ! preg_match( '/^-?\d{1,2}\.\d+\s*,/', $q[ $k ] ) ) { return trim( preg_replace( '/\s+/', ' ', $q[ $k ] ) ); } }
+	if ( preg_match( '#/maps/(?:search|place)/([^/@?]+)#', rawurldecode( $loc ), $m ) ) { return trim( str_replace( '+', ' ', $m[1] ) ); }
+	return '';
+}
+/** OpenStreetMap's geocoder, inside the UAE only: the name as written, then without «الشارقة»/«عجمان» … */
+function oay_geo_by_name( $text ) {
+	if ( ! $text ) { return null; }
+	$tries = array_unique( array_filter( array( $text, trim( preg_replace( '/\s*(الشارقة|عجمان|دبي|sharjah|ajman)\s*/iu', ' ', $text ) ) . ' الشارقة', trim( preg_replace( '/\s*(الشارقة|عجمان|دبي|sharjah|ajman)\s*/iu', ' ', $text ) ) ) ) );
+	foreach ( $tries as $q ) {
+		$r = wp_remote_get( 'https://nominatim.openstreetmap.org/search?' . http_build_query( array( 'format' => 'json', 'limit' => 1, 'countrycodes' => 'ae', 'accept-language' => 'ar', 'q' => $q ) ),
+			array( 'timeout' => 8, 'user-agent' => 'OmarAlYassiRealEstate/1.0 (+' . home_url( '/' ) . ')' ) );
+		if ( is_wp_error( $r ) ) { return null; }
+		$j = json_decode( wp_remote_retrieve_body( $r ), true );
+		if ( ! empty( $j[0]['lat'] ) ) { $lat = (float) $j[0]['lat']; $lng = (float) $j[0]['lon']; if ( $lat > 22 && $lat < 27 && $lng > 51 && $lng < 57 ) { return array( round( $lat, 6 ), round( $lng, 6 ) ); } }
+	}
+	return null;
+}
+/* the admin can put a project on the map by hand (from the app's projects map): those pins win over the links */
+function oay_proj_pins() { $o = get_option( 'oay_proj_pins', array() ); return is_array( $o ) ? $o : array(); }
+add_action( 'wp_ajax_oay_acc_adm_proj_pin', 'oay_acc_adm_proj_pin' ); add_action( 'wp_ajax_nopriv_oay_acc_adm_proj_pin', 'oay_acc_adm_proj_pin' );
+function oay_acc_adm_proj_pin() {
+	oay_acc_need_admin(); $in = oay_acc_in(); $slug = sanitize_key( (string) ( $in['slug'] ?? '' ) ); if ( ! $slug ) { oay_acc_err( 'اختر المشروع' ); }
+	$pins = oay_proj_pins();
+	if ( ! empty( $in['clear'] ) ) { unset( $pins[ $slug ] ); }
+	else {
+		$lat = (float) ( $in['lat'] ?? 0 ); $lng = (float) ( $in['lng'] ?? 0 );
+		if ( ! ( $lat > 22 && $lat < 27 && $lng > 51 && $lng < 57 ) ) { oay_acc_err( 'الموقع خارج الإمارات' ); }
+		$pins[ $slug ] = array( round( $lat, 6 ), round( $lng, 6 ) );
+	}
+	update_option( 'oay_proj_pins', $pins, false );
+	oay_acc_ok( array( 'pins' => (object) $pins ) );
+}
 function oay_acc_proj_geo() {
 	oay_acc_limit( 'pgeo', 30 );
 	$in = oay_acc_in(); $cache = get_option( 'oay_proj_geo', array() ); if ( ! is_array( $cache ) ) { $cache = array(); }
-	$out = array(); $tries = 0; $dirty = false;
-	foreach ( array_slice( (array) ( $in['items'] ?? array() ), 0, 40 ) as $it ) {
+	$out = array(); $tries = 0; $dirty = false; $pins = oay_proj_pins();
+	foreach ( array_slice( (array) ( $in['items'] ?? array() ), 0, 60 ) as $it ) {
 		$slug = sanitize_key( (string) ( $it['slug'] ?? '' ) ); $loc = esc_url_raw( (string) ( $it['loc'] ?? '' ) );
+		if ( $slug && ! empty( $pins[ $slug ] ) ) { $out[ $slug ] = $pins[ $slug ]; continue; }
 		if ( ! $slug || ! $loc || ! oay_geo_ok_host( $loc ) ) { continue; }
 		$k = md5( $loc ); $c = $cache[ $k ] ?? null;
 		if ( ! $c || ( empty( $c['c'] ) && time() - (int) $c['t'] > DAY_IN_SECONDS && $tries < 6 ) ) {
 			if ( $tries >= 6 ) { continue; }
-			$tries++; $c = array( 'c' => oay_geo_resolve( $loc ), 't' => time() ); $cache[ $k ] = $c; $dirty = true;
+			$tries++; $g = oay_geo_resolve( $loc ); if ( ! $g ) { $g = oay_geo_by_name( oay_geo_query_text( $loc ) ); }
+			$c = array( 'c' => $g, 't' => time() ); $cache[ $k ] = $c; $dirty = true;
 		}
 		if ( ! empty( $c['c'] ) ) { $out[ $slug ] = $c['c']; }
 	}
 	if ( $dirty ) { update_option( 'oay_proj_geo', array_slice( $cache, -200, null, true ), false ); }
-	oay_acc_ok( array( 'items' => (object) $out ) );
+	oay_acc_ok( array( 'items' => (object) $out, 'pinned' => array_keys( $pins ) ) );
 }
 
 /* ====================================== 2. «قيّم خدمتنا» ====================================== */
