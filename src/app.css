@@ -1421,3 +1421,5 @@ body.guest #sheet .memf { display: none; }
 .limp-g.add { border-color: #bbe5c8; background: #f3fbf5; } .limp-g.bad { border-color: #f5c2c2; background: #fffafa; }
 .limp-g > div { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; max-height: 320px; overflow: auto; font-size: 13px; } .limp-g > div span { padding: 4px 0; border-bottom: 1px dashed #eceff4; }
 .limp-g i.st { font-style: normal; font-weight: 700; } .limp-g i.st.av { color: #15803d; } .limp-g i.st.res { color: #b45309; } .limp-g i.st.sold { color: #b91c1c; }
+
+.pz-wacol i { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-inline-end: 6px; vertical-align: -2px; }

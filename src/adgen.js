@@ -40,8 +40,9 @@ const PZ_THEMES = {
 };
 PZ_THEMES.aya = Object.assign({}, PZ_THEMES.pk, { name: 'قالب آية الجديد', layout: 'aya', bar: '#B4525C', logo: null, phone: '0564080004' });
 PZ_THEMES.ayk = Object.assign({}, PZ_THEMES.aya, { name: 'قالب آية كامل', ayaCol: 'plum', bar: '#5E1E51', ink: '#4A0D3C', price: '#4A0D3C', icon: '#5E1E51', phone: '0508600740' });
+PZ_THEMES.wa = Object.assign({}, PZ_THEMES.co, { name: 'قالب واتس أب', layout: 'wa', size: [1600, 1200], bar: '#B8893F', phone: '' });   // management only (never in the staff list)
 let TH = PZ_THEMES.co;
-const AD_W = 1600, AD_H = 2000;
+let AD_W = 1600, AD_H = 2000;   // «قالب واتس أب» is 4:3 (1600 × 1200); the others 4:5
 
 /* Aya Al Jabri's new post: its fixed artwork (shipped with the app), everything else drawn here */
 const ayaArt = {}; let ayaReady = null;
@@ -253,6 +254,100 @@ const OY_FIELDS = [
   ['o_proj', 'اسم المشروع (المربع الأسود)'], ['o_area', 'المساحة (المربع الأزرق)'], ['o_use1', 'الاستخدام · السطر الأول (المربع الأحمر)'], ['o_use2', 'الاستخدام · السطر الثاني (مثلًا: G + 2)'],
   ['o_priceC', 'السعر (الشريط البنفسجي)', 'cash'], ['o_priceI', 'السعر (الشريط البنفسجي)', 'inst'], ['o_p1', 'السطر الأبيض الأول (جاهزة للبناء…)'], ['o_p2', 'السطر الأبيض الثاني (التملّك)'], ['o_p3', 'مميزات الأرض (فوق السعر)'],
 ];
+/* «قالب واتس أب» (4:3, management only): kicker, the project in big letters, a ribbon, the plan with a ring and an arrow on the
+   plot, three cards (area · permit · price) and the ownership line — in three colour sets */
+const WA_COLS = {
+  gold: { name: 'ذهبي', bg: ['#FBF8F3', '#EFE8DD'], corner: '#3B3B3D', ink: '#2A2A2C', rib: ['#A87A35', '#E3C47E', '#A87A35'], ribText: '#FFFFFF', card: '#EEE7DC', cardInk: '#2A2A2C', icon: '#3B3B3D', hot: '#C42F2B', hotInk: '#FFFFFF', foot: '#3B3B3D', footInk: '#E9CB86', frame: '#FFFFFF' },
+  navy: { name: 'كحلي', bg: ['#F7F8FB', '#E6EAF2'], corner: '#0E1C36', ink: '#0E1C36', rib: ['#0E1C36', '#25386A', '#0E1C36'], ribText: '#E6C77F', card: '#E9EDF5', cardInk: '#0E1C36', icon: '#C9A14A', hot: '#0E1C36', hotInk: '#FFFFFF', foot: '#C9A14A', footInk: '#0E1C36', frame: '#FFFFFF' },
+  teal: { name: 'أخضر', bg: ['#F5FAF9', '#E2EEEC'], corner: '#0B4F4C', ink: '#0B3B39', rib: ['#0B5F5B', '#2A9C96', '#0B5F5B'], ribText: '#FFFFFF', card: '#E3EFED', cardInk: '#0B3B39', icon: '#0B5F5B', hot: '#D08A2E', hotInk: '#FFFFFF', foot: '#0B4F4C', footInk: '#F1D08C', frame: '#FFFFFF' },
+};
+function waArrow(c, tx, ty, K) {   // a thick black arrow coming up from below, its tip at (tx, ty)
+  c.save(); c.translate(tx, ty); c.rotate(Math.PI / 2 - 0.22); c.scale(K, K);
+  const L = 230, hw = 46, hl = 86, sw = 18;
+  c.beginPath(); c.moveTo(0, 0); c.lineTo(hl, -hw); c.lineTo(hl, -sw); c.lineTo(L, -sw); c.lineTo(L, sw); c.lineTo(hl, sw); c.lineTo(hl, hw); c.closePath();
+  c.lineJoin = 'round'; c.lineWidth = 7; c.strokeStyle = '#FFFFFF'; c.stroke(); c.fillStyle = '#000000'; c.fill();
+  c.restore();
+}
+function waIcon(c, kind, cx, cy, col) {
+  c.save(); c.strokeStyle = col; c.lineWidth = 5; c.lineJoin = c.lineCap = 'round'; c.beginPath();
+  if (kind === 'cube') {   // a box drawn in lines, like the area icon of the design
+    const r = 44, h = r * 0.5;
+    c.moveTo(cx, cy - r); c.lineTo(cx + r, cy - h); c.lineTo(cx + r, cy + h); c.lineTo(cx, cy + r); c.lineTo(cx - r, cy + h); c.lineTo(cx - r, cy - h); c.closePath();
+    c.moveTo(cx - r, cy - h); c.lineTo(cx, cy); c.lineTo(cx + r, cy - h); c.moveTo(cx, cy); c.lineTo(cx, cy + r);
+    c.stroke(); c.lineWidth = 3; c.setLineDash([6, 7]); c.beginPath(); c.moveTo(cx - r - 14, cy - h + 8); c.lineTo(cx - r - 14, cy + h + 8); c.moveTo(cx + r + 14, cy - h + 8); c.lineTo(cx + r + 14, cy + h + 8); c.stroke();
+  } else {   // two buildings
+    c.rect(cx - 40, cy - 46, 46, 92); c.rect(cx + 6, cy - 14, 34, 60); c.stroke(); c.beginPath();
+    for (let i = 0; i < 4; i++) { c.moveTo(cx - 28, cy - 30 + i * 20); c.lineTo(cx - 6, cy - 30 + i * 20); }
+    c.moveTo(cx + 16, cy + 4); c.lineTo(cx + 30, cy + 4); c.moveTo(cx + 16, cy + 22); c.lineTo(cx + 30, cy + 22); c.stroke();
+  }
+  c.restore();
+}
+function waDraw(c, v, p, at) {
+  const C = WA_COLS[v.wCol] || WA_COLS.gold, W = AD_W, H = AD_H;
+  { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, C.bg[0]); g.addColorStop(1, C.bg[1]); c.fillStyle = g; c.fillRect(0, 0, W, H); }
+  c.fillStyle = C.corner;   // the two dark corner cuts of the design
+  c.beginPath(); c.moveTo(0, 0); c.lineTo(250, 0); c.lineTo(0, 150); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(W, 0); c.lineTo(W - 250, 0); c.lineTo(W, 150); c.closePath(); c.fill();
+  c.globalAlpha = 0.18; c.beginPath(); c.moveTo(0, 0); c.lineTo(330, 0); c.lineTo(0, 220); c.closePath(); c.fill(); c.beginPath(); c.moveTo(W, 0); c.lineTo(W - 330, 0); c.lineTo(W, 220); c.closePath(); c.fill(); c.globalAlpha = 1;
+  // the plan, with a ring and an arrow on the plot
+  const MX = 44, MY = 452, MW = 960, MH = 600;
+  { const o = v.o.map || [0, 0];
+    c.save(); c.translate(o[0], o[1]);
+    c.save(); c.shadowColor = 'rgba(0,0,0,.18)'; c.shadowBlur = 22; c.shadowOffsetY = 6; c.fillStyle = C.frame; box(c, MX - 12, MY - 12, MW + 24, MH + 24, 30); c.fill(); c.restore();
+    const k = 2.4 * (+v.zoom || 1), x0 = p.c[0] - MW / 2 / k - (+v.mx || 0) / k, y0 = p.c[1] - MH * 0.42 / k - (+v.my || 0) / k;
+    c.save(); box(c, MX, MY, MW, MH, 20); c.clip(); c.fillStyle = '#EDE6D6'; c.fillRect(MX, MY, MW, MH);
+    c.translate(MX, MY); c.scale(k, k); c.translate(-x0, -y0); drawPlan(c, x0, y0, x0 + MW / k, y0 + MH / k, k); c.restore();
+    const sx = MX + (p.c[0] - x0) * k, sy = MY + (p.c[1] - y0) * k;
+    let rr = 0; (p.p || []).forEach((q) => { rr = Math.max(rr, Math.hypot((q[0] - p.c[0]) * k, (q[1] - p.c[1]) * k)); });
+    const K = +v.pinK || 1, R = Math.max(34, rr + 12) * K;
+    if (v.pin) { c.save(); box(c, MX, MY, MW, MH, 20); c.clip(); c.lineWidth = 8 * K; c.strokeStyle = '#E0040B'; c.beginPath(); c.arc(sx, sy, R, 0, 7); c.stroke(); waArrow(c, sx + R * 0.2, sy + R + 8, K); c.restore(); }
+    c.restore(); ad.hits.push({ k: 'map', pan: 1, x: MX + o[0], y: MY + o[1], w: MW, h: MH }); }
+  PZS = v.fsL; at('kick', 300, 22, 1000, 96, () => adFitV(c, v.w_kick, 800, 28, 112, 980, 74, 700, C.ink, 'center'));
+  PZS = v.fsT; at('proj', 300, 112, 1000, 210, () => {
+    c.save(); c.shadowColor = 'rgba(0,0,0,.28)'; c.shadowBlur = 14; c.shadowOffsetY = 6; adFitV(c, v.w_proj, 800, 118, 318, 1000, 230, 800, C.ink, 'center'); c.restore();
+  });
+  PZS = v.fsL; at('rib', 400, 330, 800, 100, () => {
+    c.font = FD(800, 54); const w = Math.max(560, Math.min(1100, c.measureText(v.w_rib || '').width + 120)), x = 800 - w / 2;
+    const g = c.createLinearGradient(x, 0, x + w, 0); C.rib.forEach((col, i) => g.addColorStop(i / (C.rib.length - 1), col));
+    c.save(); c.shadowColor = 'rgba(0,0,0,.2)'; c.shadowBlur = 12; c.shadowOffsetY = 4; c.fillStyle = g; box(c, x, 336, w, 92, 46); c.fill(); c.restore();
+    adFitV(c, v.w_rib, 800, 346, 420, w - 70, 54, 800, C.ribText, 'center');
+  });
+  const card = (y, h, fill) => { c.save(); c.shadowColor = 'rgba(0,0,0,.12)'; c.shadowBlur = 14; c.shadowOffsetY = 4; c.fillStyle = fill; box(c, 1040, y, 520, h, 26); c.fill(); c.restore(); };
+  at('c1', 1040, 452, 520, 180, () => {
+    card(452, 180, C.card); waIcon(c, 'cube', 1128, 542, C.icon); c.fillStyle = C.icon; c.fillRect(1206, 482, 4, 120);
+    PZS = v.fsL; adFitV(c, v.w_c1t, 1530, 470, 534, 300, 48, 700, C.cardInk, 'right');
+    PZS = v.fsN; c.direction = 'ltr'; const px = adFitV(c, v.w_area, 1530, 538, 616, 220, 80, 800, C.cardInk, 'right'); c.font = FD(800, px); const nw = c.measureText(v.w_area || '').width; c.direction = 'rtl';
+    PZS = v.fsL; adFitV(c, v.w_unit, 1530 - nw - 14, 558, 610, 300 - nw, 36, 600, C.cardInk, 'right');
+  });
+  at('c2', 1040, 652, 520, 170, () => {
+    card(652, 170, C.card); waIcon(c, 'bld', 1128, 737, C.icon); c.fillStyle = C.icon; c.fillRect(1206, 680, 4, 114);
+    PZS = v.fsL; adFitV(c, v.w_c2t, 1530, 672, 740, 310, 50, 700, C.cardInk, 'right');
+    adFitV(c, v.w_c2s, 1380, 744, 804, 310, 40, 600, C.cardInk, 'center');
+  });
+  at('c3', 1040, 842, 520, 222, () => {
+    card(842, 222, C.hot);
+    PZS = v.fsL; adFitV(c, v.mode === 'inst' ? v.w_c3tI : v.w_c3t, 1300, 856, 920, 470, 50, 700, C.hotInk, 'center');
+    PZS = v.fsN; c.direction = 'ltr'; adFitV(c, v.w_price, 1300, 918, 1018, 480, 112, 800, C.hotInk, 'center'); c.direction = 'rtl';
+    PZS = v.fsL; adFitV(c, v.w_cur, 1300, 1016, 1058, 470, 38, 600, C.hotInk, 'center');
+  });
+  PZS = v.fsC; at('own', 250, 1088, 1100, 96, () => {
+    c.save(); c.shadowColor = 'rgba(0,0,0,.2)'; c.shadowBlur = 12; c.shadowOffsetY = 4; c.fillStyle = C.foot; box(c, 250, 1092, 1100, 88, 44); c.fill(); c.restore();
+    adFitV(c, v.w_own, 800, 1100, 1172, 1020, 52, 800, C.footInk, 'center');
+  });
+  PZS = 1;
+  const lg = PZ_THEMES.co.logo;
+  if (v.wLogo && lg && lg.naturalWidth) at('logo', 1360, 150, 200, 168, () => {
+    c.save(); c.shadowColor = 'rgba(0,0,0,.18)'; c.shadowBlur = 12; c.shadowOffsetY = 3; c.fillStyle = '#FFFFFF'; box(c, 1360, 150, 200, 168, 22); c.fill(); c.restore();
+    const h = 150, w = h * lg.naturalWidth / lg.naturalHeight; c.drawImage(lg, 1360 + (200 - w) / 2, 159, w, h);
+  });
+}
+const WA_PARTS = [['kick', 'السطر العلوي'], ['proj', 'اسم المشروع'], ['rib', 'الشريط الذهبي'], ['map', 'المخطط'], ['c1', 'بطاقة المساحة'], ['c2', 'بطاقة التصريح'], ['c3', 'بطاقة السعر'], ['own', 'شريط التملّك'], ['logo', 'الشعار']];
+const WA_FIELDS = [
+  ['w_kick', 'السطر العلوي'], ['w_proj', 'اسم المشروع (الكبير)'], ['w_rib', 'الشريط تحت اسم المشروع'],
+  ['w_c1t', 'بطاقة المساحة · العنوان'], ['w_area', 'المساحة (الرقم)'], ['w_unit', 'وحدة المساحة'],
+  ['w_c2t', 'بطاقة التصريح · العنوان'], ['w_c2s', 'بطاقة التصريح · السطر الثاني'],
+  ['w_c3t', 'بطاقة السعر · العنوان', 'cash'], ['w_c3tI', 'بطاقة السعر · العنوان', 'inst'], ['w_price', 'السعر (الرقم)'], ['w_cur', 'تحت السعر'], ['w_own', 'شريط التملّك (أسفل)'],
+];
 /* «قالب عبد الرحمن»: the plan with a ring and an arrow on the plot, a navy panel below — project name on a tab, area / permit / price rows, the advertiser */
 PZ_THEMES.ar = Object.assign({}, PZ_THEMES.co, { name: 'قالب عبد الرحمن', layout: 'ar', bar: '#132440', phone: '' });
 const AR = { navy: '#132440', gold: '#AE9A67', yellow: '#FEF631', red: '#FF3436', line: '#BFCADE' };
@@ -421,7 +516,11 @@ function adDefaults(p) {
     a_cT: 'الدفعات', a_cV: 'كاش', a_cS: 'نقداً',
     o_proj: PROJECT, o_area: p.ft ? fmt(p.ft) + ' قدم' : '', o_use1: T.use + (v.side ? ' ' + v.side : ''), o_use2: String(code ? code[1] : fl).replace(/\s*\+\s*/g, '  +  '),
     o_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', o_priceI: pr ? fmt(pr.total) + ' Dhs, ' + (n ? n + ' Installments' : 'Installments') : 'للاستفسار',
-    o_p1: (ad && ad.pl && ad.pl.p1) || '', o_p2: (ad && ad.pl && ad.pl.p2) || '', o_p3: inst.length ? '' : adFeats(p).slice(0, 2).join(' · '), oFlag: true, oLogo: false,   // the project's own lines (set by the office), none when unknown
+    o_p1: (ad && ad.pl && ad.pl.p1) || '', o_p2: (ad && ad.pl && ad.pl.p2) || '', o_p3: inst.length ? '' : adFeats(p).slice(0, 2).join(' · '), oFlag: true, oLogo: false,
+    w_kick: 'أراضي ' + T.use + ' للبيع', w_proj: PROJECT, w_rib: (ad && ad.pl && ad.pl.p1) || 'المنطقة جاهزة للبناء مباشرة',
+    w_c1t: 'المساحة', w_area: p.ft ? fmt(p.ft) : '', w_unit: 'قدم مربع', w_c2t: 'تصريح بناء ' + T.use, w_c2s: fl ? '( ' + fl + ' )' : '',
+    w_c3t: 'السعر كاش', w_c3tI: n ? 'السعر · ' + (n === 1 ? 'قسط واحد' : n === 2 ? 'قسطان' : n + ' أقساط') : 'السعر بالتقسيط', w_price: pr ? fmt(pr.total) : 'للاستفسار', w_cur: 'درهم إماراتي',
+    w_own: (ad && ad.pl && (ownSub(ad.pl.p2) || ad.pl.p2)) || 'تملك حر لجميع الجنسيات العربية', wCol: 'gold', wLogo: true,   // the project's own lines (set by the office), none when unknown
     r_proj: PROJECT, r_l1: 'المساحة', r_area: p.ft ? fmt(p.ft) + ' قدم' : '', r_l2: 'تصريح الأرض', r_use: (T.use + '   ' + String(code ? code[1] : fl).replace(/\s*\+\s*/g, '  +  ')).trim(),
     r_l3: 'السعـــر', r_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', r_priceI: pr ? fmt(pr.total) + ' اقساط' : 'للاستفسار', rAv: true, rLines: false, r_own: (ad && ad.pl && ad.pl.p2) || '', r_feat: adFeats(p).slice(0, 2).join(' · '), a_tag: inst.length ? 'موقع مميز إستثمار مضمون' : adFeats(p).slice(0, 2).join(' · '), a_clbl: 'للتواصل والإستفسار', a_addr: 'شركة عمر الياسي للعقارات\nالشارقة - شارع مليحة' });
   if (ad && ad.pl && (ad.pl.sub || ownSub(ad.pl.p2))) v.sub = ad.pl.sub || ownSub(ad.pl.p2);
@@ -767,6 +866,8 @@ const AD_PARTS = [['title', 'العنوان الرئيسي'], ['proj', 'شريط
 function drawAd(cv) {
   if (!cv || !ad) return;
   const c = cv.getContext('2d'), v = ad.v, p = ad.p; TH = PZ_THEMES[v.theme] || PZ_THEMES.co; v.o = v.o || {}; ad.hits = [];
+  [AD_W, AD_H] = TH.size || [1600, 2000];
+  if (cv.width !== AD_W || cv.height !== AD_H) { cv.width = AD_W; cv.height = AD_H; } cv.style.aspectRatio = `${AD_W} / ${AD_H}`;
   c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = TH.bg; c.fillRect(0, 0, AD_W, AD_H); c.direction = 'rtl'; c.textBaseline = 'alphabetic';
   const at = (k, x, y, w, h, f) => {   // a part of the post: moved by v.o[k], enlarged by v.sc[k] (two fingers) around its centre
     if (v.hide && v.hide[k]) return;   // removed with ✕ (brought back with «إظهار العناصر المحذوفة» or ↶)
@@ -777,6 +878,7 @@ function drawAd(cv) {
   if (TH.layout === 'aya') { ayaDraw(c, v, p, at); PZS = 1; drawExtras(c, v, at); adSel(c); return; }
   if (TH.layout === 'oy') { oyDraw(c, v, p, at); PZS = 1; drawExtras(c, v, at); adSel(c); return; }
   if (TH.layout === 'ar') { arDraw(c, v, p, at); PZS = 1; drawExtras(c, v, at); adSel(c); return; }
+  if (TH.layout === 'wa') { waDraw(c, v, p, at); PZS = 1; drawExtras(c, v, at); adSel(c); return; }
   at('logo', 40, 0, 430, 362, () => {
     if (TH.logo && TH.logo.naturalWidth) c.drawImage(TH.logo, 40, 0, 430, 362);
     else { adFit(c, 'عمر الياسي للعقارات', 217, 300, 420, 42, 800, TH.ink, 'center'); c.direction = 'ltr'; adFit(c, 'Omar Al Yassi Real Estate', 217, 338, 420, 28, 700, TH.ink, 'center', FB); c.direction = 'rtl'; }
@@ -884,12 +986,12 @@ const AD_FIELDS = [
 const num = (s) => +String(s || '').replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[^\d.]/g, '') || 0;
 function areaFt() {   // the area written in the current template (so an edited area counts), else the plot's
   const v = ad.v, lay = layoutOf(v.theme);
-  return num(lay === 'oy' ? v.o_area : lay === 'ar' ? v.r_area : v.area) || +ad.p.ft || 0;
+  return num(lay === 'oy' ? v.o_area : lay === 'ar' ? v.r_area : lay === 'wa' ? v.w_area : v.area) || +ad.p.ft || 0;
 }
 function applyPpf() {
   const v = ad.v, ppf = num(v.ppf), ft = areaFt(); if (!ppf || !ft) return 0;
   const total = Math.round(ppf * ft), t = fmt(total), n = +v.nInst || 0;
-  Object.assign(v, { price: t, o_priceC: t + ' Dhs, Cash', o_priceI: t + ' Dhs, ' + (n ? n + ' Installments' : 'Installments'), r_priceC: t + ' Dhs, Cash', r_priceI: t + ' اقساط' });
+  Object.assign(v, { price: t, w_price: t, o_priceC: t + ' Dhs, Cash', o_priceI: t + ' Dhs, ' + (n ? n + ' Installments' : 'Installments'), r_priceC: t + ' Dhs, Cash', r_priceI: t + ' اقساط' });
   return total;
 }
 const ppfHelp = () => { const ppf = num(ad.v.ppf), ft = areaFt(); return ppf && ft ? `الإجمالي: <b class="num">${fmt(ppf)}</b> × <b class="num">${fmt(ft)}</b> قدم = <b class="num">${fmt(Math.round(ppf * ft))}</b> درهم` : 'اكتب سعر القدم ويُحسب السعر الإجمالي ويُكتب في البوست تلقائياً.'; };
@@ -927,7 +1029,7 @@ export function adgenPage(l, projects) {
 }
 
 function pzForm() {
-  const aya = layoutOf(ad.v.theme) === 'aya', oy = layoutOf(ad.v.theme) === 'oy', ar = layoutOf(ad.v.theme) === 'ar', okT = allowed(), only = okT.length < 2;
+  const aya = layoutOf(ad.v.theme) === 'aya', oy = layoutOf(ad.v.theme) === 'oy', ar = layoutOf(ad.v.theme) === 'ar', wa = layoutOf(ad.v.theme) === 'wa', okT = allowed(), only = okT.length < 2;
   const v = ad.v, f = ([k, l, m, area]) => `<label class="fld" data-m="${m || ''}"${m && m !== v.mode ? ' hidden' : ''}>${l}${area ? `<textarea data-k="${k}" rows="3">${esc(v[k])}</textarea>` : `<input type="text" data-k="${k}" value="${esc(v[k])}">`}</label>`;
   const slots = ['صورة المبنى', 'مخطط الأرض', 'شروط التخطيط'].map((t, i) => {
     const s = ad.img[i];
@@ -948,26 +1050,26 @@ function pzForm() {
   const sec = (k, t, body, open) => `<details class="pz-sec" data-sec="${k}"${(fresh ? open : was.has(k)) ? ' open' : ''}><summary>${t}</summary><div class="pz-body">${body}</div></details>`;
   const sv = ad.saved && ad.saved[v.theme];
   $('pzForm').innerHTML = (sv ? `<div class="pz-saved">${ei('bookmark')} تصميم محفوظ لهذا القالب · <span class="num">${esc(dmy(sv.t))}</span>${sv.by ? ' · ' + esc(sv.by) : ''}<span class="rowbtns"><button type="button" class="btn sm" data-pznew>بدء تصميم جديد</button><button type="button" class="btn sm danger" data-pzunsave>حذف المحفوظ</button></span></div>` : '') + `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · إصبعان لتكبيره أو تصغيره · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', only ? '١. نوع الدفع' : '١. القالب ونوع الدفع', `<div class="pz-th"${only ? ' hidden' : ''}>${Object.entries(PZ_THEMES).filter(([k]) => okT.includes(k)).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
-    <div class="seg"><button type="button" data-pzmode="cash" class="${v.mode === 'cash' ? 'on' : ''}">قالب الكاش</button><button type="button" data-pzmode="inst" class="${v.mode === 'inst' ? 'on' : ''}">قالب الأقساط</button></div>`, true)
-    + sec('tx', '٢. الكتابة والأسعار', `<label class="fld pz-ppf">سعر القدم (درهم) — يحسب الإجمالي تلقائياً<input type="text" inputmode="decimal" data-ppf value="${esc(v.ppf || '')}" placeholder="مثلاً 143"></label><p class="help" id="pzTot">${ppfHelp()}</p>${(aya ? (ad.v.theme === 'ayk' ? AYK_FIELDS : AYA_FIELDS) : oy ? OY_FIELDS : ar ? AR_FIELDS : AD_FIELDS).map(f).join('')}
+    <div class="seg"><button type="button" data-pzmode="cash" class="${v.mode === 'cash' ? 'on' : ''}">قالب الكاش</button><button type="button" data-pzmode="inst" class="${v.mode === 'inst' ? 'on' : ''}">قالب الأقساط</button></div>${wa ? `<h3>لون القالب</h3><div class="seg pz-wacol">${Object.entries(WA_COLS).map(([k, t]) => `<button type="button" data-wacol="${k}" class="${(v.wCol || 'gold') === k ? 'on' : ''}"><i style="background:linear-gradient(90deg,${t.rib[0]},${t.rib[1]})"></i>${t.name}</button>`).join('')}</div><label class="chk"><input type="checkbox" data-k="wLogo"${v.wLogo ? ' checked' : ''}> شعار الشركة</label>` : ''}`, true)
+    + sec('tx', '٢. الكتابة والأسعار', `<label class="fld pz-ppf">سعر القدم (درهم) — يحسب الإجمالي تلقائياً<input type="text" inputmode="decimal" data-ppf value="${esc(v.ppf || '')}" placeholder="مثلاً 143"></label><p class="help" id="pzTot">${ppfHelp()}</p>${(aya ? (ad.v.theme === 'ayk' ? AYK_FIELDS : AYA_FIELDS) : oy ? OY_FIELDS : ar ? AR_FIELDS : wa ? WA_FIELDS : AD_FIELDS).map(f).join('')}
     ${oy ? `<p class="help">السطران الأبيضان خاصّان بكل مشروع (جاهز للبناء، تملّك حر للعرب أو لكل الجنسيات، البنية التحتية…)${ad.pl ? '' : ' — لم تُحدَّد بعد لهذا المشروع'}.</p>${H.isAdmin && H.isAdmin() ? `<button type="button" class="btn sm" data-pzpl>${ei('bookmark')} اجعل السطرين الأبيضين لكل بوستات مشروع ${esc(ad.p.l.projectName)}</button>` : ''}` : ''}
     <h3>موقع القطعة في العنوان</h3>
     <div class="seg pz-side">${[['', 'عادية'], ['زاوية', 'زاوية'], ['سكة', 'سكة']].map(([k, l]) => `<button type="button" data-pzside="${k}" class="${(v.side || '') === k ? 'on' : ''}">${l}${ad.rawOk && (v.auto || '') === k ? ' ✓' : ''}</button>`).join('')}</div>
     <p class="help">${ad.rawOk ? `✓ = ما قرأته من المخطط${v.auto ? ': ' + v.auto : ': ليست زاوية ولا على سكة'}. ` : ''}الاختيار يضيف الكلمة إلى آخر العنوان.</p>`, false)
-    + (aya || oy || ar ? '' : sec('im', '٣. الصور', `${slots}<p class="help">الصور التي تضيفها هنا للبوست فقط ولا تُرفع إلى الموقع. يمكنك اختيار صورة أو ملف PDF.</p>`, false))
-    + sec('mp', (aya || oy || ar ? '٣' : '٤') + '. الخريطة والدبوس', `
+    + (aya || oy || ar || wa ? '' : sec('im', '٣. الصور', `${slots}<p class="help">الصور التي تضيفها هنا للبوست فقط ولا تُرفع إلى الموقع. يمكنك اختيار صورة أو ملف PDF.</p>`, false))
+    + sec('mp', (aya || oy || ar || wa ? '٣' : '٤') + '. الخريطة والدبوس', `
     <label>تكبير الخريطة<input type="range" data-k="zoom" min="0.5" max="3" step="0.1" value="${v.zoom}"></label>
     <label>حجم الدبوس <b class="num" data-fsv="pinK">${Math.round((v.pinK || 1) * 100)}%</b><input type="range" data-k="pinK" min="0.4" max="2.5" step="0.05" value="${v.pinK || 1}"></label>
     <label class="chk"><input type="checkbox" data-k="pin"${v.pin ? ' checked' : ''}> الدبوس</label>
     ${ar ? `<label class="chk"><input type="checkbox" data-k="rAv"${v.rAv ? ' checked' : ''}> صورة المعلن</label><label class="chk"><input type="checkbox" data-k="rLines"${v.rLines ? ' checked' : ''}> سطرا التملّك ومميزات الأرض</label>` : oy ? `<label class="chk"><input type="checkbox" data-k="oFlag"${v.oFlag ? ' checked' : ''}> خريطة الإمارات</label><label class="chk"><input type="checkbox" data-k="oLogo"${v.oLogo ? ' checked' : ''}> شعار الشركة</label>` : `<label class="chk"><input type="checkbox" data-k="lab"${v.lab ? ' checked' : ''}> بطاقة الموقع على الخريطة</label>`}
     <button type="button" class="btn sm" data-mapcenter>إرجاع الخريطة إلى القطعة</button>`, false)
     + sec('ex', '＋ أشكال إضافية' + (v.ex && v.ex.length ? ` (${v.ex.length})` : ''), exForm(v), !!(v.ex && v.ex.length))
-    + sec('fs', (aya || oy || ar ? '٤' : '٥') + '. حجم الخط وأماكن العناصر', `<h3>حجم الخط</h3>
+    + sec('fs', (aya || oy || ar || wa ? '٤' : '٥') + '. حجم الخط وأماكن العناصر', `<h3>حجم الخط</h3>
     ${[['fsT', 'العنوان واسم المشروع'], ['fsN', 'الأرقام والأسعار'], ['fsL', 'النصوص والعناوين الصغيرة'], ['fsC', 'سطر وشريط التواصل']].map(([k, l]) => `<label>${l} <b class="num" data-fsv="${k}">${Math.round(v[k] * 100)}%</b><input type="range" data-k="${k}" min="0.6" max="1.6" step="0.05" value="${v[k]}"></label>`).join('')}
     <button type="button" class="btn sm" data-fsreset>إرجاع أحجام الخط الأصلية</button>
     <h3>تحريك العناصر</h3>
     <p class="help">اسحب أي نص أو بطاقة على المعاينة مباشرة، وكبّره أو صغّره بإصبعين، أو اختر العنصر وحرّكه بالأسهم. السحب داخل الخريطة أو داخل صورة يحرّك ما بداخلها.</p>
-    <div class="pz-move"><select id="pzPart">${(aya ? AYA_PARTS : oy ? OY_PARTS : ar ? AR_PARTS : AD_PARTS).concat((v.ex || []).map((e, i) => ['ex' + i, (e.t === 'box' ? 'مربع نص ' : e.t === 'arrow' ? 'سهم ' : 'دائرة ') + (i + 1)])).map(([k, l]) => `<option value="${k}"${ad.sel === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
+    <div class="pz-move"><select id="pzPart">${(aya ? AYA_PARTS : oy ? OY_PARTS : ar ? AR_PARTS : wa ? WA_PARTS : AD_PARTS).concat((v.ex || []).map((e, i) => ['ex' + i, (e.t === 'box' ? 'مربع نص ' : e.t === 'arrow' ? 'سهم ' : 'دائرة ') + (i + 1)])).map(([k, l]) => `<option value="${k}"${ad.sel === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
       <div class="pz-arrows"><button type="button" class="btn" data-mv="0,-1" aria-label="فوق">▲</button><button type="button" class="btn" data-mv="1,0" aria-label="يمين">▶</button><button type="button" class="btn" data-mv="-1,0" aria-label="يسار">◀</button><button type="button" class="btn" data-mv="0,1" aria-label="تحت">▼</button></div>
       <span class="rowbtns"><button type="button" class="btn sm" data-mvreset>إرجاع مكانه</button><button type="button" class="btn sm" data-mvall>إرجاع كل الأماكن</button>${v.hide && Object.keys(v.hide).length ? `<button type="button" class="btn sm" data-unhide>إظهار العناصر المحذوفة (${Object.keys(v.hide).length})</button>` : ''}</span></div>`, false)
     + `<p class="help">يُحفظ على هذا الجهاز: القالب المختار، رقم كل قالب، والسطر تحت اسم المشروع وسطر التواصل والعنوان.</p>`;
@@ -1008,7 +1110,7 @@ function exportBlob() {
   return new Promise((ok) => cv.toBlob((b) => { adRedraw(); ok(b); }, 'image/jpeg', 0.92));
 }
 /* ---------- every template at once: one picture per template the account may use, shared or saved together ---------- */
-const PZ_FILE = { co: 'company', gr: 'ebada', pk: 'aya-aljabri', aya: 'aya-pink', oy: 'omar-alyassi', ar: 'abdulrahman' };
+const PZ_FILE = { wa: 'whatsapp', co: 'company', gr: 'ebada', pk: 'aya-aljabri', aya: 'aya-pink', oy: 'omar-alyassi', ar: 'abdulrahman' };
 function designFor(k) {   // the template's saved design, the open one, or a fresh one carrying the payment type and prices
   if (k === ad.v.theme) return ad.v;
   const sv = ad.saved && ad.saved[k]; if (sv) return Object.assign(adDefaults(ad.p), sv.v, { theme: k });
@@ -1205,6 +1307,7 @@ export async function initAdgen2(pg, l, proj) {
       pzForm(); adRedraw(); return;
     }
     if (d.pzmode) { ad.v.mode = d.pzmode; pzForm(); adRedraw(); return; }
+    if (d.wacol) { mark(); ad.v.wCol = d.wacol; pzForm(); adRedraw(); return; }
     if (d.pzpl !== undefined) {
       H.api('proj_lines_save', { slug: ad.p.l.project, p1: ad.v.o_p1 || '', p2: ad.v.o_p2 || '', sub: (ad.pl && ad.pl.sub) || '' })
         .then((j) => { ad.pl = j.lines; pzForm(); H.toast('تم — هذان السطران لكل بوستات ' + ad.p.l.projectName); }).catch((ex) => H.toast(ex.message));
