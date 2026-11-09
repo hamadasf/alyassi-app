@@ -541,9 +541,16 @@ function toast(msg) {
 /* ================= land owners (the partner in charge) — staff with «رؤية اسم مالك الأرض» only ================= */
 let OWNERS = {};
 const ownerOf = (id) => (id === '*' ? Object.keys(OWNERS).length > 0 : OWNERS[id] || '');
+let ownersAt = 0;
 async function reloadOwners() {
-  if (!session.token() || !can('owners')) { OWNERS = {}; return; }
-  try { OWNERS = (await accApi('owners_get')).owners || {}; } catch { /* keep what we had */ }
+  if (!session.token() || !can('owners')) { OWNERS = {}; paintOwners(); return; }
+  try { OWNERS = (await accApi('owners_get')).owners || {}; ownersAt = Date.now(); } catch { /* keep what we had */ }
+  paintOwners();
+}
+/** the owner line on a land page: always there for staff, filled in as soon as the names arrive */
+const ownerSlot = (id) => (session.token() && can('owners') ? `<div class="ownerln" data-owner="${esc(id)}"${ownerOf(id) ? '' : ' hidden'}>${I.user} المالك: <b>${esc(ownerOf(id))}</b> <small>يظهر للموظفين فقط</small></div>` : '');
+function paintOwners() {
+  document.querySelectorAll('[data-owner]').forEach((el) => { const o = ownerOf(el.dataset.owner); el.hidden = !o; const b = el.querySelector('b'); if (b) b.textContent = o; });
 }
 
 /* ================= guests (not signed in): projects, plans and lands are open; prices, payment plans and personal tools need an account ================= */
@@ -940,7 +947,7 @@ function landPage(l) {
       <button class="meta link" data-project="${esc(l.project)}">${I.pin}<span>مشروع ${esc(l.projectName)}</span></button>
       ${refLine(l.id)}${ownPills(l.project)}
       <button class="btn wa block share-big" data-share="land:${esc(l.id)}">${I.wa} مشاركة التفاصيل + مخطط الأرض PDF</button>
-      ${ownerOf(l.id) ? `<div class="ownerln">${I.user} المالك: <b>${esc(ownerOf(l.id))}</b> <small>يظهر للموظفين فقط</small></div>` : ''}
+      ${ownerSlot(l.id)}
       ${(session.user() || {}).admin ? `<button class="btn ghost block" data-plotedit="${esc(l.project + '|' + l.n)}">${I.edit || I.plusc} تعديل القطعة — الحالة والسعر والدفعات <small>للإدارة</small></button>` : ''}
       ${o ? `<div class="ofr-box"><b>${I.flame} عرض لفترة محدودة</b>${o.note ? `<span>${esc(o.note)}</span>` : ''}<div class="ofr-t2">${I.clock} <span data-until="${o.until}">${leftText(o.until)}</span> · حتى ${dmy(o.until)}</div></div>` : ''}
       ${priceboxHTML(l)}
@@ -1074,6 +1081,7 @@ function pushPage(kind, id) {
   if (kind === 'market') initMarketPage(pg, id || '');
   if (kind === 'compare') initComparePage(pg);
   if (kind === 'land' && can('listings') && l) fillMarketCard(pg, l);
+  if (kind === 'land' && session.token() && can('owners') && Date.now() - ownersAt > 60e3) reloadOwners();   // a fresh import shows up without restarting the app
   if (kind === 'mystats') initMyStats(pg);
   if (kind === 'advmine') initAdvMine(pg);
   if (kind === 'adgen') { pg.classList.add('adgpg'); if (id) initAdgen2(pg, l, p); else initAdgenPick(pg, d.projects, (lid) => pushPage('adgen', lid)); }
