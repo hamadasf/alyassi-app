@@ -261,9 +261,9 @@ function oay_plot_out( $n, $i ) {
 		'ft' => (float) ( $c['ft'] ?? 0 ), 'planFt' => (float) ( $q['ft'] ?? 0 ), 'fe' => ! empty( $c['fe'] ), 'lo' => (string) ( $c['lo'] ?? '' ),
 		'inst' => array_values( array_filter( (array) ( $c['inst'] ?? array() ), 'is_array' ) ), 'type' => (string) ( $q['t'] ?? '' ) );
 }
-function oay_acc_adm_plot_get() { oay_acc_need_admin(); list( , $n, $i ) = oay_plot_args(); oay_acc_ok( array( 'plot' => oay_plot_out( $n, $i ) ) ); }
+function oay_acc_adm_plot_get() { oay_acc_need_perm( 'plots' ); list( , $n, $i ) = oay_plot_args(); oay_acc_ok( array( 'plot' => oay_plot_out( $n, $i ) ) ); }
 function oay_acc_adm_plot_save() {
-	$me = oay_acc_need_admin(); list( $slug, $n, $i ) = oay_plot_args(); $in = oay_acc_in();
+	$me = oay_acc_need_perm( 'plots' ); list( $slug, $n, $i ) = oay_plot_args(); $in = oay_acc_in();   // the admin, or staff given «إضافة / تعديل القطع»
 	$s = (string) ( $in['s'] ?? '' ); if ( ! in_array( $s, array( 'av', 'res', 'sold', '' ), true ) ) { oay_acc_err( 'حالة غير صحيحة' ); }
 	$total = max( 0, (int) round( (float) ( $in['total'] ?? 0 ) ) ); $ppf = max( 0, round( (float) ( $in['ppf'] ?? 0 ), 2 ) ); $ft = max( 0, round( (float) ( $in['ft'] ?? 0 ), 2 ) );
 	$inst = array();

@@ -902,7 +902,7 @@ function projectPage(p) {
         ${p.pdf ? `<a class="btn ghost" href="${esc(p.pdf)}" data-ext>${I.pdf} ملف المشروع PDF</a>` : ''}
         <a class="btn wa" href="${esc(waLink(`مرحباً، أرغب بالاستفسار عن مشروع ${p.name}\n${p.plan}`))}" data-ext>${I.wa} استفسر</a>
       </div>
-      ${(session.user() || {}).admin ? `<button class="btn primary block plotadd" data-plotedit="${esc(p.slug)}">${I.plusc} إضافة / تعديل قطعة <small>للإدارة</small></button>` : ''}
+      ${session.token() && can('plots') ? `<button class="btn primary block plotadd" data-plotedit="${esc(p.slug)}">${I.plusc} إضافة / تعديل قطعة <small>للإدارة</small></button>` : ''}
       ${(session.user() || {}).admin && p.map ? `<button class="btn ghost block cleanpdf" data-cleanpdf="${esc(p.slug)}">${I.pdf} المخطط بدون حالات PDF — حفظ أو مشاركة <small>للإدارة</small></button>` : ''}
       ${Object.keys(types).length ? `<h2 class="h2">الأنواع المتاحة</h2><div class="tlist">${Object.entries(types).map(([k, v]) => `<div>${dot(v.c)}<span>${esc(k)}</span><b>${v.n}</b></div>`).join('')}</div>` : ''}
       ${p.updated ? `<p class="upd">آخر تحديث للبيانات: <bdi>${esc(fmtDate(p.updated))}</bdi></p>` : ''}
@@ -952,7 +952,7 @@ function landPage(l) {
       ${refLine(l.id)}${ownPills(l.project)}
       <button class="btn wa block share-big" data-share="land:${esc(l.id)}">${I.wa} مشاركة التفاصيل + مخطط الأرض PDF</button>
       ${ownerSlot(l.id)}
-      ${(session.user() || {}).admin ? `<button class="btn ghost block" data-plotedit="${esc(l.project + '|' + l.n)}">${I.edit || I.plusc} تعديل القطعة — الحالة والسعر والدفعات <small>للإدارة</small></button>` : ''}
+      ${session.token() && can('plots') ? `<button class="btn ghost block" data-plotedit="${esc(l.project + '|' + l.n)}">${I.edit || I.plusc} تعديل القطعة — الحالة والسعر والدفعات <small>للإدارة</small></button>` : ''}
       ${o ? `<div class="ofr-box"><b>${I.flame} عرض لفترة محدودة</b>${o.note ? `<span>${esc(o.note)}</span>` : ''}<div class="ofr-t2">${I.clock} <span data-until="${o.until}">${leftText(o.until)}</span> · حتى ${dmy(o.until)}</div></div>` : ''}
       ${priceboxHTML(l)}
       <div class="spec-grid">
