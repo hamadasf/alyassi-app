@@ -2,6 +2,7 @@ import { ei } from './icons.js';
 // «النشرة البريدية» (admin): the weekly «أراضٍ مختارة لك» e-mail — on / off, day and hour, a test to my own e-mail,
 // send now, and how the last round went.
 import { api, session } from './owner.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 let H = null;
 export function initMailAdm(h) { H = h; }
@@ -31,7 +32,7 @@ export function initMailAdmPage(pg) {
     try {
       if (b.id === 'mlSave') { draw((await api('adm_mail_save', { on: box.querySelector('#mlOn').checked, day: +box.querySelector('#mlDay').value, hour: +box.querySelector('#mlHour').value })).state); H.toast('تم الحفظ ✓'); return; }
       if (b.id === 'mlTest') { const r = await api('adm_mail_test'); H.toast('أُرسلت التجربة إلى ' + r.to + ' — شيّك صندوق الوارد والـSpam'); }
-      if (b.id === 'mlNow') { if (!confirm('إرسال «أراضٍ مختارة لك» لكل المشتركين الآن؟')) { b.disabled = false; return; } draw((await api('adm_mail_now')).state); H.toast('بدأ الإرسال ✓'); return; }
+      if (b.id === 'mlNow') { if (!(await uiConfirm('إرسال «أراضٍ مختارة لك» لكل المشتركين الآن؟', { ok: 'إرسال', icon: 'send' }))) { b.disabled = false; return; } draw((await api('adm_mail_now')).state); H.toast('بدأ الإرسال ✓'); return; }
     } catch (ex) { H.toast(ex.message); }
     b.disabled = false;
   });

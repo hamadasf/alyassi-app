@@ -2,6 +2,7 @@
 // Saved to the website's plan data (the same the website's plan editor uses), so the website, the app and the
 // notifications all follow.
 import { api } from './owner.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 let H = null;
 export function initPlotEdit(h) { H = h; }
@@ -86,8 +87,8 @@ export function initPlotEditPage(pg, id = '') {
     if (d.pesave !== undefined) {
       if (!cur) return;
       const body = { project: $('#peProj').value, n: cur.n, s: stt, total: total(), ppf: n0($('#pePpf').value), ft: n0($('#peFt').value), fe: $('#peFe').checked ? 1 : 0, lo: $('#peLo').value.trim(), inst: inst.filter((x) => x[0] && n0(x[1]) > 0).map((x) => [x[0], n0(x[1])]) };
-      if (stt && stt !== 'sold' && !body.total && !body.ppf && !confirm('لم تكتب سعراً — ستظهر «السعر عند الاستفسار». متابعة؟')) return;
-      if (!stt && !confirm('ستُزال القطعة من العرض في الموقع والتطبيق. متابعة؟')) return;
+      if (stt && stt !== 'sold' && !body.total && !body.ppf && !(await uiConfirm('ستظهر القطعة بعبارة «السعر عند الاستفسار».', { title: 'لم تكتب سعراً', ok: 'حفظ بدون سعر' }))) return;
+      if (!stt && !(await uiConfirm('ستختفي من الموقع والتطبيق حتى تعرضها مرة أخرى.', { danger: true, title: 'إزالة القطعة من العرض؟', ok: 'إزالة من العرض' }))) return;
       t.disabled = true; const old = t.innerHTML; t.innerHTML = '<i class="spin"></i> جارِ الحفظ…';
       try { const j = await api('adm_plot_save', body); cur = j.plot; H.toast('تم حفظ القطعة على المخطط ✓'); H.refreshData(); load(); }
       catch (ex) { H.toast(ex.message); }

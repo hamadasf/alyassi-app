@@ -3,6 +3,7 @@
 import { api, session } from './owner.js';
 import { deviceId } from './track.js';
 import { askPlayReview } from './growth.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 let H = null;
 export function initExtras(h) { H = h; }
@@ -111,10 +112,10 @@ export async function initPreregPage(pg) {
       return;
     }
     if (e.target.closest('[data-prmail]')) {
-      const android = prompt('رابط التطبيق على Google Play (اتركه فاضي لو مش جاهز):', '') || '';
-      const ios = prompt('رابط التطبيق على App Store (اتركه فاضي لو مش جاهز):', '') || '';
+      const android = await uiPrompt('اتركه فارغاً إن لم يكن جاهزاً', '', { title: 'رابط التطبيق على Google Play', ok: 'التالي', type: 'url', placeholder: 'https://play.google.com/…' }) || '';
+      const ios = await uiPrompt('اتركه فارغاً إن لم يكن جاهزاً', '', { title: 'رابط التطبيق على App Store', ok: 'التالي', type: 'url', placeholder: 'https://apps.apple.com/…' }) || '';
       if (!android && !ios) return;
-      if (!confirm('إرسال إيميل «التطبيق متاح الآن» لكل من كتب بريده؟ (مرة واحدة فقط)')) return;
+      if (!(await uiConfirm('إرسال إيميل «التطبيق متاح الآن» لكل من كتب بريده؟ يُرسل مرة واحدة فقط.', { ok: 'إرسال', icon: 'send' }))) return;
       try { const j = await api('adm_prereg_mail', { android, ios }); toast(`تم الإرسال إلى ${j.sent} بريد ✓`); e.target.closest('[data-prmail]').disabled = true; } catch (ex) { toast(ex.message); }
     }
   });

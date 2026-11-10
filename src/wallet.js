@@ -3,6 +3,7 @@ import { ei } from './icons.js';
 // instalments they receive + their commission), the next payment, upcoming instalments, a 12-month cash-flow chart and
 // their earnings. The broker keeps it; the office (permission «listings») can open anyone's wallet and add or edit.
 import { api, session } from './owner.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 let H = null;
 export function initWallet(h) { H = h; }
@@ -199,7 +200,7 @@ export function initWalletPage(pg, uid) {
           <input data-si="${i}" data-sf="l" value="${esc(r.l || '')}" placeholder="البيان"><label class="wchk sm"><input type="checkbox" data-si="${i}" data-sf="p" ${r.p ? 'checked' : ''}><i></i></label><button type="button" class="srm" data-srm="${i}">✕</button></div>`).join('')
         + (d.sched.length ? `<p class="help ${price && Math.abs(price - tot) > 1 ? 'warn' : ''}">مجموع الجدول ${m(tot)} من سعر ${m(price)} درهم${price && Math.abs(price - tot) > 1 ? ' — لا يساوي السعر' : ' ✓'}. ✓ = مدفوعة</p>` : '<p class="help">أضف الدفعات أو أنشئ الجدول تلقائياً.</p>');
     };
-    ov.addEventListener('click', (e) => {
+    ov.addEventListener('click', async (e) => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.wx !== undefined) { close(); return; }
       if (b.dataset.ty) { d.type = b.dataset.ty; setType(); return; }
@@ -215,7 +216,7 @@ export function initWalletPage(pg, uid) {
         d.sched = s; drawSched(); return;
       }
       if (b.id === 'fDel') {
-        if (!confirm('حذف هذه الصفقة نهائياً؟')) return;
+        if (!(await uiConfirm('حذف هذه الصفقة نهائياً؟', { danger: true }))) return;
         call('wallet_del', { id: d.id }).then((j) => { data = j; draw(); close(); H.toast('تم حذف الصفقة'); }).catch((ex) => H.toast(ex.message)); return;
       }
       if (b.id === 'fSave') {
@@ -256,7 +257,7 @@ export async function dealReqClick(e, list, reload) {
   const ok = e.target.closest('[data-dok]'), no = e.target.closest('[data-dno]'); if (!ok && !no) return false;
   e.stopPropagation();
   const [uid, id] = (ok ? ok.dataset.dok : no.dataset.dno).split('|'); let note = '';
-  if (no) { note = prompt('سبب الرفض (اختياري):', ''); if (note === null) return true; }
+  if (no) { note = await uiPrompt('سبب الرفض يظهر لصاحب الطلب — اختياري', '', { title: 'رفض الطلب', ok: 'رفض', danger: true, multiline: true, placeholder: 'مثال: الصور غير واضحة' }); if (note === null) return true; }
   const sel = list.querySelector(`[data-mark="${uid}|${id}"]`), mark = ok && sel ? sel.value : '';
   try { const r = await api('adm_deal_review', { uid, id, approve: ok ? '1' : '0', note, mark }); H.toast(ok ? `تم اعتماد الصفقة ✓${r.marked ? ' — وتغيّرت حالة القطعة' : ''}` : 'تم رفض الصفقة'); reload(); }
   catch (ex) { H.toast(ex.message); }

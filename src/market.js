@@ -3,6 +3,7 @@ import { ei } from './icons.js';
 // corner / lane / regular), and the company's own reservations / sales. Each company land is compared by price per sq ft
 // with similar listings in its project (same use, similar size, same position first) — so our prices stay competitive.
 import { api } from './owner.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 let H = null, comps = null, loading = null;
 export function initMarket(h) { H = h; }
@@ -123,7 +124,7 @@ export function editComp(c0, slug, after) {
     if (b.dataset.wx !== undefined) { close(); return; }
     if (b.dataset.cs) { c.side = b.dataset.cs; ov.querySelectorAll('[data-cs]').forEach((x) => x.classList.toggle('on', x === b)); return; }
     if (b.id === 'cPaste') { try { $('#cUrl').value = (await navigator.clipboard.readText()).trim().match(/https?:\/\/\S+/)?.[0] || ''; } catch { H.toast('الصق الرابط يدوياً'); } return; }
-    if (b.id === 'cDel') { if (!confirm('حذف هذا الإعلان من المقارنات؟')) return; try { comps = (await api('market_del', { id: c.id })).items; close(); after && after(); } catch (ex) { H.toast(ex.message); } return; }
+    if (b.id === 'cDel') { if (!(await uiConfirm('حذف هذا الإعلان من المقارنات؟', { danger: true }))) return; try { comps = (await api('market_del', { id: c.id })).items; close(); after && after(); } catch (ex) { H.toast(ex.message); } return; }
     if (b.id === 'cSave') {
       const item = { ...c, url: $('#cUrl').value.trim(), slug: $('#cSlug').value, price: num($('#cPrice').value), ft: num($('#cFt').value), cat: $('#cCat').value, seen: $('#cSeen').value, inst: $('#cInst').checked, note: $('#cNote').value.trim() };
       b.disabled = true;

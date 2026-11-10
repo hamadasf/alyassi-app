@@ -43,6 +43,7 @@ import { I } from './icons.js';
 import { mountRange } from './range.js';
 import { initProjMap, mapPage, initMapPage } from './projmap.js';
 import { initExtras, noteContact, maybeAskRating, ratesPage, initRatesPage, preregPage, initPreregPage } from './extras.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 const native = Capacitor.isNativePlatform();
 const $ = (s, r = document) => r.querySelector(s);
@@ -1427,7 +1428,7 @@ async function boot() {
     if (inv) {
       try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ }
       if (session.token()) {
-        setTimeout(async () => { if (!confirm('استخدام دعوة الموظف مع حسابك الحالي؟')) return; try { const j = await accApi('invite_redeem', { code: inv }); session.set(session.token(), j.user); toast('تمت إضافتك لفريق عمر الياسي للعقارات ✓'); } catch (e) { toast(e.message); } }, 800);
+        setTimeout(async () => { if (!(await uiConfirm('استخدام دعوة الموظف مع حسابك الحالي؟', { ok: 'استخدام الدعوة' }))) return; try { const j = await accApi('invite_redeem', { code: inv }); session.set(session.token(), j.user); toast('تمت إضافتك لفريق عمر الياسي للعقارات ✓'); } catch (e) { toast(e.message); } }, 800);
       } else { try { localStorage.setItem('oay:inv', inv); } catch { /* private mode */ } setTimeout(() => pushPage('account'), 700); }
     }
   }

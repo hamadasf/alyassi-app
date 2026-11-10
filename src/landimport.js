@@ -3,6 +3,7 @@
 // plots already on the plan stay exactly as they are. Buyers' names and phones in the sheet are never read.
 import { api } from './owner.js';
 import { readXlsx } from './xlsx.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 let H = null;
 export function initLandImport(h) { H = h; }
@@ -75,7 +76,7 @@ export function initImportPage(pg) {
   });
   out.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-limpgo]'); if (!b) return;
-    if (!confirm('تطبيق الاستيراد على الموقع والتطبيق؟')) return;
+    if (!(await uiConfirm('تطبيق الاستيراد على الموقع والتطبيق؟', { ok: 'تطبيق الاستيراد' }))) return;
     b.disabled = true; b.innerHTML = '<i class="spin"></i> جارِ الاستيراد…';
     try { await run(false); } catch (ex) { H.toast(ex.message); b.disabled = false; b.textContent = 'تطبيق الاستيراد'; }
   });

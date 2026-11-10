@@ -3,6 +3,7 @@ import { ei } from './icons.js';
 // Sharjah procedures guide.
 import { api, session, can } from './owner.js';
 import { quoteToOffice } from './chat.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 let H = null;
 export function initCrm(h) { H = h; }
@@ -59,7 +60,7 @@ export function initWanted(pg) {
     const w = items.find((x) => String(x.id) === (t.dataset.whave || t.dataset.wdel || t.dataset.wok || t.dataset.wno));
     try {
       if (t.dataset.whave && w) { if (needLogin('سجّل الدخول للتواصل مع الإدارة')) return; quoteToOffice(`عندي أرض قد تناسب طلب الشراء: مطلوب ${w.cat || 'أرض'}${w.projectName ? ' في ' + w.projectName : ''}${w.budget ? ' حتى ' + H.money(w.budget) + ' د.إ' : ''} (طلب رقم ${w.id})`); H.pushPage('mychat'); }
-      else if (t.dataset.wdel) { if (!confirm('حذف هذا الطلب؟')) return; await api('wanted_delete', { id: t.dataset.wdel }); H.toast('تم الحذف'); load(); }
+      else if (t.dataset.wdel) { if (!(await uiConfirm('حذف هذا الطلب؟', { danger: true }))) return; await api('wanted_delete', { id: t.dataset.wdel }); H.toast('تم الحذف'); load(); }
       else if (t.dataset.wok) { await api('adm_wanted_review', { id: t.dataset.wok, approve: '1' }); H.toast('تم نشر الطلب ✓'); load(); }
       else if (t.dataset.wno) { await api('adm_wanted_review', { id: t.dataset.wno, approve: '0' }); H.toast('تم'); load(); }
     } catch (ex) { H.toast(ex.message); }
@@ -177,13 +178,13 @@ export async function initLead(pg, id) {
   try { j.mylands = (await api('adm_mylands', { id })).items; } catch { j.mylands = []; }
   render();
   const link = async (land, on) => { try { j.mylands = (await api('adm_myland_link', { id, land, on: on ? 1 : 0 })).items; render(); H.toast(on ? 'تم ربط الأرض بحساب العميل ✓' : 'تمت الإزالة'); } catch (e) { H.toast(e.message); } };
-  el.addEventListener('click', (e) => {
+  el.addEventListener('click', async (e) => {
     const t = e.target.closest('button'); if (!t) return;
     if (t.dataset.st) save({ status: t.dataset.st }, 'تم تحديث الحالة');
     else if (t.dataset.nd !== undefined) { const d = +t.dataset.nd; save({ next: d ? new Date(Date.now() + d * 864e5).setHours(9, 0, 0, 0) : 0, status: d && j.lead.status === 'new' ? 'follow' : j.lead.status }, d ? 'تم ضبط موعد المتابعة ✓' : 'تم إلغاء الموعد'); }
     else if (t.id === 'lsave') { const v = el.querySelector('#lnote').value.trim(); if (v) save({ note: v, status: j.lead.status === 'new' ? 'follow' : j.lead.status }, 'تم حفظ الملاحظة'); }
     else if (t.dataset.mlink !== undefined) { const n = el.querySelector('#mPlot').value.trim(); if (!n) { H.toast('اكتب رقم القطعة'); return; } link(el.querySelector('#mProj').value + ':' + n, true); }
-    else if (t.dataset.munlink) { if (confirm('إزالة هذه الأرض من «أرضي» لدى العميل؟')) link(t.dataset.munlink, false); }
+    else if (t.dataset.munlink) { if ((await uiConfirm('إزالة هذه الأرض من «أرضي» لدى العميل؟', { danger: true, ok: 'إزالة' }))) link(t.dataset.munlink, false); }
     else if (t.dataset.apush) { e.stopPropagation(); H.pushPage('apush', 'user:' + t.dataset.apush + ':' + (j.user.name || '')); }
   });
   el.addEventListener('change', (e) => { if (e.target.id === 'lnext' && e.target.value) save({ next: new Date(e.target.value + 'T09:00:00').getTime(), status: j.lead.status === 'new' ? 'follow' : j.lead.status }, 'تم ضبط موعد المتابعة ✓'); });
@@ -219,7 +220,7 @@ export function initApush(pg) {
   f.addEventListener('change', (e) => { if (['audience', 'project'].includes(e.target.name)) count(); if (e.target.name === 'open') tgt(); });
   f.onsubmit = async (e) => {
     e.preventDefault();
-    if (!confirm('إرسال هذا الإشعار الآن؟')) return;
+    if (!(await uiConfirm('إرسال هذا الإشعار الآن؟', { ok: 'إرسال', icon: 'send' }))) return;
     const b = f.querySelector('button'); b.disabled = true;
     const o = sel('open').value;
     try {

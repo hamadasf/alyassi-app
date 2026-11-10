@@ -3,6 +3,7 @@ import { phoneField } from './phone.js';
 import { LEGAL, LEGAL_EN } from './legal.js';
 // «المزيد» tab: profile, my activity, account & settings, support, terms & privacy.
 import { api, session, refreshMe, logout, resizePhoto, can, isOffice, isBroker } from './owner.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 let H = null;   // helpers from main.js
 export function initMore(h) { H = h; }
@@ -138,8 +139,8 @@ export function settingsPage() {
 }
 export async function deleteAccount() {
   const { toast } = H;
-  if (!confirm('حذف حسابك نهائياً؟ ستُحذف معه كل إعلاناتك ولا يمكن التراجع.')) return;
-  if (!confirm('تأكيد أخير: حذف الحساب الآن؟')) return;
+  if (!(await uiConfirm('حذف حسابك نهائياً؟ ستُحذف معه كل إعلاناتك ولا يمكن التراجع.', { danger: true, ok: 'متابعة الحذف' }))) return;
+  if (!(await uiConfirm('لا يمكن التراجع بعد الحذف.', { danger: true, title: 'تأكيد أخير: حذف الحساب الآن؟', ok: 'حذف الحساب' }))) return;
   try { await api('delete_account'); session.clear(); toast('تم حذف الحساب'); H.closeAll(); }
   catch (e) { toast(e.message); }
 }

@@ -8,6 +8,7 @@ import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, r
 import { contactBar, refLine } from './contact.js';
 import { APP_URL } from './config.js';
 import { renderDealReqs, dealReqClick } from './wallet.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 const native = Capacitor.isNativePlatform();
 let H = null;   // helpers from main.js: { esc, toast, I, money, pushPage, closeTop, waLink, CONTACT }
@@ -68,7 +69,7 @@ export async function initAccount(pg, next) {
     pg.querySelector('[data-logout]').onclick = async () => { await logout(); toast('تم تسجيل الخروج'); H.closeTop(); };
     const rd = pg.querySelector('[data-redeem]');
     if (rd) rd.onclick = async () => {
-      const code = (prompt('اكتب كود الدعوة:', '') || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!code) return;
+      const code = (await uiPrompt('الكود الذي وصلك من المكتب أو من صديق', '', { title: 'كود الدعوة', ok: 'تأكيد', placeholder: 'مثال: M4K2P9' }) || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!code) return;
       try { const j = await api('invite_redeem', { code }); session.set(session.token(), j.user); toast('تمت إضافتك لفريق عمر الياسي للعقارات ✓'); H.closeTop(); setTimeout(() => H.pushPage('account'), 280); }
       catch (ex) { toast(ex.message); }
     };
@@ -111,7 +112,7 @@ export async function initAccount(pg, next) {
   };
   pg.querySelectorAll('[data-accmode]').forEach((b) => { b.onclick = () => setMode(b.dataset.accmode); });
   pg.querySelector('#forgot').onclick = async () => {
-    const email = form.email.value.trim() || prompt('اكتب بريدك الإلكتروني المسجّل:', '') || '';
+    const email = form.email.value.trim() || await uiPrompt('اكتب بريدك المسجّل وسنرسل لك رابطاً لتعيين كلمة مرور جديدة', '', { title: 'نسيت كلمة المرور؟', icon: 'mail', type: 'email', ok: 'إرسال الرابط', placeholder: 'name@gmail.com', required: true }) || '';
     if (!email) return;
     try { const j = await api('forgot', { email }); H.toast(j.message); } catch (ex) { err.textContent = ex.message; err.hidden = false; }
   };
@@ -346,7 +347,7 @@ export function initAdmin(pg) {
     e.stopPropagation();
     const id = (ok || no).dataset.vok || (ok || no).dataset.vno;
     let note = '';
-    if (no) { note = prompt('سبب الرفض (اختياري):', ''); if (note === null) return; }
+    if (no) { note = await uiPrompt('سبب الرفض يظهر لصاحب الطلب — اختياري', '', { title: 'رفض الطلب', ok: 'رفض', danger: true, multiline: true, placeholder: 'مثال: الصور غير واضحة' }); if (note === null) return; }
     try { await api('adm_verify', { id, approve: ok ? '1' : '0', note }); H.toast(ok ? 'تم توثيق الحساب وإضافة 500 نقطة ✓' : 'تم رفض الطلب'); load(); }
     catch (ex) { H.toast(ex.message); }
   });
@@ -384,10 +385,10 @@ export function initAdmAd(pg, id) {
     const act = b.dataset.act; b.disabled = true;
     try {
       if (act === 'approve') { const r = await api('adm_review', { id, approve: '1' }); done('تمت الموافقة ✓' + (r.planMsg ? ' — ' + r.planMsg : '')); }
-      else if (act === 'reject') { const note = prompt('سبب الرفض (اختياري):', '') ; if (note === null) { b.disabled = false; return; } await api('adm_review', { id, approve: '0', note }); done('تم'); }
+      else if (act === 'reject') { const note = await uiPrompt('سبب الرفض يظهر لصاحب الطلب — اختياري', '', { title: 'رفض الطلب', ok: 'رفض', danger: true, multiline: true, placeholder: 'مثال: الصور غير واضحة' }) ; if (note === null) { b.disabled = false; return; } await api('adm_review', { id, approve: '0', note }); done('تم'); }
       else if (act === 'pkg') { const pkg = await pickPackage(x); if (!pkg) { b.disabled = false; return; } await api('adm_feature', { id, pkg }); done('تم تفعيل الباقة ⭐'); }
       else if (act === 'feature') { await api('adm_feature', { id, on: x.featured ? '0' : '1' }); done(x.featured ? 'تم إلغاء التمييز' : 'تم تمييز الإعلان ⭐'); }
-      else if (act === 'delete') { if (!confirm('حذف هذا الإعلان نهائياً من التطبيق؟')) { b.disabled = false; return; } await api('adm_delete', { id }); done('تم حذف الإعلان'); }
+      else if (act === 'delete') { if (!(await uiConfirm('حذف هذا الإعلان نهائياً من التطبيق؟', { danger: true }))) { b.disabled = false; return; } await api('adm_delete', { id }); done('تم حذف الإعلان'); }
     } catch (ex) { toast(ex.message); b.disabled = false; }
   };
   form.onsubmit = async (e) => {
@@ -442,7 +443,7 @@ export async function initStaff(pg) {
       e.stopPropagation();
       if (s) { const a = document.createElement('a'); a.href = H.waLink(invText(s.dataset.invsend)); a.dataset.ext = ''; document.body.appendChild(a); a.click(); a.remove(); return; }
       if (c) { try { await navigator.clipboard.writeText(invText(c.dataset.invcopy)); H.toast('تم نسخ الدعوة — الصقها في أي محادثة'); } catch { H.toast(invLink(c.dataset.invcopy)); } return; }
-      if (d && confirm('حذف رابط الدعوة؟ لن يعمل بعد ذلك.')) { try { await api('adm_invite_del', { code: d.dataset.invdel }); loadInv(); } catch (ex) { H.toast(ex.message); } }
+      if (d && (await uiConfirm('حذف رابط الدعوة؟ لن يعمل بعد ذلك.', { danger: true }))) { try { await api('adm_invite_del', { code: d.dataset.invdel }); loadInv(); } catch (ex) { H.toast(ex.message); } }
     };
     loadInv();
   } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
@@ -488,7 +489,7 @@ export async function initAdmUser(pg, id) {
     }
     const vk = e.target.closest('[data-vok2]'), vn = e.target.closest('[data-vno2]');
     if (vk || vn) {
-      let note = ''; if (vn) { note = prompt('السبب (اختياري):', ''); if (note === null) return; }
+      let note = ''; if (vn) { note = await uiPrompt('اكتب السبب — اختياري', '', { title: 'السبب', ok: 'متابعة', multiline: true }); if (note === null) return; }
       try { await api('adm_verify', { id, approve: vk ? '1' : '0', note }); toast(vk ? 'تم توثيق الحساب وإضافة 500 نقطة ✓' : 'تم'); load(); } catch (ex) { toast(ex.message); }
       return;
     }
@@ -496,10 +497,10 @@ export async function initAdmUser(pg, id) {
     try {
       if (p) {
         let delta = 70;
-        if (p.dataset.pts === 'custom') { const v = prompt('عدد النقاط (اكتب رقماً سالباً للخصم):', '70'); if (v === null) return; delta = parseInt(v, 10) || 0; if (!delta) return; }
+        if (p.dataset.pts === 'custom') { const v = await uiPrompt('اكتب رقماً سالباً للخصم (مثال: -70)', '70', { title: 'عدد النقاط', ok: 'تطبيق', inputmode: 'text' }); if (v === null) return; delta = parseInt(v, 10) || 0; if (!delta) return; }
         await api('adm_points', { id, delta }); toast(delta > 0 ? `تمت إضافة ${delta} نقطة ✓` : `تم خصم ${-delta} نقطة`);
       } else {
-        if (b.dataset.ban === '1' && !confirm('إيقاف هذا الحساب؟ يُسجَّل خروجه وتُخفى إعلاناته المعروضة.')) return;
+        if (b.dataset.ban === '1' && !(await uiConfirm('إيقاف هذا الحساب؟ يُسجَّل خروجه وتُخفى إعلاناته المعروضة.', { danger: true, ok: 'إيقاف الحساب' }))) return;
         await api('adm_ban', { id, on: b.dataset.ban }); toast(b.dataset.ban === '1' ? 'تم إيقاف الحساب' : 'تم رفع الإيقاف');
       }
       load(); document.querySelectorAll('.page').forEach((x) => { if (x !== pg) x.dispatchEvent(new Event('oay:refresh')); });

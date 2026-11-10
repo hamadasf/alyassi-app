@@ -3,6 +3,7 @@ import { ei } from './icons.js';
 // and both get a reminder before the visit.
 import { api, session, can } from './owner.js';
 import { askPlayReview } from './growth.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 let H = null;
 export function initViews(h) { H = h; }
@@ -76,7 +77,7 @@ export async function initMyViews(pg) {
         : `<div class="cempty">${H.I.calendar}<p>لا توجد مواعيد — احجز معاينة من صفحة أي أرض</p></div>`;
     } catch (e) { box.innerHTML = `<p class="muted">${H.esc(e.message)}</p>`; }
   };
-  box.onclick = async (e) => { const b = e.target.closest('[data-vcancel]'); if (!b) return; if (!confirm('إلغاء موعد المعاينة؟')) return; try { await api('view_cancel', { id: b.dataset.vcancel }); H.toast('تم إلغاء الموعد'); load(); } catch (ex) { H.toast(ex.message); } };
+  box.onclick = async (e) => { const b = e.target.closest('[data-vcancel]'); if (!b) return; if (!(await uiConfirm('إلغاء موعد المعاينة؟', { danger: true, ok: 'إلغاء الموعد', cancel: 'رجوع' }))) return; try { await api('view_cancel', { id: b.dataset.vcancel }); H.toast('تم إلغاء الموعد'); load(); } catch (ex) { H.toast(ex.message); } };
   load();
 }
 
@@ -120,14 +121,14 @@ export function initViewsAdm(pg) {
   };
   const save = async (id, body, msg) => { try { await api('adm_view_save', { id, ...body }); H.toast(msg); load(); } catch (e) { H.toast(e.message); } };
   pg.querySelectorAll('[data-vt]').forEach((b) => { b.onclick = () => { tab = b.dataset.vt; pg.querySelectorAll('[data-vt]').forEach((x) => x.classList.toggle('on', x === b)); box.innerHTML = loading; load(); }; });
-  box.addEventListener('click', (e) => {
+  box.addEventListener('click', async (e) => {
     const t = e.target.closest('button'); const c = e.target.closest('[data-vid]'); if (!t || !c) return;
     const v = items.find((x) => String(x.id) === c.dataset.vid); if (!v) return;
-    if (t.dataset.vs) { if (t.dataset.vs === 'cancelled' && !confirm('إلغاء هذا الموعد؟')) return; save(v.id, { status: t.dataset.vs }, ST[t.dataset.vs][0] + ' ✓'); }
+    if (t.dataset.vs) { if (t.dataset.vs === 'cancelled' && !(await uiConfirm('إلغاء هذا الموعد؟', { danger: true, ok: 'إلغاء الموعد', cancel: 'رجوع' }))) return; save(v.id, { status: t.dataset.vs }, ST[t.dataset.vs][0] + ' ✓'); }
     else if (t.dataset.vmove !== undefined) {
-      const d = prompt('التاريخ الجديد (YYYY-MM-DD):', v.date); if (!d) return; const tm = prompt('الوقت الجديد (HH:MM بنظام 24 ساعة):', v.time); if (!tm) return;
+      const d = await uiPrompt('', v.date, { title: 'التاريخ الجديد للمعاينة', type: 'date', ok: 'التالي' }); if (!d) return; const tm = await uiPrompt('', v.time, { title: 'الوقت الجديد للمعاينة', type: 'time', ok: 'حفظ' }); if (!tm) return;
       save(v.id, { date: d.trim(), time: tm.trim() }, 'تم تغيير الموعد وإعلام العميل ✓');
-    } else if (t.dataset.vnote !== undefined) { const n = prompt('ملاحظة تظهر للعميل:', v.officeNote || ''); if (n === null) return; save(v.id, { note: n }, 'تم حفظ الملاحظة'); }
+    } else if (t.dataset.vnote !== undefined) { const n = await uiPrompt('تظهر للعميل في تفاصيل الموعد', v.officeNote || '', { title: 'ملاحظة للعميل', multiline: true }); if (n === null) return; save(v.id, { note: n }, 'تم حفظ الملاحظة'); }
   });
   pg.addEventListener('oay:refresh', load);
   load();

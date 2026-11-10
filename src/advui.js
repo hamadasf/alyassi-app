@@ -5,6 +5,7 @@
 import { api, session, refreshMe } from './owner.js';
 import { office, setBrand, advStrip } from './adv.js';
 import { ADVERTISER } from './config.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 let H = null;
 export function initAdvUI(h) { H = h; }
@@ -154,7 +155,7 @@ export async function advReqClick(e, reload) {
   const ok = e.target.closest('[data-aok]'), no = e.target.closest('[data-ano]'); if (!ok && !no) return false;
   e.stopPropagation();
   const id = ok ? ok.dataset.aok : no.dataset.ano; let note = '';
-  if (no) { note = prompt('سبب الرفض (اختياري):', ''); if (note === null) return true; }
+  if (no) { note = await uiPrompt('سبب الرفض يظهر لصاحب الطلب — اختياري', '', { title: 'رفض الطلب', ok: 'رفض', danger: true, multiline: true, placeholder: 'مثال: الصور غير واضحة' }); if (note === null) return true; }
   try { await api('adm_adv', { id, approve: ok ? '1' : '0', note }); H.toast(ok ? 'تم الاعتماد — تظهر على إعلاناته ✓' : 'تم الرفض'); reload(); }
   catch (ex) { H.toast(ex.message); }
   return true;

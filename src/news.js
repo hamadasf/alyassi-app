@@ -2,6 +2,7 @@ import { ei } from './icons.js';
 // «شريط الأخبار»: real-estate news scrolling right → left at the top of the app, the company emblem between items.
 // The office adds and removes news from the app (الأخبار العقارية page) — stored on the website.
 import { api, session, can } from './owner.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 let H = null, items = [];
 const LS = 'oay:news';
@@ -107,7 +108,7 @@ export function initNewsPage(pg) {
         return;
       }
       if (t.closest('.nedit')) return;
-      if (t.dataset.ndel) { if (!confirm('حذف هذا الخبر من الشريط؟')) return; took(await api('adm_news_delete', { id: t.dataset.ndel })); }
+      if (t.dataset.ndel) { if (!(await uiConfirm('حذف هذا الخبر من الشريط؟', { danger: true }))) return; took(await api('adm_news_delete', { id: t.dataset.ndel })); }
       else if (t.dataset.nup) took(await api('adm_news_move', { id: t.dataset.nup, up: '1' }));
       else if (t.dataset.ndown) took(await api('adm_news_move', { id: t.dataset.ndown, up: '0' }));
     } catch (ex) { H.toast(ex.message); }

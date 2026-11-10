@@ -10,6 +10,7 @@ import { SITE } from './config.js';
 import { loadPlan, drawPlanBase, drawPlanLoc, plotCentre } from './planloc.js';
 import { rawPlots } from './data.js';
 import { AD_LOGOS } from './adlogos.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 const native = Capacitor.isNativePlatform();
 let H = null;
@@ -1281,7 +1282,7 @@ export async function initAdgen2(pg, l, proj) {
     const i = +t.dataset.slotpage, s = ad.img[i], n = +t.value, pages = s && (s.pages || ad.pages); if (!s || !pages || !pages[n]) return;
     s.im = pages[n]; s.page = n; s.crop = pzFind(s.im, s.kind || 'plan'); pzForm(); adRedraw();
   });
-  form.addEventListener('click', (e) => {
+  form.addEventListener('click', async (e) => {
     const b = e.target.closest('button'); if (!b || !ad) return;
     const d = b.dataset;
     if (Object.keys(d).length) mark();
@@ -1315,7 +1316,7 @@ export async function initAdgen2(pg, l, proj) {
     }
     if (d.pznew !== undefined) { const th = ad.v.theme; ad.v = adDefaults(ad.p); ad.v.theme = th; ad.v.phone = pzPhone(th); if (layoutOf(th) === 'aya') ad.v.lab = false; ad.sel = null; pzForm(); adRedraw(); H.toast('تصميم جديد — المحفوظ باقٍ حتى تحفظ فوقه'); return; }
     if (d.pzunsave !== undefined) {
-      if (!confirm('حذف التصميم المحفوظ لهذا القالب؟')) return;
+      if (!(await uiConfirm('حذف التصميم المحفوظ لهذا القالب؟', { danger: true }))) return;
       H.api('design_del', { id: ad.p.l.id, theme: ad.v.theme }).then(() => { delete ad.saved[ad.v.theme]; pzForm(); H.toast('تم حذف التصميم المحفوظ'); }).catch((ex) => H.toast(ex.message));
       return;
     }

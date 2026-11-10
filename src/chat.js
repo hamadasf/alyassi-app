@@ -3,6 +3,7 @@
 // it sees fit — members never reach each other directly, and phone numbers are not allowed in chats.
 import { api, session, resizePhoto, can, isOffice } from './owner.js';
 import { oLandCard } from './owner-ui.js';
+import { uiConfirm, uiPrompt } from './dialog.js';
 
 let H = null;
 export function initChat(h) {
@@ -291,7 +292,7 @@ function bindChat(root, { admin, uid }) {
     e.stopPropagation();
     const m = items.find((x) => x.ref && String(x.ref.id) === f.dataset.fwd); if (!m) return;
     let d = String(m.ref.ownerPhone).replace(/\D/g, ''); if (d.startsWith('00')) d = d.slice(2); if (d.startsWith('0')) d = '971' + d.slice(1); if (/^5\d{8}$/.test(d)) d = '971' + d;
-    if (!confirm(`إرسال رقم المعلن (${m.ref.owner || ''}) لهذا العميل؟`)) return;
+    if (!(await uiConfirm(`إرسال رقم المعلن (${m.ref.owner || ''}) لهذا العميل؟`, { ok: 'إرسال الرقم', icon: 'send' }))) return;
     send(`رقم المعلن${m.ref.owner ? ' (' + m.ref.owner + ')' : ''} للتواصل بخصوص «${m.ref.title}» عبر واتساب:\nhttps://wa.me/${d}`, [], m.ref.id);
   });
   if (!admin && pendingQuote) { ta.value = pendingQuote + '\n'; pendingQuote = ''; setTimeout(() => { ta.focus(); ta.dispatchEvent(new Event('input')); }, 300); }
@@ -385,7 +386,7 @@ export function initGroup(pg) {
     if (t.dataset.gmore !== undefined) { t.previousElementSibling.classList.remove('clamp'); t.remove(); return; }
     if (!m) return;
     if (t.dataset.gcopy) { try { await navigator.clipboard.writeText(m.text); H.toast('تم النسخ'); } catch { H.toast('تعذّر النسخ'); } return; }
-    if (t.dataset.gdel) { if (!confirm('حذف هذه الرسالة من المجموعة؟')) return; try { await api('group_delete', { id: m.id }); items = items.filter((x) => x !== m); draw(true); } catch (ex) { H.toast(ex.message); } return; }
+    if (t.dataset.gdel) { if (!(await uiConfirm('حذف هذه الرسالة من المجموعة؟', { danger: true }))) return; try { await api('group_delete', { id: m.id }); items = items.filter((x) => x !== m); draw(true); } catch (ex) { H.toast(ex.message); } return; }
     if (t.dataset.greply) {
       if (admin) { H.pushPage('chat', String(m.user.id)); return; }
       // members never reach each other directly: the question goes to the office, quoting the post
@@ -453,7 +454,7 @@ export async function initProf(pg, id) {
     : '<p class="muted">لا توجد تقييمات بعد — التقييم يكون من العملاء بعد تواصلهم مع المعلن عن طريق الإدارة.</p>'}</div>`;
   h += p.items.length ? `<h3 class="msec">العقارات المعروضة (${money(p.ads)})</h3><div class="list">${p.items.map(oLandCard).join('')}</div>` : '';
   el.innerHTML = h;
-  el.querySelectorAll('[data-rdel]').forEach((b) => { b.onclick = async (e) => { e.stopPropagation(); if (!confirm('حذف هذا التقييم؟')) return; const [from, listing] = b.dataset.rdel.split(':'); try { await api('rate_delete', { owner: p.id, from, listing }); b.closest('.ritem').remove(); H.toast('تم حذف التقييم'); } catch (ex) { H.toast(ex.message); } }; });
+  el.querySelectorAll('[data-rdel]').forEach((b) => { b.onclick = async (e) => { e.stopPropagation(); if (!(await uiConfirm('حذف هذا التقييم؟', { danger: true }))) return; const [from, listing] = b.dataset.rdel.split(':'); try { await api('rate_delete', { owner: p.id, from, listing }); b.closest('.ritem').remove(); H.toast('تم حذف التقييم'); } catch (ex) { H.toast(ex.message); } }; });
   const ask = el.querySelector('[data-askuser]');
   if (ask) ask.onclick = (e) => { e.stopPropagation(); pendingQuote = `أرغب بالتواصل بخصوص إعلانات ${name}`; H.pushPage('mychat'); };
 }
