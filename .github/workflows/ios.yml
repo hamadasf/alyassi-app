@@ -93,7 +93,7 @@ jobs:
           AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$KID" -authenticationKeyIssuerID "$ISS")
           xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphoneos \
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
-            DEVELOPMENT_TEAM="$TEAM" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO -quiet archive
+            DEVELOPMENT_TEAM="$TEAM" TARGETED_DEVICE_FAMILY=1 CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO -quiet archive
           # the archive is unsigned (no registered devices needed); exportArchive signs it for the App Store
           # with an Apple Distribution certificate + App Store profile that Xcode creates via the API key
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
