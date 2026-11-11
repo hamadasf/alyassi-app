@@ -706,6 +706,34 @@ function goodLands(av) {
   const out = av.filter((l) => l.featured || deal(l) >= 0.06);
   return mixed(out, (l) => l.id).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0)).slice(0, 14);
 }
+/* ---- home, light: small cards, one «الأراضي» block with tabs ---- */
+let homeTab = 'new';
+function miniCard(l) {
+  const st = STATUS[l.status] || STATUS.av, o = offerFor(l), c = recentChange(l.id);
+  const pr = l.status === 'sold' ? 'تم البيع' : o && offerPrice(l, o) ? money(offerPrice(l, o)) + ' د.إ' : l.total ? money(l.total) + ' د.إ' : 'السعر عند الاستفسار';
+  const tag = o ? `<i class="mc-t ofr">${I.flame} عرض</i>` : c && c.kind === 'new' || l._new ? '<i class="mc-t new">جديدة</i>' : l.featured ? `<i class="mc-t star">${I.star} مميزة</i>` : '';
+  return `<button class="mcard" data-land="${esc(l.id)}"><span class="mc-ph">${l.poly || l.pc ? `<canvas class="cardloc" data-loc="${esc(l.id)}"></canvas>` : `<img loading="lazy" src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">`}<i class="mc-s ${st.cls}">${st.label}</i></span>
+    <span class="mc-b"><span class="mc-top"><b>قطعة ${esc(l.n)}</b>${tag}</span><small>${esc(l.projectName)} · ${esc(l.use || '')}</small>
+      <span class="mc-sp">${I.area}${money(l.ft)} قدم²${l.first && l.status !== 'sold' ? ` · ${l.inst.length} أقساط` : ''}</span><em>${pr}</em></span></button>`;
+}
+function oMiniCard(x) {
+  return `<button class="mcard" data-oland="${esc(x.id)}"><span class="mc-ph"><img loading="lazy" src="${esc((x.photos || [])[0] || 'assets/villa-invest.jpg')}" alt="" onerror="this.style.opacity=0"></span>
+    <span class="mc-b"><span class="mc-top"><b>${esc(x.title || 'أرض للبيع')}</b></span><small>${esc(x.seller || '')}</small><span class="mc-sp">${I.area}${x.area ? money(x.area) + ' قدم²' : '—'}</span><em>${x.price ? money(x.price) + ' د.إ' : 'السعر عند الاستفسار'}</em></span></button>`;
+}
+function projMini(p) {
+  return `<button class="pmc" data-project="${esc(p.slug)}"><img loading="lazy" src="${esc(p.poster)}" alt="" onerror="this.style.opacity=0"><span><b>${esc(p.name)}</b><small>${p.available} متاحة</small></span></button>`;
+}
+function homeLandsHTML(av, fresh, featured, best) {
+  const own = ownerLands();
+  const T = [['new', 'الأحدث', fresh], ['feat', 'مميزة', featured], ['best', 'أفضل سعر', best], ['own', 'ملاك', own]].filter((t) => t[2].length);
+  if (!T.length) return '';
+  if (!T.some((t) => t[0] === homeTab)) homeTab = T[0][0];
+  const cur = T.find((t) => t[0] === homeTab);
+  const more = { new: 'data-go="lands" data-sort="new"', feat: 'data-go="lands" data-feat="1"', best: 'data-go="lands" data-sort="price-asc"', own: 'data-olands' }[homeTab];
+  return `<div class="sec-h sm"><h2>الأراضي</h2><button ${more}>عرض الكل</button></div>
+    <div class="htabs">${T.map(([k, l]) => `<button class="${k === homeTab ? 'on' : ''}" data-htab="${k}">${l}</button>`).join('')}</div>
+    <div class="mlist">${cur[2].slice(0, 5).map(homeTab === 'own' ? oMiniCard : miniCard).join('')}</div>`;
+}
 function renderHome() {
   const { lands } = DATA(); const projects = mixed(DATA().projects);
   const av = lands.filter((l) => l.status === 'av');
@@ -747,36 +775,20 @@ function renderHome() {
           <button class="hbtn hlang notr" data-lang aria-label="Language">${isEn() ? 'AR' : 'EN'}</button>
         </div>
       </div>
-      <div class="hstats"><span><b>${av.length || '—'}</b> أرض متاحة</span><span><b>${projects.length || '—'}</b> مشروع</span><span><b>${lands.filter((l) => l.status === 'sold').length || '—'}</b> تم بيعها</span></div>
+      <div class="hsearch2"><button class="hs-in" data-go="lands" data-focus="1">${I.search}<span>رقم القطعة أو اسم المشروع…</span></button><button class="hs-f" data-hf aria-label="فلترة">${I.filter || I.sliders || I.grid}</button></div>
     </section>
-    <div class="hsearch">
-      <div class="hs-tabs">${hcats.map((c, i) => `<button class="${i ? '' : 'on'}" data-hcat="${esc(c)}">${c ? esc(c) : 'الكل'}</button>`).join('')}</div>
-      <button class="hs-in" data-go="lands" data-focus="1">${I.search}<span>رقم القطعة أو اسم المشروع…</span></button>
-      <div class="hs-q"><button data-hf>${I.building}<span>المشروع</span></button><button data-hf>${I.ruler || I.grid}<span>المساحة</span></button><button data-hf>${I.tag || I.calc}<span>السعر</span></button></div>
-      <button class="btn gold block hs-go" data-hgo>${I.search} بحث</button>
-    </div>
+    <div class="hs-chips">${hcats.map((c) => (c ? `<button data-cat="${esc(c)}">${esc(c)}</button>` : `<button class="on" data-go="lands">الكل · ${av.length}</button>`)).join('')}</div>
     ${bannerHTML(av, projects)}
     <div class="qacts"><button data-alerts=""><span>${I.alert}</span>أرض تناسبني</button><button data-wanted><span>${I.wanted}</span>مطلوب أرض</button><button data-calc=""><span>${I.calc}</span>حاسبة الأقساط</button><button data-guide><span>${I.book}</span>دليل الإجراءات</button></div>
     ${isBroker() ? '<div id="wHome" class="whomebox"></div>' : ''}
     ${notifCard()}
     ${ofr.length ? `<div class="sec-h ofr-h"><h2>${I.flame} عروض لفترة محدودة</h2><button data-go="lands" data-offers="1">عرض الكل</button></div>
       <div class="hscroll lands">${ofr.map(landCard).join('')}</div>` : ''}
-    ${fresh.length ? `<div class="sec-h"><h2>${I.plus || ''} أُضيفت حديثاً</h2><button data-go="lands" data-sort="new">عرض الكل</button></div>
-      <div class="hscroll lands">${fresh.map(landCard).join('')}</div>` : ''}
+    ${homeLandsHTML(av, fresh, featured, best)}
+    <div class="sec-h sm"><h2>مشاريعنا</h2><button data-go="projects">عرض الكل</button></div>
+    <div class="hscroll pmini">${projects.length ? projects.map(projMini).join('') : skeleton(1)}</div>
     <div id="recentBox">${recentHTML()}</div>
-    ${cats.length ? `<div class="chips scroll">${cats.map((c) => `<button class="chip" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}
-    <div class="sec-h"><h2>مشاريعنا</h2><button data-go="projects">عرض الكل</button></div>
-    <div class="hscroll">${projects.length ? projects.map((p) => projectCard(p)).join('') : skeleton(2)}</div>
-    ${featured.length ? `<div class="sec-h"><h2>${I.star || ''} مميزة وبسعر حلو</h2><button data-go="lands" data-feat="1">عرض الكل</button></div>
-      <div class="hscroll lands">${featured.map(landCard).join('')}</div>` : ''}
-    ${ownerLands().length ? `<div class="sec-h"><h2>أراضٍ معروضة للبيع</h2><button data-olands>عرض الكل</button></div>
-      <div class="hscroll lands">${ownerLands().slice(0, 10).map(oLandCard).join('')}</div>` : ''}
-    <div class="sec-h"><h2>${glock() ? 'أراضٍ متاحة' : 'أفضل الأسعار'}</h2><button data-go="lands"${glock() ? '' : ' data-sort="price-asc"'}>عرض الكل</button></div>
-    <div class="list">${best.length ? best.slice(0, 6).map(landCard).join('') : (projects.length ? '<div class="empty">لا توجد أسعار معروضة حالياً</div>' : skeleton(2))}</div>
-    <section class="cta">
-      <div><h3>عندك أرض للبيع؟</h3><p>عبّئ بيانات أرضك وسنتواصل معك</p></div>
-      <button class="btn gold" data-addland>أضف أرضك</button>
-    </section>`;
+    <button class="cta2" data-addland>${I.home2 || ''}<span><b>عندك أرض للبيع؟</b><small>أضفها وسنتواصل معك</small></span><em>أضف أرضك</em></button>`;
   startBanner();
   if (isBroker()) homeWalletCard($('#wHome'));   // the broker's month at a glance
 }
@@ -1342,6 +1354,7 @@ document.addEventListener('click', (e) => {
   if (ds.web) return openWeb(ds.web);
   if (ds.recentclr !== undefined) { recent.clear(); const rb = $('#recentBox'); if (rb) rb.innerHTML = ''; return; }
   if (ds.reset !== undefined) return resetFilters();
+  if (ds.htab) { homeTab = ds.htab; renderHome(); return; }
   if (ds.hcat !== undefined) { e.target.closest('.hs-tabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === e.target.closest('[data-hcat]'))); return; }
   if (ds.hgo !== undefined || ds.hf !== undefined) {   // the home search card: the chosen kind → the lands list (a quick filter opens the filter sheet)
     const c = (document.querySelector('.hs-tabs .on') || {}).dataset; resetFilters(); if (c && c.hcat) F.cat = c.hcat; renderLands(); closeAll(); showTab('lands');
