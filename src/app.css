@@ -1645,3 +1645,4 @@ body.guest #sheet .memf { display: none; }
 .er-row pre { white-space: pre-wrap; word-break: break-all; font-size: 11px; background: #f7f8fb; border-radius: 10px; padding: 10px; max-height: 240px; overflow: auto; }
 
 .bk-tfa { display: flex; align-items: center; gap: 12px; justify-content: space-between; margin-top: 14px; cursor: pointer; } .bk-tfa span { display: flex; flex-direction: column; gap: 3px; } .bk-tfa b { color: var(--navy); } .bk-tfa small { color: #7a7466; font-size: 12px; } .bk-tfa input { width: 22px; height: 22px; accent-color: var(--gold, #c9a14a); flex: none; }
+.opill.infra { background: #fff4e0; color: #9a5b00; }

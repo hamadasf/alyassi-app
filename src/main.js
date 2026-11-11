@@ -803,6 +803,7 @@ function ownPills(slug) {
   const x = pinfo(slug); const a = [];
   if (x.own) a.push(`<span class="opill ${x.own}">${I.globe} ${OWN[x.own]}</span>`);
   if (x.ready) a.push(`<span class="opill ready">${I.home2} جاهزة للبناء</span>`);
+  else if (x.infra) a.push(`<span class="opill infra">${I.home2} البنية التحتية قيد التنفيذ</span>`);
   return a.length ? `<div class="opills">${a.join('')}</div>` : '';
 }
 

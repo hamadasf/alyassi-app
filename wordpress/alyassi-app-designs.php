@@ -68,7 +68,24 @@ function oay_proj_lines_seed() {   // from the office: who may own in each proje
 		'rawdat-al-qurt'     => array( 'p1' => '', 'p2' => 'تملّك حر لجميع العرب' ),
 	);
 }
-function oay_proj_lines_all() { $m = get_option( 'oay_proj_lines', null ); return is_array( $m ) ? $m + oay_proj_lines_seed() : oay_proj_lines_seed(); }
+/** the projects still in the infrastructure works (Asas's announcement, 24 Sep 2026): never «جاهزة للبناء» on a post or a badge */
+const OAY_INFRA_SLUGS = array( 'dabdaba-north', 'basateen-al-zubair', 'houshi', 'blaida-1', 'blaida-2', 'blaida-3', 'al-ruwaidat', 'al-mutraq', 'industrial4', 'muhathab', 'al-sajaa', 'sajaa' );
+const OAY_INFRA_LINE  = 'البنية التحتية قيد التنفيذ';
+function oay_proj_infra( $slug ) { return in_array( $slug, OAY_INFRA_SLUGS, true ); }
+function oay_proj_lines_all() {
+	$m = get_option( 'oay_proj_lines', null ); $m = is_array( $m ) ? $m + oay_proj_lines_seed() : oay_proj_lines_seed();
+	foreach ( OAY_INFRA_SLUGS as $slug ) {
+		if ( ! isset( $m[ $slug ] ) ) { continue; }
+		$l = $m[ $slug ];
+		$p1 = trim( (string) ( $l['p1'] ?? '' ) );
+		if ( false === mb_strpos( $p1, 'البنية التحتية' ) ) {   // the main line always says it
+			$l['p1'] = OAY_INFRA_LINE;
+		}
+		if ( false !== mb_strpos( (string) ( $l['sub'] ?? '' ), 'جاهز' ) ) { $l['sub'] = ''; }
+		$l['infra'] = true; $m[ $slug ] = $l;
+	}
+	return $m;
+}
 function oay_acc_proj_lines() {
 	oay_acc_need_perm( 'design' ); $slug = sanitize_key( (string) oay_acc_arg( 'slug', 40 ) ); $m = oay_proj_lines_all();
 	oay_acc_ok( array( 'lines' => isset( $m[ $slug ] ) ? $m[ $slug ] : null ) );
@@ -76,8 +93,9 @@ function oay_acc_proj_lines() {
 function oay_acc_proj_lines_save() {
 	oay_acc_need_admin(); $slug = sanitize_key( (string) oay_acc_arg( 'slug', 40 ) ); if ( ! $slug ) { oay_acc_err( 'المشروع؟' ); }
 	$m = get_option( 'oay_proj_lines', array() ); if ( ! is_array( $m ) ) { $m = array(); }
+	if ( oay_proj_infra( $slug ) && false !== mb_strpos( oay_acc_arg( 'p1', 80 ) . oay_acc_arg( 'sub', 120 ), 'جاهز' ) ) { oay_acc_err( 'هذا المشروع ما زال ضمن أعمال البنية التحتية — لا نكتب «جاهزة للبناء» في بوستاته' ); }
 	$m[ $slug ] = array( 'p1' => mb_substr( sanitize_text_field( oay_acc_arg( 'p1', 80 ) ), 0, 60 ), 'p2' => mb_substr( sanitize_text_field( oay_acc_arg( 'p2', 80 ) ), 0, 60 ), 'sub' => mb_substr( sanitize_text_field( oay_acc_arg( 'sub', 120 ) ), 0, 80 ) );
-	update_option( 'oay_proj_lines', $m, false ); oay_acc_ok( array( 'lines' => $m[ $slug ] ) );
+	update_option( 'oay_proj_lines', $m, false ); $all = oay_proj_lines_all(); oay_acc_ok( array( 'lines' => $all[ $slug ] ) );
 }
 
 /** for everyone (the app's filter «التملّك» / «جاهزة للبناء» and the badges): who may own in each project, and whether it is ready to build */
@@ -86,7 +104,7 @@ function oay_acc_proj_public() {
 	foreach ( oay_proj_lines_all() as $slug => $l ) {
 		$txt = ( $l['p1'] ?? '' ) . ' ' . ( $l['p2'] ?? '' ) . ' ' . ( $l['sub'] ?? '' );
 		$own = false !== mb_strpos( $txt, 'جميع الجنسيات' ) || false !== mb_strpos( $txt, 'لكل الجنسيات' ) ? 'all' : ( false !== mb_strpos( $txt, 'للعرب' ) || false !== mb_strpos( $txt, 'جميع العرب' ) ? 'arab' : '' );
-		$out[ $slug ] = array( 'own' => $own, 'ready' => false !== mb_strpos( $txt, 'جاهز' ), 'note' => mb_substr( (string) ( $l['p1'] ?? '' ), 0, 60 ) );
+		$out[ $slug ] = array( 'own' => $own, 'ready' => empty( $l['infra'] ) && false !== mb_strpos( $txt, 'جاهز' ), 'infra' => ! empty( $l['infra'] ), 'note' => mb_substr( (string) ( $l['p1'] ?? '' ), 0, 60 ) );
 	}
 	header( 'Cache-Control: public, max-age=600' );
 	oay_acc_ok( array( 'items' => (object) $out ) );

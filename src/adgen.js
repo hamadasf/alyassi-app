@@ -647,7 +647,7 @@ function adFeats(p) {
     if (near('blue', 160)) out.push('قريبة من الخدمات');
     if (near('green', 200)) out.push('قريبة من حديقة');
   } catch { /* read nothing */ }
-  return out.length ? out : ['أرض مميزة قريبة من جميع الخدمات'];
+  return out.length ? out : [ad.pl && ad.pl.infra ? 'فرصة قبل اكتمال البنية التحتية' : 'أرض مميزة في موقع حيوي'];
 }
 /** the project's ownership line in the form the older templates write it */
 const ownSub = (s) => (/جميع الجنسيات/.test(s || '') ? 'تملك حر لجميع الجنسيات' : /للعرب|العرب/.test(s || '') ? 'تملك حر لجميع الجنسيات العربية' : '');
@@ -673,12 +673,12 @@ function adDefaults(p) {
     o_proj: PROJECT, o_area: p.ft ? fmt(p.ft) + ' قدم' : '', o_use1: T.use + (v.side ? ' ' + v.side : ''), o_use2: String(code ? code[1] : fl).replace(/\s*\+\s*/g, '  +  '),
     o_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', o_priceI: pr ? fmt(pr.total) + ' Dhs, ' + (n ? n + ' Installments' : 'Installments') : 'للاستفسار',
     o_p1: (ad && ad.pl && ad.pl.p1) || '', o_p2: (ad && ad.pl && ad.pl.p2) || '', o_p3: inst.length ? '' : adFeats(p).slice(0, 2).join(' · '), oFlag: true, oLogo: false,
-    w_kick: 'أراضي ' + T.use + ' للبيع', w_proj: PROJECT, w_rib: (ad && ad.pl && ad.pl.p1) || 'المنطقة جاهزة للبناء مباشرة',
+    w_kick: 'أراضي ' + T.use + ' للبيع', w_proj: PROJECT, w_rib: (ad && ad.pl && ad.pl.p1) || 'موقع مميز في الشارقة',   // never «جاهزة للبناء» unless the project's own line says so
     w_c1t: 'المساحة', w_area: p.ft ? fmt(p.ft) : '', w_unit: 'قدم مربع', w_c2t: 'تصريح بناء ' + T.use, w_c2s: fl ? '( ' + fl + ' )' : '',
     w_c3t: 'السعر كاش', w_c3tI: n ? 'السعر · ' + (n === 1 ? 'قسط واحد' : n === 2 ? 'قسطان' : n + ' أقساط') : 'السعر بالتقسيط', w_price: pr ? fmt(pr.total) : 'للاستفسار', w_cur: 'درهم إماراتي',
     w_own: (ad && ad.pl && (ownSub(ad.pl.p2) || ad.pl.p2)) || 'تملك حر لجميع الجنسيات العربية', wCol: 'gold', wLogo: true, wAv: true, w_name: 'مستشارتك العقارية', w_nameS: 'للتواصل والاستفسار عبر واتساب', w_phone: '056 500 0069',   // the project's own lines (set by the office), none when unknown
     r_proj: PROJECT, r_l1: 'المساحة', r_area: p.ft ? fmt(p.ft) + ' قدم' : '', r_l2: 'تصريح الأرض', r_use: (T.use + '   ' + String(code ? code[1] : fl).replace(/\s*\+\s*/g, '  +  ')).trim(),
-    r_l3: 'السعـــر', r_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', r_priceI: pr ? fmt(pr.total) + ' اقساط' : 'للاستفسار', rAv: true, rLines: false, r_own: (ad && ad.pl && ad.pl.p2) || '', r_feat: adFeats(p).slice(0, 2).join(' · '), a_tag: inst.length ? 'موقع مميز إستثمار مضمون' : adFeats(p).slice(0, 2).join(' · '), a_clbl: 'للتواصل والإستفسار', a_addr: 'شركة عمر الياسي للعقارات\nالشارقة - شارع مليحة' });
+    r_l3: 'السعـــر', r_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', r_priceI: pr ? fmt(pr.total) + ' اقساط' : 'للاستفسار', rAv: true, rLines: false, r_own: (ad && ad.pl && ad.pl.p2) || '', r_feat: adFeats(p).slice(0, 2).join(' · '), a_tag: inst.length ? 'موقع مميز وفرصة إستثمارية' : adFeats(p).slice(0, 2).join(' · '), a_clbl: 'للتواصل والإستفسار', a_addr: 'شركة عمر الياسي للعقارات\nالشارقة - شارع مليحة' });
   if (ad && ad.pl && (ad.pl.sub || ownSub(ad.pl.p2))) v.sub = ad.pl.sub || ownSub(ad.pl.p2);
   const s = store();
   AD_KEEP.forEach((k) => { if (typeof s[k] === 'string' && s[k]) v[k] = s[k]; });
