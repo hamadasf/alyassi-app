@@ -168,6 +168,8 @@ const push = {
       if (!OS || !OS.initialize) return;
       try {
         OS.initialize(ONESIGNAL_APP_ID);
+        // OneSignal's own in-app messages (its default English «Enable Notifications» card) never show — the app asks in its own words
+        try { if (OS.InAppMessages && OS.InAppMessages.setPaused) OS.InAppMessages.setPaused(true); } catch { /* older plugin */ }
         push.os = OS; push.ready = true;
         OS.Notifications.addEventListener('click', (ev) => { setTimeout(() => openFromPush(ev), 400); });
         OS.Notifications.addEventListener('permissionChange', (granted) => { push.nativeOn = !!granted; push.render(); });
