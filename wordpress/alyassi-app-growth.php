@@ -278,6 +278,7 @@ function oay_acc_adm_plot_save() {
 	if ( $inst && $total && array_sum( array_column( $inst, 1 ) ) > $total ) { oay_acc_err( 'مجموع الأقساط أكبر من سعر الأرض' ); }
 	$lo = esc_url_raw( (string) ( $in['lo'] ?? '' ) ); $lo = preg_match( '#^https://#', $lo ) ? $lo : '';
 	$was = is_array( $i['cur'] ?? null ) ? (string) ( $i['cur']['s'] ?? '' ) : '';
+	$GLOBALS['oay_no_push'] = ! empty( $in['quiet'] );   // «حفظ بدون إشعار»
 	$ok = oay_plan_write( $i['proj'], function ( &$st ) use ( $n, $s, $total, $ppf, $ft, $inst, $in, $lo ) {
 		$e = isset( $st['plots'][ (string) $n ] ) && is_array( $st['plots'][ (string) $n ] ) ? $st['plots'][ (string) $n ] : array();   // keeps pictures, documents, sketches
 		if ( '' === $s ) { unset( $e['s'] ); } else { $e['s'] = $s; }

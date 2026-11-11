@@ -36,6 +36,7 @@ function oay_acc_favs_sync() {
 
 /* a favourite plot is cheaper or available again → push to whoever saved it */
 add_action( 'oay_plot_changes', function ( $slug, $name, $ch, $new ) {
+	if ( ! empty( $GLOBALS['oay_no_push'] ) ) { return; }
 	$key = trim( (string) get_option( 'oay_onesignal_key', '' ) ); if ( '' === $key ) { return; }
 	$st = function_exists( 'oay_plots' ) ? oay_plots( $new ) : array(); $m = oay_favs_all(); if ( ! $m ) { return; }
 	$hits = array();

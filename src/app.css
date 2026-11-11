@@ -1663,3 +1663,6 @@ body.guest #sheet .memf { display: none; }
 .pe-tw em { font-style: normal; flex: none; background: var(--navy); color: #fff; font-weight: 800; font-size: 12.5px; border-radius: 999px; padding: 6px 12px; } .pe-tw:disabled { opacity: .6; }
 .pe-cpbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } .pe-rec { font-size: 12.5px; color: #64748b; } .pe-rec .linkbtn { font-weight: 800; }
 #peForm.pe-flash .ccard { animation: peflash 1.2s ease; } @keyframes peflash { 0% { box-shadow: 0 0 0 3px rgba(201,161,74,.7); } 100% { box-shadow: 0 0 0 0 rgba(201,161,74,0); } }
+.pe-quiet { display: flex !important; flex-direction: row !important; align-items: center; gap: 12px; background: #fff; border: 1.5px solid var(--line); border-radius: 14px; padding: 11px 13px; margin: 4px 0 10px; cursor: pointer; }
+.pe-quiet input { width: 22px; height: 22px; accent-color: var(--navy); flex: none; } .pe-quiet span { display: flex; flex-direction: column; gap: 2px; flex: 1; text-align: right; } .pe-quiet b { color: var(--navy); font-size: 14px; } .pe-quiet small { color: #64748b; font-size: 12px; }
+.pe-quiet:has(input:checked) { border-color: var(--navy); background: #f3f5fa; }

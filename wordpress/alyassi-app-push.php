@@ -62,9 +62,11 @@ function oay_handle_change( $slug, $name, $old, $new ) {
 		if ( $ot !== $t && 'sold' !== $s ) { $ch[] = $base + array( 'kind' => 'price', 'from' => $ot, 'to' => $t ); }
 	}
 	if ( ! $ch ) { return; }
-	$log = array_slice( array_merge( $ch, (array) get_option( 'oay_changes', array() ) ), 0, 300 );
-	update_option( 'oay_changes', $log, false );
-	oay_send( $ch );
+	if ( empty( $GLOBALS['oay_no_push'] ) ) {   // «حفظ بدون إشعار»: no push, no «what's new» entry — the rest (comparables…) still runs
+		$log = array_slice( array_merge( $ch, (array) get_option( 'oay_changes', array() ) ), 0, 300 );
+		update_option( 'oay_changes', $log, false );
+		oay_send( $ch );
+	}
 	do_action( 'oay_plot_changes', $slug, $name, $ch, $new );   // «أرض تناسبني» alerts (alyassi-app-crm.php)
 }
 

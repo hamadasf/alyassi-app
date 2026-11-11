@@ -66,6 +66,7 @@ add_action( 'oay_plot_saved', function ( $me, $slug, $n, $was, $s, $total ) {
 	$price = $total ? number_format( $total ) . ' د.إ' : 'السعر عند الاستفسار';
 	$new = '' === $was && 'av' === $s;
 	oay_team_log( $me->ID, $new ? 'plot_new' : 'plot_edit', 'قطعة ' . $n . ' · ' . $p['proj'] . ' · ' . ( $st[ $s ] ?? $s ) . ( $s && 'sold' !== $s ? ' · ' . $price : '' ), $slug . ':' . $n );
+	if ( ! empty( $GLOBALS['oay_no_push'] ) ) { return; }
 	if ( ! $new || ! oay_team_once( 'pnew' . $slug . $n, 3600 ) ) { return; }
 	oay_push_to( oay_notif_filter( oay_team_ids( $me->ID ), 'team' ), 'أرض جديدة على المخطط · ' . $p['proj'], 'قطعة ' . $n . ' · متاحة · ' . $price . ' — أضافها ' . oay_team_name( $me ),
 		array( 'open' => 'land', 'id' => $slug . ':' . $n ), function_exists( 'oay_push_img' ) ? oay_push_img( array( 'id' => $slug . ':' . $n ) ) : array() );

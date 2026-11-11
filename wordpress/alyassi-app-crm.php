@@ -222,6 +222,7 @@ function oay_alerts_run( $cands ) {
 }
 // company plots: new available land, back to available, or a lower price (fired by alyassi-app-push.php)
 add_action( 'oay_plot_changes', function ( $slug, $name, $ch, $new ) {
+	if ( ! empty( $GLOBALS['oay_no_push'] ) ) { return; }
 	$plots = oay_plan_plots( $slug ); $st = function_exists( 'oay_plots' ) ? oay_plots( $new ) : array(); $cands = array();
 	foreach ( $ch as $c ) {
 		$n = (string) $c['n']; $q = $st[ $n ] ?? array(); if ( ( $q['s'] ?? '' ) !== 'av' ) { continue; }
