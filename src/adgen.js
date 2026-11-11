@@ -42,6 +42,7 @@ const PZ_THEMES = {
 PZ_THEMES.aya = Object.assign({}, PZ_THEMES.pk, { name: 'قالب آية الجديد', layout: 'aya', bar: '#B4525C', logo: null, phone: '0564080004' });
 PZ_THEMES.ayk = Object.assign({}, PZ_THEMES.aya, { name: 'قالب آية كامل', ayaCol: 'plum', bar: '#5E1E51', ink: '#4A0D3C', price: '#4A0D3C', icon: '#5E1E51', phone: '0508600740' });
 PZ_THEMES.wa = Object.assign({}, PZ_THEMES.co, { name: 'قالب واتس أب', layout: 'wa', size: [1600, 1200], bar: '#B8893F', phone: '' });   // management only (never in the staff list)
+PZ_THEMES.wr = Object.assign({}, PZ_THEMES.co, { name: 'قالب واتس أب · روز', layout: 'wr', size: [1600, 1200], bar: '#B25858', bg: '#F5EEE7', phone: '' });   // management only, the advertiser's portrait in her rose colours
 let TH = PZ_THEMES.co;
 let AD_W = 1600, AD_H = 2000;   // «قالب واتس أب» is 4:3 (1600 × 1200); the others 4:5
 
@@ -50,7 +51,7 @@ const ayaArt = {}; let ayaReady = null;
 function ayaLoad() {
   if (ayaReady) return ayaReady;
   const ld = (n) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = './assets/ad/' + n; });
-  return (ayaReady = Promise.all([ld('aya-base.jpg'), ld('aya-icons.png'), ld('oy-flag.png'), ld('ar-icons.png'), ld('ar-avatar.jpg'), ld('ayk-base.jpg'), ld('ayk-icons.png')]).then(([b, i, f, ai, av, kb, ki]) => { ayaArt.pbase = ayaArt.base = b; ayaArt.picons = ayaArt.icons = i; ayaArt.oyFlag = f; ayaArt.arIcons = ai; ayaArt.arAv = av; ayaArt.kbase = kb; ayaArt.kicons = ki; }));
+  return (ayaReady = Promise.all([ld('aya-base.jpg'), ld('aya-icons.png'), ld('oy-flag.png'), ld('ar-icons.png'), ld('ar-avatar.jpg'), ld('ayk-base.jpg'), ld('ayk-icons.png'), ld('wr-avatar.jpg')]).then(([b, i, f, ai, av, kb, ki, wr]) => { ayaArt.wrAv = wr; ayaArt.pbase = ayaArt.base = b; ayaArt.picons = ayaArt.icons = i; ayaArt.oyFlag = f; ayaArt.arIcons = ai; ayaArt.arAv = av; ayaArt.kbase = kb; ayaArt.kicons = ki; }));
 }
 const AYA_PINK = { kick: '#A85E5E', title: '#655454', proj: '#A3504D', sub: '#605050', card: '#F0E5E1', cTitle: '#3E3330', cVal: '#A85E5D', tag: '#46372F', phone: '#A95F5E', addr: '#6A4E4A', plot: '#A2474F',
   ground: '#EFE3DC', wash: 'rgba(250,232,228,0.32)', pinA: '#E7A3A8', pinB: '#B4525C', labBg: 'rgba(180,82,92,.94)', shadow: 'rgba(120,70,70,.14)', cardLine: '' };
@@ -349,6 +350,125 @@ const WA_FIELDS = [
   ['w_c2t', 'بطاقة التصريح · العنوان'], ['w_c2s', 'بطاقة التصريح · السطر الثاني'],
   ['w_c3t', 'بطاقة السعر · العنوان', 'cash'], ['w_c3tI', 'بطاقة السعر · العنوان', 'inst'], ['w_price', 'السعر (الرقم)'], ['w_cur', 'تحت السعر'], ['w_own', 'شريط التملّك (أسفل)'],
 ];
+/* «قالب واتس أب · روز» (4:3, management only): a rose panel on the left with the logo, the advertiser's portrait, her WhatsApp
+   number and the price; on the right the project, the plan with a rose ring and a pin on the plot, area / permit cards and
+   the ownership line — in the colours of her photo (rose, ivory, gold, espresso) */
+const WR = { bg: ['#F8F3EE', '#EDE2D8'], rose: '#B25858', deep: '#8A3D44', blush: '#F2D3CE', ivory: '#F8F3EE', gold: '#D2AE72', ink: '#41322B', soft: '#7A5F57' };
+const WA_GLYPH = typeof Path2D === 'function' ? new Path2D('M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z') : null;
+function wrDiamond(c, x, y, r, col) { c.fillStyle = col; c.beginPath(); c.moveTo(x, y - r); c.lineTo(x + r, y); c.lineTo(x, y + r); c.lineTo(x - r, y); c.closePath(); c.fill(); }
+function wrPin(c, x, y, K) {   // a rose teardrop pin standing on the plot, tip at (x, y)
+  c.save(); c.translate(x, y); c.scale(K, K);
+  c.shadowColor = 'rgba(70,25,30,.35)'; c.shadowBlur = 12; c.shadowOffsetY = 5;
+  c.beginPath(); c.moveTo(0, 0); c.bezierCurveTo(-14, -30, -46, -52, -46, -86); c.arc(0, -86, 46, Math.PI, 0); c.bezierCurveTo(46, -52, 14, -30, 0, 0); c.closePath();
+  const g = c.createLinearGradient(0, -132, 0, 0); g.addColorStop(0, WR.rose); g.addColorStop(1, WR.deep); c.fillStyle = g; c.fill();
+  c.shadowColor = 'transparent'; c.lineWidth = 5; c.strokeStyle = WR.ivory; c.stroke();
+  c.fillStyle = WR.ivory; c.beginPath(); c.arc(0, -86, 18, 0, 7); c.fill(); wrDiamond(c, 0, -86, 9, WR.gold);
+  c.restore();
+}
+function wrDraw(c, v, p, at) {
+  const W = AD_W, H = AD_H;
+  { const g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, WR.bg[0]); g.addColorStop(1, WR.bg[1]); c.fillStyle = g; c.fillRect(0, 0, W, H); }
+  // soft blush circles and thin gold arcs in the background
+  c.fillStyle = 'rgba(242,211,206,.55)'; c.beginPath(); c.arc(W + 40, -40, 330, 0, 7); c.fill();
+  c.fillStyle = 'rgba(242,211,206,.35)'; c.beginPath(); c.arc(W - 120, H + 80, 230, 0, 7); c.fill();
+  c.strokeStyle = 'rgba(210,174,114,.55)'; c.lineWidth = 3; c.beginPath(); c.arc(W + 40, -40, 380, 0, 7); c.stroke();
+  // the rose panel
+  { c.save(); c.shadowColor = 'rgba(90,35,40,.28)'; c.shadowBlur = 30; c.shadowOffsetY = 10;
+    const g = c.createLinearGradient(0, 40, 0, 1160); g.addColorStop(0, '#BE6464'); g.addColorStop(1, WR.deep); c.fillStyle = g; box(c, 40, 40, 540, 1120, 56); c.fill(); c.restore();
+    c.save(); box(c, 40, 40, 540, 1120, 56); c.clip(); c.strokeStyle = 'rgba(255,255,255,.08)'; c.lineWidth = 2;
+    for (let r = 250; r < 760; r += 46) { c.beginPath(); c.arc(310, 450, r, 0, 7); c.stroke(); }
+    c.restore();
+    c.strokeStyle = 'rgba(210,174,114,.8)'; c.lineWidth = 2; box(c, 58, 58, 504, 1084, 44); c.stroke(); }
+  PZS = 1;
+  const lg = PZ_THEMES.co.logo;
+  if (v.wLogo && lg && lg.naturalWidth) at('logo', 130, 82, 360, 140, () => {
+    c.save(); c.shadowColor = 'rgba(60,20,25,.25)'; c.shadowBlur = 14; c.shadowOffsetY = 4; c.fillStyle = '#FFFFFF'; box(c, 130, 82, 360, 140, 30); c.fill(); c.restore();
+    c.save(); box(c, 130, 82, 360, 140, 30); c.clip(); const h = 134, w = h * lg.naturalWidth / lg.naturalHeight; c.drawImage(lg, 310 - w / 2, 152 - h / 2, w, h); c.restore();
+  });
+  if (v.wAv !== false && ayaArt.wrAv) at('avatar', 104, 246, 412, 412, () => {
+    c.save(); c.shadowColor = 'rgba(50,15,20,.35)'; c.shadowBlur = 26; c.shadowOffsetY = 8; c.fillStyle = WR.ivory; c.beginPath(); c.arc(310, 452, 196, 0, 7); c.fill(); c.restore();
+    c.save(); c.beginPath(); c.arc(310, 452, 182, 0, 7); c.clip(); c.drawImage(ayaArt.wrAv, 128, 270, 364, 364); c.restore();
+    c.strokeStyle = WR.gold; c.lineWidth = 4; c.beginPath(); c.arc(310, 452, 204, 0, 7); c.stroke();
+    wrDiamond(c, 310, 248, 11, WR.gold); wrDiamond(c, 310, 656, 11, WR.gold);
+  });
+  PZS = v.fsL; at('who', 70, 680, 480, 110, () => {
+    adFitV(c, v.w_name, 310, 682, 740, 460, 50, 800, '#FFFFFF', 'center');
+    adFitV(c, v.w_nameS, 310, 744, 788, 440, 34, 500, WR.blush, 'center');
+  });
+  PZS = v.fsC; if (v.w_phone) at('wa', 84, 808, 452, 96, () => {
+    c.save(); c.shadowColor = 'rgba(50,15,20,.3)'; c.shadowBlur = 14; c.shadowOffsetY = 5; c.fillStyle = WR.ivory; box(c, 84, 808, 452, 96, 48); c.fill(); c.restore();
+    c.fillStyle = WR.rose; c.beginPath(); c.arc(132, 856, 38, 0, 7); c.fill();
+    if (WA_GLYPH) { c.save(); c.translate(132 - 27, 856 - 27); c.scale(54 / 24, 54 / 24); c.fillStyle = '#FFFFFF'; c.fill(WA_GLYPH); c.restore(); }
+    c.direction = 'ltr'; adFitV(c, v.w_phone, 352, 822, 892, 330, 58, 800, WR.deep, 'center'); c.direction = 'rtl';
+  });
+  at('price', 70, 926, 480, 214, () => {
+    c.fillStyle = 'rgba(242,211,206,.45)'; c.fillRect(130, 932, 360, 2); wrDiamond(c, 310, 933, 8, WR.gold);
+    PZS = v.fsL; adFitV(c, v.mode === 'inst' ? v.w_c3tI : v.w_c3t, 310, 950, 1000, 440, 40, 700, WR.blush, 'center');
+    PZS = v.fsN; c.direction = isLatin(v.w_price) ? 'ltr' : 'rtl'; adFitV(c, v.w_price, 310, 1000, 1092, 460, 100, 800, '#FFFFFF', 'center'); c.direction = 'rtl';
+    PZS = v.fsL; adFitV(c, v.w_cur, 310, 1094, 1132, 440, 32, 600, WR.blush, 'center');
+  });
+  // the right side: kicker, project, ribbon line
+  PZS = v.fsL; at('kick', 980, 62, 580, 64, () => {
+    c.font = FD(700, Math.round(38 * PZS)); const w = Math.min(580, c.measureText(v.w_kick || '').width + 76);
+    c.fillStyle = WR.blush; box(c, 1560 - w, 62, w, 64, 32); c.fill();
+    wrDiamond(c, 1560 - w + 30, 94, 8, WR.rose);
+    adFitV(c, v.w_kick, 1560 - 26, 68, 120, w - 76, 38, 700, WR.deep, 'right');
+  });
+  PZS = v.fsT; at('proj', 620, 136, 940, 160, () => adFitV(c, v.w_proj, 1560, 140, 290, 940, 128, 800, WR.ink, 'right'));
+  PZS = v.fsL; at('rib', 620, 300, 940, 60, () => {
+    wrDiamond(c, 1548, 330, 11, WR.gold);
+    const px = adFitV(c, v.w_rib, 1524, 304, 356, 640, 40, 700, WR.rose, 'right'); c.font = FD(700, px);
+    const x = 1524 - c.measureText(v.w_rib || '').width - 28;
+    if (x > 660) { const g = c.createLinearGradient(620, 0, x, 0); g.addColorStop(0, 'rgba(210,174,114,0)'); g.addColorStop(1, WR.gold); c.fillStyle = g; c.fillRect(620, 329, x - 620, 3); }
+  });
+  // the plan, with a rose ring and a pin on the plot
+  const MX = 620, MY = 384, MW = 940, MH = 516;
+  { const o = v.o.map || [0, 0];
+    c.save(); c.translate(o[0], o[1]);
+    c.save(); c.shadowColor = 'rgba(90,40,40,.22)'; c.shadowBlur = 26; c.shadowOffsetY = 8; c.fillStyle = '#FFFFFF'; box(c, MX - 12, MY - 12, MW + 24, MH + 24, 44); c.fill(); c.restore();
+    const k = 2.4 * (+v.zoom || 1), x0 = p.c[0] - MW / 2 / k - (+v.mx || 0) / k, y0 = p.c[1] - MH * 0.55 / k - (+v.my || 0) / k;
+    c.save(); box(c, MX, MY, MW, MH, 34); c.clip(); c.fillStyle = '#F1E8DF'; c.fillRect(MX, MY, MW, MH);
+    c.translate(MX, MY); c.scale(k, k); c.translate(-x0, -y0); drawPlan(c, x0, y0, x0 + MW / k, y0 + MH / k, k); c.restore();
+    const sx = MX + (p.c[0] - x0) * k, sy = MY + (p.c[1] - y0) * k;
+    let rr = 0; (p.p || []).forEach((q) => { rr = Math.max(rr, Math.hypot((q[0] - p.c[0]) * k, (q[1] - p.c[1]) * k)); });
+    const K = +v.pinK || 1, R = Math.max(34, rr + 12) * K;
+    if (v.pin) {
+      c.save(); box(c, MX, MY, MW, MH, 34); c.clip();
+      c.fillStyle = 'rgba(178,88,88,.16)'; c.beginPath(); c.arc(sx, sy, R + 18 * K, 0, 7); c.fill();
+      c.lineWidth = 8 * K; c.strokeStyle = WR.rose; c.beginPath(); c.arc(sx, sy, R, 0, 7); c.stroke();
+      c.lineWidth = 3 * K; c.strokeStyle = WR.ivory; c.setLineDash([10 * K, 10 * K]); c.beginPath(); c.arc(sx, sy, R + 12 * K, 0, 7); c.stroke(); c.setLineDash([]);
+      wrPin(c, sx, sy - R + 6 * K, K); c.restore();
+    }
+    c.strokeStyle = 'rgba(210,174,114,.7)'; c.lineWidth = 2; box(c, MX - 4, MY - 4, MW + 8, MH + 8, 38); c.stroke();
+    c.restore(); ad.hits.push({ k: 'map', pan: 1, x: MX + o[0], y: MY + o[1], w: MW, h: MH }); }
+  // two cards: area and permit
+  const card = (k, x, kind, t, val, unit) => at(k, x, 934, 460, 136, () => {
+    c.save(); c.shadowColor = 'rgba(90,40,40,.14)'; c.shadowBlur = 18; c.shadowOffsetY = 5; c.fillStyle = '#FFFFFF'; box(c, x, 934, 460, 136, 34); c.fill(); c.restore();
+    c.fillStyle = WR.rose; box(c, x + 460 - 10, 958, 10, 88, 5); c.fill();
+    c.fillStyle = WR.blush; c.beginPath(); c.arc(x + 380, 1002, 48, 0, 7); c.fill();
+    c.save(); c.translate(x + 380, 1002); c.scale(0.72, 0.72); waIcon(c, kind, 0, 0, WR.deep); c.restore();
+    PZS = v.fsL; adFitV(c, t, x + 312, 950, 994, 290, 34, 600, WR.soft, 'right');
+    if (unit) {
+      PZS = v.fsN; c.direction = 'ltr'; const px = adFitV(c, val, x + 312, 994, 1056, 200, 58, 800, WR.ink, 'right'); c.font = FD(800, px); const nw = c.measureText(val || '').width; c.direction = 'rtl';
+      PZS = v.fsL; adFitV(c, unit, x + 312 - nw - 12, 1010, 1052, 290 - nw - 12, 30, 600, WR.soft, 'right');
+    } else { PZS = v.fsL; adFitV(c, val, x + 312, 994, 1056, 290, 46, 800, WR.ink, 'right'); }
+  });
+  card('c1', 1100, 'cube', v.w_c1t, v.w_area, v.w_unit);
+  card('c2', 620, 'bld', v.w_c2t, v.w_c2s, '');
+  PZS = v.fsC; at('own', 620, 1090, 940, 70, () => {
+    const px = adFitV(c, v.w_own, 1090, 1094, 1150, 800, 40, 700, WR.ink, 'center'); c.font = FD(700, px);
+    const hw = c.measureText(v.w_own || '').width / 2 + 30; if (v.w_own) { wrDiamond(c, 1090 - hw, 1124, 9, WR.gold); wrDiamond(c, 1090 + hw, 1124, 9, WR.gold); }
+  });
+  PZS = 1;
+}
+const WR_PARTS = [['logo', 'الشعار'], ['avatar', 'صورة المعلنة'], ['who', 'الاسم تحت الصورة'], ['wa', 'رقم الواتساب'], ['price', 'السعر'], ['kick', 'السطر العلوي'], ['proj', 'اسم المشروع'], ['rib', 'السطر الذهبي'], ['map', 'المخطط'], ['c1', 'بطاقة المساحة'], ['c2', 'بطاقة التصريح'], ['own', 'سطر التملّك']];
+const WR_FIELDS = [
+  ['w_kick', 'السطر العلوي'], ['w_proj', 'اسم المشروع (الكبير)'], ['w_rib', 'السطر تحت اسم المشروع'],
+  ['w_name', 'الاسم تحت الصورة'], ['w_nameS', 'السطر تحت الاسم'], ['w_phone', 'رقم الواتساب (فارغ = يختفي)'],
+  ['w_c1t', 'بطاقة المساحة · العنوان'], ['w_area', 'المساحة (الرقم)'], ['w_unit', 'وحدة المساحة'],
+  ['w_c2t', 'بطاقة التصريح · العنوان'], ['w_c2s', 'بطاقة التصريح · القيمة'],
+  ['w_c3t', 'السعر · العنوان', 'cash'], ['w_c3tI', 'السعر · العنوان', 'inst'], ['w_price', 'السعر (الرقم)'], ['w_cur', 'تحت السعر'], ['w_own', 'سطر التملّك (أسفل)'],
+];
 /* «قالب عبد الرحمن»: the plan with a ring and an arrow on the plot, a navy panel below — project name on a tab, area / permit / price rows, the advertiser */
 PZ_THEMES.ar = Object.assign({}, PZ_THEMES.co, { name: 'قالب عبد الرحمن', layout: 'ar', bar: '#132440', phone: '' });
 const AR = { navy: '#132440', gold: '#AE9A67', yellow: '#FEF631', red: '#FF3436', line: '#BFCADE' };
@@ -523,7 +643,7 @@ function adDefaults(p) {
     w_kick: 'أراضي ' + T.use + ' للبيع', w_proj: PROJECT, w_rib: (ad && ad.pl && ad.pl.p1) || 'المنطقة جاهزة للبناء مباشرة',
     w_c1t: 'المساحة', w_area: p.ft ? fmt(p.ft) : '', w_unit: 'قدم مربع', w_c2t: 'تصريح بناء ' + T.use, w_c2s: fl ? '( ' + fl + ' )' : '',
     w_c3t: 'السعر كاش', w_c3tI: n ? 'السعر · ' + (n === 1 ? 'قسط واحد' : n === 2 ? 'قسطان' : n + ' أقساط') : 'السعر بالتقسيط', w_price: pr ? fmt(pr.total) : 'للاستفسار', w_cur: 'درهم إماراتي',
-    w_own: (ad && ad.pl && (ownSub(ad.pl.p2) || ad.pl.p2)) || 'تملك حر لجميع الجنسيات العربية', wCol: 'gold', wLogo: true,   // the project's own lines (set by the office), none when unknown
+    w_own: (ad && ad.pl && (ownSub(ad.pl.p2) || ad.pl.p2)) || 'تملك حر لجميع الجنسيات العربية', wCol: 'gold', wLogo: true, wAv: true, w_name: 'مستشارتك العقارية', w_nameS: 'للتواصل والاستفسار عبر واتساب', w_phone: '056 500 0088',   // the project's own lines (set by the office), none when unknown
     r_proj: PROJECT, r_l1: 'المساحة', r_area: p.ft ? fmt(p.ft) + ' قدم' : '', r_l2: 'تصريح الأرض', r_use: (T.use + '   ' + String(code ? code[1] : fl).replace(/\s*\+\s*/g, '  +  ')).trim(),
     r_l3: 'السعـــر', r_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', r_priceI: pr ? fmt(pr.total) + ' اقساط' : 'للاستفسار', rAv: true, rLines: false, r_own: (ad && ad.pl && ad.pl.p2) || '', r_feat: adFeats(p).slice(0, 2).join(' · '), a_tag: inst.length ? 'موقع مميز إستثمار مضمون' : adFeats(p).slice(0, 2).join(' · '), a_clbl: 'للتواصل والإستفسار', a_addr: 'شركة عمر الياسي للعقارات\nالشارقة - شارع مليحة' });
   if (ad && ad.pl && (ad.pl.sub || ownSub(ad.pl.p2))) v.sub = ad.pl.sub || ownSub(ad.pl.p2);
@@ -881,6 +1001,7 @@ function drawAd(cv) {
   if (TH.layout === 'aya') { ayaDraw(c, v, p, at); PZS = 1; drawExtras(c, v, at); adSel(c); return; }
   if (TH.layout === 'oy') { oyDraw(c, v, p, at); PZS = 1; drawExtras(c, v, at); adSel(c); return; }
   if (TH.layout === 'ar') { arDraw(c, v, p, at); PZS = 1; drawExtras(c, v, at); adSel(c); return; }
+  if (TH.layout === 'wr') { wrDraw(c, v, p, at); PZS = 1; drawExtras(c, v, at); adSel(c); return; }
   if (TH.layout === 'wa') { waDraw(c, v, p, at); PZS = 1; drawExtras(c, v, at); adSel(c); return; }
   at('logo', 40, 0, 430, 362, () => {
     if (TH.logo && TH.logo.naturalWidth) c.drawImage(TH.logo, 40, 0, 430, 362);
@@ -989,7 +1110,7 @@ const AD_FIELDS = [
 const num = (s) => +String(s || '').replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[^\d.]/g, '') || 0;
 function areaFt() {   // the area written in the current template (so an edited area counts), else the plot's
   const v = ad.v, lay = layoutOf(v.theme);
-  return num(lay === 'oy' ? v.o_area : lay === 'ar' ? v.r_area : lay === 'wa' ? v.w_area : v.area) || +ad.p.ft || 0;
+  return num(lay === 'oy' ? v.o_area : lay === 'ar' ? v.r_area : lay === 'wa' || lay === 'wr' ? v.w_area : v.area) || +ad.p.ft || 0;
 }
 function applyPpf() {
   const v = ad.v, ppf = num(v.ppf), ft = areaFt(); if (!ppf || !ft) return 0;
@@ -1032,7 +1153,7 @@ export function adgenPage(l, projects) {
 }
 
 function pzForm() {
-  const aya = layoutOf(ad.v.theme) === 'aya', oy = layoutOf(ad.v.theme) === 'oy', ar = layoutOf(ad.v.theme) === 'ar', wa = layoutOf(ad.v.theme) === 'wa', okT = allowed(), only = okT.length < 2;
+  const aya = layoutOf(ad.v.theme) === 'aya', oy = layoutOf(ad.v.theme) === 'oy', ar = layoutOf(ad.v.theme) === 'ar', wa = layoutOf(ad.v.theme) === 'wa', wr = layoutOf(ad.v.theme) === 'wr', okT = allowed(), only = okT.length < 2;
   const v = ad.v, f = ([k, l, m, area]) => `<label class="fld" data-m="${m || ''}"${m && m !== v.mode ? ' hidden' : ''}>${l}${area ? `<textarea data-k="${k}" rows="3">${esc(v[k])}</textarea>` : `<input type="text" data-k="${k}" value="${esc(v[k])}">`}</label>`;
   const slots = ['صورة المبنى', 'مخطط الأرض', 'شروط التخطيط'].map((t, i) => {
     const s = ad.img[i];
@@ -1053,26 +1174,26 @@ function pzForm() {
   const sec = (k, t, body, open) => `<details class="pz-sec" data-sec="${k}"${(fresh ? open : was.has(k)) ? ' open' : ''}><summary>${t}</summary><div class="pz-body">${body}</div></details>`;
   const sv = ad.saved && ad.saved[v.theme];
   $('pzForm').innerHTML = (sv ? `<div class="pz-saved">${ei('bookmark')} تصميم محفوظ لهذا القالب · <span class="num">${esc(dmy(sv.t))}</span>${sv.by ? ' · ' + esc(sv.by) : ''}<span class="rowbtns"><button type="button" class="btn sm" data-pznew>بدء تصميم جديد</button><button type="button" class="btn sm danger" data-pzunsave>حذف المحفوظ</button></span></div>` : '') + `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · إصبعان لتكبيره أو تصغيره · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', only ? '١. نوع الدفع' : '١. القالب ونوع الدفع', `<div class="pz-th"${only ? ' hidden' : ''}>${Object.entries(PZ_THEMES).filter(([k]) => okT.includes(k)).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
-    <div class="seg"><button type="button" data-pzmode="cash" class="${v.mode === 'cash' ? 'on' : ''}">قالب الكاش</button><button type="button" data-pzmode="inst" class="${v.mode === 'inst' ? 'on' : ''}">قالب الأقساط</button></div>${wa ? `<h3>لون القالب</h3><div class="seg pz-wacol">${Object.entries(WA_COLS).map(([k, t]) => `<button type="button" data-wacol="${k}" class="${(v.wCol || 'gold') === k ? 'on' : ''}"><i style="background:linear-gradient(90deg,${t.rib[0]},${t.rib[1]})"></i>${t.name}</button>`).join('')}</div><label class="chk"><input type="checkbox" data-k="wLogo"${v.wLogo ? ' checked' : ''}> شعار الشركة</label>` : ''}`, true)
-    + sec('tx', '٢. الكتابة والأسعار', `<label class="fld pz-ppf">سعر القدم (درهم) — يحسب الإجمالي تلقائياً<input type="text" inputmode="decimal" data-ppf value="${esc(v.ppf || '')}" placeholder="مثلاً 143"></label><p class="help" id="pzTot">${ppfHelp()}</p>${(aya ? (ad.v.theme === 'ayk' ? AYK_FIELDS : AYA_FIELDS) : oy ? OY_FIELDS : ar ? AR_FIELDS : wa ? WA_FIELDS : AD_FIELDS).map(f).join('')}
+    <div class="seg"><button type="button" data-pzmode="cash" class="${v.mode === 'cash' ? 'on' : ''}">قالب الكاش</button><button type="button" data-pzmode="inst" class="${v.mode === 'inst' ? 'on' : ''}">قالب الأقساط</button></div>${wa ? `<h3>لون القالب</h3><div class="seg pz-wacol">${Object.entries(WA_COLS).map(([k, t]) => `<button type="button" data-wacol="${k}" class="${(v.wCol || 'gold') === k ? 'on' : ''}"><i style="background:linear-gradient(90deg,${t.rib[0]},${t.rib[1]})"></i>${t.name}</button>`).join('')}</div><label class="chk"><input type="checkbox" data-k="wLogo"${v.wLogo ? ' checked' : ''}> شعار الشركة</label>` : wr ? `<label class="chk"><input type="checkbox" data-k="wLogo"${v.wLogo ? ' checked' : ''}> شعار الشركة</label><label class="chk"><input type="checkbox" data-k="wAv"${v.wAv !== false ? ' checked' : ''}> صورة المعلنة</label>` : ''}`, true)
+    + sec('tx', '٢. الكتابة والأسعار', `<label class="fld pz-ppf">سعر القدم (درهم) — يحسب الإجمالي تلقائياً<input type="text" inputmode="decimal" data-ppf value="${esc(v.ppf || '')}" placeholder="مثلاً 143"></label><p class="help" id="pzTot">${ppfHelp()}</p>${(aya ? (ad.v.theme === 'ayk' ? AYK_FIELDS : AYA_FIELDS) : oy ? OY_FIELDS : ar ? AR_FIELDS : wa ? WA_FIELDS : wr ? WR_FIELDS : AD_FIELDS).map(f).join('')}
     ${oy ? `<p class="help">السطران الأبيضان خاصّان بكل مشروع (جاهز للبناء، تملّك حر للعرب أو لكل الجنسيات، البنية التحتية…)${ad.pl ? '' : ' — لم تُحدَّد بعد لهذا المشروع'}.</p>${H.isAdmin && H.isAdmin() ? `<button type="button" class="btn sm" data-pzpl>${ei('bookmark')} اجعل السطرين الأبيضين لكل بوستات مشروع ${esc(ad.p.l.projectName)}</button>` : ''}` : ''}
     <h3>موقع القطعة في العنوان</h3>
     <div class="seg pz-side">${[['', 'عادية'], ['زاوية', 'زاوية'], ['سكة', 'سكة']].map(([k, l]) => `<button type="button" data-pzside="${k}" class="${(v.side || '') === k ? 'on' : ''}">${l}${ad.rawOk && (v.auto || '') === k ? ' ✓' : ''}</button>`).join('')}</div>
     <p class="help">${ad.rawOk ? `✓ = ما قرأته من المخطط${v.auto ? ': ' + v.auto : ': ليست زاوية ولا على سكة'}. ` : ''}الاختيار يضيف الكلمة إلى آخر العنوان.</p>`, false)
-    + (aya || oy || ar || wa ? '' : sec('im', '٣. الصور', `${slots}<p class="help">الصور التي تضيفها هنا للبوست فقط ولا تُرفع إلى الموقع. يمكنك اختيار صورة أو ملف PDF.</p>`, false))
-    + sec('mp', (aya || oy || ar || wa ? '٣' : '٤') + '. الخريطة والدبوس', `
+    + (aya || oy || ar || wa || wr ? '' : sec('im', '٣. الصور', `${slots}<p class="help">الصور التي تضيفها هنا للبوست فقط ولا تُرفع إلى الموقع. يمكنك اختيار صورة أو ملف PDF.</p>`, false))
+    + sec('mp', (aya || oy || ar || wa || wr ? '٣' : '٤') + '. الخريطة والدبوس', `
     <label>تكبير الخريطة<input type="range" data-k="zoom" min="0.5" max="3" step="0.1" value="${v.zoom}"></label>
     <label>حجم الدبوس <b class="num" data-fsv="pinK">${Math.round((v.pinK || 1) * 100)}%</b><input type="range" data-k="pinK" min="0.4" max="2.5" step="0.05" value="${v.pinK || 1}"></label>
     <label class="chk"><input type="checkbox" data-k="pin"${v.pin ? ' checked' : ''}> الدبوس</label>
     ${ar ? `<label class="chk"><input type="checkbox" data-k="rAv"${v.rAv ? ' checked' : ''}> صورة المعلن</label><label class="chk"><input type="checkbox" data-k="rLines"${v.rLines ? ' checked' : ''}> سطرا التملّك ومميزات الأرض</label>` : oy ? `<label class="chk"><input type="checkbox" data-k="oFlag"${v.oFlag ? ' checked' : ''}> خريطة الإمارات</label><label class="chk"><input type="checkbox" data-k="oLogo"${v.oLogo ? ' checked' : ''}> شعار الشركة</label>` : `<label class="chk"><input type="checkbox" data-k="lab"${v.lab ? ' checked' : ''}> بطاقة الموقع على الخريطة</label>`}
     <button type="button" class="btn sm" data-mapcenter>إرجاع الخريطة إلى القطعة</button>`, false)
     + sec('ex', '＋ أشكال إضافية' + (v.ex && v.ex.length ? ` (${v.ex.length})` : ''), exForm(v), !!(v.ex && v.ex.length))
-    + sec('fs', (aya || oy || ar || wa ? '٤' : '٥') + '. حجم الخط وأماكن العناصر', `<h3>حجم الخط</h3>
+    + sec('fs', (aya || oy || ar || wa || wr ? '٤' : '٥') + '. حجم الخط وأماكن العناصر', `<h3>حجم الخط</h3>
     ${[['fsT', 'العنوان واسم المشروع'], ['fsN', 'الأرقام والأسعار'], ['fsL', 'النصوص والعناوين الصغيرة'], ['fsC', 'سطر وشريط التواصل']].map(([k, l]) => `<label>${l} <b class="num" data-fsv="${k}">${Math.round(v[k] * 100)}%</b><input type="range" data-k="${k}" min="0.6" max="1.6" step="0.05" value="${v[k]}"></label>`).join('')}
     <button type="button" class="btn sm" data-fsreset>إرجاع أحجام الخط الأصلية</button>
     <h3>تحريك العناصر</h3>
     <p class="help">اسحب أي نص أو بطاقة على المعاينة مباشرة، وكبّره أو صغّره بإصبعين، أو اختر العنصر وحرّكه بالأسهم. السحب داخل الخريطة أو داخل صورة يحرّك ما بداخلها.</p>
-    <div class="pz-move"><select id="pzPart">${(aya ? AYA_PARTS : oy ? OY_PARTS : ar ? AR_PARTS : wa ? WA_PARTS : AD_PARTS).concat((v.ex || []).map((e, i) => ['ex' + i, (e.t === 'box' ? 'مربع نص ' : e.t === 'arrow' ? 'سهم ' : 'دائرة ') + (i + 1)])).map(([k, l]) => `<option value="${k}"${ad.sel === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
+    <div class="pz-move"><select id="pzPart">${(aya ? AYA_PARTS : oy ? OY_PARTS : ar ? AR_PARTS : wa ? WA_PARTS : wr ? WR_PARTS : AD_PARTS).concat((v.ex || []).map((e, i) => ['ex' + i, (e.t === 'box' ? 'مربع نص ' : e.t === 'arrow' ? 'سهم ' : 'دائرة ') + (i + 1)])).map(([k, l]) => `<option value="${k}"${ad.sel === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
       <div class="pz-arrows"><button type="button" class="btn" data-mv="0,-1" aria-label="فوق">▲</button><button type="button" class="btn" data-mv="1,0" aria-label="يمين">▶</button><button type="button" class="btn" data-mv="-1,0" aria-label="يسار">◀</button><button type="button" class="btn" data-mv="0,1" aria-label="تحت">▼</button></div>
       <span class="rowbtns"><button type="button" class="btn sm" data-mvreset>إرجاع مكانه</button><button type="button" class="btn sm" data-mvall>إرجاع كل الأماكن</button>${v.hide && Object.keys(v.hide).length ? `<button type="button" class="btn sm" data-unhide>إظهار العناصر المحذوفة (${Object.keys(v.hide).length})</button>` : ''}</span></div>`, false)
     + `<p class="help">يُحفظ على هذا الجهاز: القالب المختار، رقم كل قالب، والسطر تحت اسم المشروع وسطر التواصل والعنوان.</p>`;
@@ -1113,7 +1234,7 @@ function exportBlob() {
   return new Promise((ok) => cv.toBlob((b) => { adRedraw(); ok(b); }, 'image/jpeg', 0.92));
 }
 /* ---------- every template at once: one picture per template the account may use, shared or saved together ---------- */
-const PZ_FILE = { wa: 'whatsapp', co: 'company', gr: 'ebada', pk: 'aya-aljabri', aya: 'aya-pink', oy: 'omar-alyassi', ar: 'abdulrahman' };
+const PZ_FILE = { wa: 'whatsapp', wr: 'whatsapp-rose', co: 'company', gr: 'ebada', pk: 'aya-aljabri', aya: 'aya-pink', oy: 'omar-alyassi', ar: 'abdulrahman' };
 function designFor(k) {   // the template's saved design, the open one, or a fresh one carrying the payment type and prices
   if (k === ad.v.theme) return ad.v;
   const sv = ad.saved && ad.saved[k]; if (sv) return Object.assign(adDefaults(ad.p), sv.v, { theme: k });
