@@ -11,6 +11,10 @@ import { renderDealReqs, dealReqClick } from './wallet.js';
 import { uiConfirm, uiPrompt } from './dialog.js';
 
 const native = Capacitor.isNativePlatform();
+/** how often the instalments are paid: every 1 … 12 months */
+export const everyTxt = (m) => (m === 1 ? 'كل شهر' : m === 2 ? 'كل شهرين' : m === 12 ? 'كل سنة' : m <= 10 ? `كل ${m} أشهر` : `كل ${m} شهراً`);
+const EVERY_OPTS = Array.from({ length: 12 }, (_, i) => [i + 1, everyTxt(i + 1)]);
+const instTxt = (n) => (n === 1 ? 'قسط واحد' : n === 2 ? 'قسطان' : n <= 10 ? `${n} أقساط` : `${n} قسطاً`);
 let H = null;   // helpers from main.js: { esc, toast, I, money, pushPage, closeTop, waLink, CONTACT }
 export function initOwnerUI(helpers) { H = helpers; }
 
@@ -194,6 +198,7 @@ function landFormHTML(v = {}, admin = false) {
         <label>السعر (درهم) *<input name="price" inputmode="numeric" dir="ltr" value="${v.price || ''}"></label></div>
       <div class="two"><label>الدفعة المقدمة<input name="down_payment" inputmode="numeric" dir="ltr" value="${v.down || ''}"></label>
         <label>عدد الأقساط<input name="installments" inputmode="numeric" dir="ltr" value="${v.installments || ''}"></label></div>
+      <label>تُدفع الأقساط<select name="pay_every"><option value="">— اختر —</option>${EVERY_OPTS.map(([m, t]) => `<option value="${m}"${+v.every === m ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
       <label>نوع التصريح<input name="permit" maxlength="60" value="${val('permit')}" placeholder="مثال: أرضي + اثنين"></label>
       <label>الموقع / الوصف المختصر للمكان<input name="location" maxlength="160" value="${val('location')}" placeholder="مثال: الشارقة، شارع مليحة"></label>
       <label>رابط الموقع على خرائط جوجل<input name="maps_url" dir="ltr" inputmode="url" value="${val('maps')}" placeholder="https://maps.app.goo.gl/…"></label>
@@ -589,7 +594,7 @@ export function oLandsPage() {
 export function oLandPage(x) {
   const { esc, money, I, waLink, CONTACT } = H;
   const rows = [['المشروع / المنطقة', x.project], ['نوع الأرض', x.type], ['رقم الأرض', x.number], ['المساحة', x.area ? money(x.area) + ' قدم² (' + money(x.area / 10.7639) + ' م²)' : ''],
-    ['الدفعة المقدمة', x.down ? money(x.down) + ' د.إ' : ''], ['عدد الأقساط', x.installments || ''], ['الموقع', x.location]].filter((r) => r[1]);
+    ['الدفعة المقدمة', x.down ? money(x.down) + ' د.إ' : ''], ['الأقساط', x.installments ? instTxt(x.installments) + (x.every ? ' · ' + everyTxt(x.every) : '') : ''], ['الموقع', x.location]].filter((r) => r[1]);
   return `<div class="ogal">${x.photos.length ? x.photos.map((s) => `<img src="${esc(s)}" alt="" loading="lazy" data-web="${esc(s)}">`).join('') : '<div class="noimg"></div>'}</div>
     <div class="pad">
       <h1 class="notr">${esc(x.title)}</h1>

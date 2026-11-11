@@ -17,6 +17,7 @@ const CITIES = ['الشارقة', 'دبي', 'أبوظبي', 'عجمان', 'رأ�
 const row = (icon, label, attrs, extra = '') => `<button class="mrow" ${attrs}><span class="mi">${icon}</span><b>${label}</b>${extra}<i class="chev">‹</i></button>`;
 
 /* ================= the tab ================= */
+const grp = (title, rows) => { const r = rows.filter(Boolean).join(''); return r ? `<h3 class="msec">${title}</h3><div class="mbox">${r}</div>` : ''; };
 const tile = (icon, label, attrs, badge = '') => `<button class="mtile" ${attrs}><span>${icon}${badge ? `<i>${badge}</i>` : ''}</span>${label}</button>`;
 export function renderMore(el) {
   const { I, esc } = H; const u = session.user();
@@ -26,35 +27,27 @@ export function renderMore(el) {
       : `<button class="mprof" data-account>${avatar(null, 'mav')}<div><b>تسجيل الدخول / حساب جديد</b><span>بالبريد الإلكتروني أو حساب جوجل</span></div><i class="chev">‹</i></button>`}
     <div class="mtiles">
       ${tile(I.heart, 'المفضلة', 'data-tab="favs"')}
-      ${tile(I.building, 'عقاراتي', 'data-account')}
+      ${tile(I.building, 'إعلاناتي', 'data-account')}
       ${tile(I.plusc, 'أضف أرضك', 'data-addland')}
       ${tile(I.calendar, 'مواعيدي', u ? 'data-myviews' : 'data-account')}
     </div>
-    ${isOffice() ? `<button class="mwork" data-tools><span class="mwi">${I.brief}</span><div><b>${u.admin ? 'لوحة الإدارة' : 'أدوات الموظف'}</b><span>العملاء · الإعلانات والتسويق · الفريق والتقارير</span></div><i class="chev">‹</i></button>` : ''}
-    <h3 class="msec">نشاطي</h3>
-    <div class="mbox">
-      ${u && !isOffice() ? row(I.home, 'أرضي', 'data-mylands', '<small>أرضك من عمر الياسي ودفعاتها</small>') : ''}
-      ${row(I.bookmark, 'بحث محفوظ', 'data-saved', nSaved ? `<small>${nSaved}</small>` : '')}
-      ${row(I.bell, 'أرض تناسبني', 'data-alerts=""', '<small>تنبيه بالأراضي المناسبة لك</small>')}
-      ${row(I.wanted, 'مطلوب أرض', 'data-wanted')}
-      ${u && isBroker(u) ? row(I.wallet, 'محفظتي', 'data-wallet=""', '<small>صفقاتي وأقساطي وأرباحي</small>') : ''}
-      ${u && !isOffice() ? row(I.chart, 'إحصائيات إعلاناتي', 'data-mystats') : ''}
-      ${u ? row(I.plusc, 'ادعُ أصدقاءك', 'data-invite', '<small>كود الدعوة الخاص بك</small>') : ''}
-    </div>
-    <h3 class="msec">الإعدادات</h3>
-    <div class="mbox">
-      ${u ? row(I.verified, 'توثيق حسابك', 'data-verify', u.verified ? '<small class="okv">موثّق</small>' : u.verify && u.verify.status === 'pending' ? '<small>قيد المراجعة</small>' : '') : ''}
-      ${row(I.bell, 'الإشعارات', 'data-notifs')}
-      <button class="mrow" data-lang><span class="mi">${I.globe}</span><b class="notr">${H.isEn() ? 'العربية' : 'English'}</b><small class="notr">${H.isEn() ? 'التغيير إلى العربية' : 'Switch to English'}</small><i class="chev">‹</i></button>
-      ${u ? row(I.gear, 'إعدادات الحساب', 'data-settings') : ''}
-    </div>
-    <h3 class="msec">المساعدة</h3>
-    <div class="mbox">
-      ${row(I.phone, 'الاتصال بنا', 'data-contactpg')}
-      ${row(I.book, 'دليل الإجراءات العقارية', 'data-guide')}
-      ${row(I.doc, 'الأخبار العقارية', 'data-news', can('news') ? '<small>إدارة الشريط</small>' : '')}
-      ${row(I.info, 'من نحن', 'data-about=""')}
-    </div>
+    ${isOffice() ? `<button class="mwork" data-tools><span class="mwi">${I.brief}</span><div><b>لوحة العمل</b><span>${u.admin ? 'العملاء · الإعلانات · التسويق · الفريق' : 'أدواتك حسب صلاحياتك'}</span></div><i class="chev">‹</i></button>` : ''}
+    ${grp('نشاطي', [
+      u && !isOffice() && row(I.home, 'أرضي ودفعاتها', 'data-mylands'),
+      u && isBroker(u) && row(I.wallet, 'محفظتي', 'data-wallet=""', '<small>صفقاتي وأرباحي</small>'),
+      u && !isOffice() && row(I.chart, 'إحصائيات إعلاناتي', 'data-mystats'),
+      row(I.alert, 'أرض تناسبني', 'data-alerts=""', '<small>تنبيه بالجديد</small>'),
+      row(I.bookmark, 'بحث محفوظ', 'data-saved', nSaved ? `<small>${nSaved}</small>` : ''),
+      row(I.wanted, 'مطلوب أرض', 'data-wanted'),
+      u && row(I.share, 'ادعُ أصدقاءك', 'data-invite'),
+    ])}
+    ${grp('عام', [
+      row(I.gear, 'الإعدادات', 'data-settings', '<small>الحساب · الإشعارات · اللغة · الخصوصية</small>'),
+      row(I.phone, 'تواصل معنا', 'data-contactpg'),
+      row(I.book, 'دليل الإجراءات العقارية', 'data-guide'),
+      row(I.trend, 'الأخبار العقارية', 'data-news', can('news') ? '<small>إدارة الشريط</small>' : ''),
+      row(I.info, 'من نحن', 'data-about=""'),
+    ])}
     ${u ? `<button class="mlogout" data-logout>${I.logout} تسجيل الخروج</button>` : ''}
     <p class="mfoot">باستخدامك تطبيق عمر الياسي للعقارات فأنت توافق على <button data-legal="terms">شروط الاستخدام</button> و<button data-legal="privacy">سياسة الخصوصية</button></p>
     <p class="ver">الإصدار ${esc(VER || '1.0')}${canCheckUpdate() ? ` · <button class="linkbtn" data-chkupd>التحقق من التحديثات</button>` : ''}</p>`;
@@ -124,17 +117,23 @@ export function initEditProfile(pg) {
 
 /* ================= settings ================= */
 export function settingsPage() {
-  const { I } = H;
+  const { I } = H; const u = session.user();
   return `<div class="pad">
-    <h3 class="msec">إعدادات الحساب</h3>
-    <div class="mbox">
-      ${row(I.user, 'المعلومات الأساسية', 'data-editprofile')}
-      ${session.user() && session.user().admin ? row(I.verified, 'صورة المعلن وشعار الشركة', 'data-brand', '<small>تظهر على كل الإعلانات</small>') : session.user() && !isOffice() ? row(I.user, 'صورتي على الإعلانات', 'data-advmine', '<small>والشعار للشركات</small>') : ''}
-      ${row(I.phone, 'رقم الجوال والبريد الإلكتروني', 'data-editprofile')}
-      <button class="mrow danger" data-delacc><span class="mi">${I.trash}</span><b>حذف الحساب</b></button>
-    </div>
-    <h3 class="msec">الخصوصية</h3>
-    <div class="mbox">${row(I.shield, 'المحظورون', 'data-blocked', '<small>الأعضاء الذين حظرتهم</small>')}${row(I.shield, 'سياسة الخصوصية', 'data-legal="privacy"')}${row(I.doc, 'شروط الاستخدام', 'data-legal="terms"')}${row(I.trash || I.doc, 'حذف الحساب والبيانات', 'data-legal="delete"')}</div>
+    ${u ? grp('الحساب', [
+      row(I.user, 'المعلومات الأساسية', 'data-editprofile', '<small>الاسم والصورة والجوال</small>'),
+      u.admin ? row(I.image, 'صورة المعلن وشعار الشركة', 'data-brand', '<small>تظهر على كل الإعلانات</small>') : !isOffice() && row(I.image, 'صورتي على الإعلانات', 'data-advmine', '<small>والشعار للشركات</small>'),
+      row(I.verified, 'توثيق حسابك', 'data-verify', u.verified ? '<small class="okv">موثّق</small>' : u.verify && u.verify.status === 'pending' ? '<small>قيد المراجعة</small>' : '<small>للمكاتب العقارية</small>'),
+    ]) : ''}
+    ${grp('التفضيلات', [
+      row(I.bell, 'الإشعارات', 'data-notifs'),
+      `<button class="mrow" data-lang><span class="mi">${I.globe}</span><b class="notr">${H.isEn() ? 'العربية' : 'English'}</b><small class="notr">${H.isEn() ? 'التغيير إلى العربية' : 'Switch to English'}</small><i class="chev">‹</i></button>`,
+    ])}
+    ${grp('الخصوصية والأمان', [
+      u && row(I.lock, 'المحظورون', 'data-blocked', '<small>الأعضاء الذين حظرتهم</small>'),
+      row(I.shield, 'سياسة الخصوصية', 'data-legal="privacy"'),
+      row(I.doc, 'شروط الاستخدام', 'data-legal="terms"'),
+      u && `<button class="mrow danger" data-delacc><span class="mi">${I.trash}</span><b>حذف الحساب</b></button>`,
+    ])}
   </div>`;
 }
 export async function deleteAccount() {
@@ -266,30 +265,55 @@ export function initVerify(pg) {
 /* ================= «لوحة الإدارة / أدوات الموظف»: the office's tools in three groups ================= */
 export function toolsPage() {
   const { I } = H; const u = session.user() || {};
-  const grp = (title, rows) => { const r = rows.filter(Boolean).join(''); return r ? `<h3 class="msec">${title}</h3><div class="mbox">${r}</div>` : ''; };
+  const t = (ok, icon, label, attrs, cnt = '') => (ok ? `<button class="wtile" ${attrs}><span>${icon}${cnt ? `<i data-cnt="${cnt}" hidden></i>` : ''}</span><b>${label}</b></button>` : '');
+  const sec = (title, tiles) => { const r = tiles.filter(Boolean).join(''); return r ? `<h3 class="msec">${title}</h3><div class="wgrid">${r}</div>` : ''; };
+  const stat = (ok, key, label, attrs) => (ok ? `<button class="wstat" ${attrs}><b data-stat="${key}">–</b><span>${label}</span></button>` : '');
+  const stats = [
+    stat(can('listings'), 'ads', 'إعلانات بانتظار المراجعة', 'data-admin'),
+    stat(!!u.admin, 'reports', 'بلاغات جديدة', 'data-admrep'),
+    stat(can('chats'), 'chats', 'رسائل غير مقروءة', 'data-tab="chats"'),
+    stat(can('viewings'), 'views', 'معاينات قادمة', 'data-views'),
+  ].filter(Boolean).join('');
   return `<div class="pad mtools">
-    ${grp('العملاء', [
-      can('leads') && row(I.user, 'متابعة العملاء', 'data-leads'),
-      can('leads') && row(I.phone, 'سجل التواصل', 'data-contacts'),
-      can('viewings') && row(I.calendar, 'مواعيد المعاينة', 'data-views'),
-      can('chats') && row(I.chat, 'المحادثات الخاصة', 'data-tab="chats"'),
-      can('leads') && row(I.star, 'تقييمات الخدمة', 'data-rates'),
-      can('leads') && row(I.plusc, 'دعوات العملاء', 'data-refs'),
-      can('plots') && row(I.building, 'إضافة / تعديل قطعة على المخطط', 'data-plotedit=""'),
-      (session.user() || {}).admin && row(I.doc || I.building, 'استيراد ملف الأراضي (Excel)', 'data-limport=""'),
-      can('leads') && row(I.users || I.user, 'التسجيل المسبق «قريباً»', 'data-prereg'),
+    <div class="wkhead"><span class="wrole">${u.admin ? I.shield + ' مدير' : I.brief + ' موظف'}</span><b class="notr">${H.esc(u.name || '')}</b></div>
+    ${stats ? `<div class="wstats">${stats}</div>` : ''}
+    ${sec('العملاء', [
+      t(can('leads'), I.user, 'متابعة العملاء', 'data-leads'),
+      t(can('leads'), I.phone, 'سجل التواصل', 'data-contacts'),
+      t(can('viewings'), I.calendar, 'مواعيد المعاينة', 'data-views'),
+      t(can('chats'), I.chat, 'المحادثات', 'data-tab="chats"'),
+      t(can('leads'), I.star, 'تقييمات الخدمة', 'data-rates'),
+      t(can('leads'), I.share, 'دعوات العملاء', 'data-refs'),
+      t(can('leads'), I.clock, 'التسجيل المسبق', 'data-prereg'),
     ])}
-    ${grp('الإعلانات والتسويق', [
-      can('listings') && row(I.shield, 'مراجعة الإعلانات', 'data-admin', '<small>طلبات العرض والتوثيق</small>'),
-      can('design') && row(I.image, 'تصميم البوستات', 'data-adgen=""'),
-      can('push') && row(I.bell, 'إشعار موجّه', 'data-pushc'),
-      u.admin && row(I.mail, 'النشرة البريدية', 'data-mailadm'),
-      can('listings') && row(I.trend, 'مقارنة بالسوق', 'data-market'),
+    ${sec('الإعلانات والمخططات', [
+      t(can('listings'), I.shield, 'مراجعة الإعلانات', 'data-admin', 'ads'),
+      t(!!u.admin, I.alert, 'البلاغات', 'data-admrep', 'reports'),
+      t(can('plots'), I.grid, 'تعديل قطعة على المخطط', 'data-plotedit=""'),
+      t(!!u.admin, I.file, 'استيراد ملف الأراضي', 'data-limport=""'),
+      t(can('listings'), I.scale, 'مقارنة بالسوق', 'data-market'),
     ])}
-    ${grp('الفريق والتقارير', [
-      can('report') && row(I.chart, 'التقرير الأسبوعي', 'data-report'),
-      (can('listings') || can('report')) && row(I.chart, 'إحصائيات الإعلانات', 'data-mystats'),
-      u.admin && row(I.verified, 'الموظفون والصلاحيات', 'data-staff'),
+    ${sec('التسويق', [
+      t(can('design'), I.image, 'تصميم البوستات', 'data-adgen=""'),
+      t(can('push'), I.bell, 'إشعار موجّه', 'data-pushc'),
+      t(!!u.admin, I.mail, 'النشرة البريدية', 'data-mailadm'),
+      t(can('news'), I.trend, 'الأخبار العقارية', 'data-news'),
+    ])}
+    ${sec('الفريق والتقارير', [
+      t(can('report'), I.doc, 'التقرير الأسبوعي', 'data-report'),
+      t(can('listings') || can('report'), I.chart, 'إحصائيات الإعلانات', 'data-mystats'),
+      t(!!u.admin, I.verified, 'الموظفون والصلاحيات', 'data-staff'),
     ])}
   </div>`;
+}
+/** the counters on top of «لوحة العمل» */
+export async function initTools(pg) {
+  const set = (k, n) => { pg.querySelectorAll(`[data-stat="${k}"]`).forEach((b) => { b.textContent = n; b.closest('.wstat').classList.toggle('hot', n > 0); }); pg.querySelectorAll(`[data-cnt="${k}"]`).forEach((i) => { i.textContent = n; i.hidden = !(n > 0); }); };
+  const u = session.user() || {};
+  const jobs = [];
+  if (can('listings')) jobs.push(api('adm_ads', { status: 'pending' }).then((j) => set('ads', (j.counts && j.counts.pending) || 0)).catch(() => set('ads', '–')));
+  if (u.admin) jobs.push(api('adm_reports').then((j) => set('reports', j.items.filter((r) => !r.done).length)).catch(() => set('reports', '–')));
+  if (can('chats')) jobs.push(api('chat_unread').then((j) => set('chats', (j.n || 0) + ((j.group && j.group.unread) || 0))).catch(() => set('chats', '–')));
+  if (can('viewings')) jobs.push(api('adm_views', { tab: 'next' }).then((j) => set('views', (j.items || []).length)).catch(() => set('views', '–')));
+  await Promise.all(jobs);
 }

@@ -51,7 +51,7 @@ export function initPlotEditPage(pg, id = '') {
         <div class="pe-sum" id="peSum"></div>
         <details class="pe-gen"><summary>${I.calc} توليد الأقساط تلقائياً</summary>
           <div class="cgrid"><label>الدفعة الأولى %<input id="gFirst" inputmode="decimal" value="20"></label><label>عدد الأقساط<input id="gN" inputmode="numeric" value="12"></label></div>
-          <div class="cgrid"><label>كل<select id="gEvery"><option value="1">شهر</option><option value="3" selected>3 أشهر</option><option value="6">6 أشهر</option><option value="12">سنة</option></select></label>
+          <div class="cgrid"><label>كل<select id="gEvery">${Array.from({ length: 12 }, (_, i) => i + 1).map((m) => `<option value="${m}"${m === 3 ? ' selected' : ''}>${m === 1 ? 'شهر' : m === 2 ? 'شهرين' : m === 12 ? 'سنة (12 شهر)' : m <= 10 ? m + ' أشهر' : m + ' شهراً'}</option>`).join('')}</select></label>
             <label>تاريخ أول قسط<input type="date" id="gStart" value="${addMonths(ymd(new Date()), 1)}"></label></div>
           <button class="btn ghost block" data-pegen>توليد</button></details>
         <div id="peInst"></div>

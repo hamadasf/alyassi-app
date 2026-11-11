@@ -61,7 +61,7 @@ function rateSheet(id) {
 }
 
 /* ---------------- office: service ratings ---------------- */
-const ago = (t) => { const d = Math.floor((Date.now() - t) / DAY); return d <= 0 ? 'اليوم' : d === 1 ? 'أمس' : `منذ ${d} يوم`; };
+const ago = (t) => { const d = Math.floor((Date.now() - t) / DAY); return d <= 0 ? 'اليوم' : d === 1 ? 'أمس' : (document.documentElement.lang === 'en' ? `${d} days ago` : `منذ ${d} يوم`); };
 const starsRow = (n) => `<span class="rs-row">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= Math.round(n) ? 'on' : ''}">${H.I.star}</i>`).join('')}</span>`;
 export const ratesPage = () => `<div class="pad" id="ratesBox"><div class="cempty">${H.I.star}<p>جارِ التحميل…</p></div></div>`;
 export async function initRatesPage(pg) {

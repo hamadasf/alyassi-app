@@ -418,7 +418,7 @@ function oay_acc_submit() {
 function oay_acc_save_fields( $pid, $pics = null, $new = false ) {
 	$in = oay_acc_in();
 	$has = function ( $k ) use ( $in ) { return array_key_exists( $k, $in ); };
-	$map = array( 'area' => '_oay_area', 'price' => '_oay_price', 'down_payment' => '_oay_down_payment', 'installments' => '_oay_installments' );
+	$map = array( 'area' => '_oay_area', 'price' => '_oay_price', 'down_payment' => '_oay_down_payment', 'installments' => '_oay_installments', 'pay_every' => '_oay_pay_every' );
 	foreach ( $map as $k => $mk ) { if ( $new || $has( $k ) ) { update_post_meta( $pid, $mk, oay_acc_num( $k ) ); } }
 	$txt = array( 'land_number' => array( '_oay_land_number', 30 ), 'permit' => array( '_oay_permit', 60 ), 'location' => array( '_oay_location', 160 ) );
 	foreach ( $txt as $k => $d ) { if ( $new || $has( $k ) ) { update_post_meta( $pid, $d[0], sanitize_text_field( oay_acc_arg( $k, $d[1] ) ) ); } }
@@ -510,7 +510,7 @@ function oay_acc_card( $p, $mine = false ) {
 	$c = array(
 		'id' => $p->ID, 'title' => $p->post_title, 'description' => $p->post_content,
 		'area' => (float) get_post_meta( $p->ID, '_oay_area', true ), 'price' => (float) get_post_meta( $p->ID, '_oay_price', true ),
-		'down' => (float) get_post_meta( $p->ID, '_oay_down_payment', true ), 'installments' => (int) get_post_meta( $p->ID, '_oay_installments', true ),
+		'down' => (float) get_post_meta( $p->ID, '_oay_down_payment', true ), 'installments' => (int) get_post_meta( $p->ID, '_oay_installments', true ), 'every' => min( 12, (int) get_post_meta( $p->ID, '_oay_pay_every', true ) ),
 		'number' => (string) get_post_meta( $p->ID, '_oay_land_number', true ), 'location' => (string) get_post_meta( $p->ID, '_oay_location', true ),
 		'maps' => (string) get_post_meta( $p->ID, '_oay_maps_url', true ), 'project' => $tt( 'projects' ), 'type' => $tt( 'land_type' ),
 		'status' => (string) get_post_meta( $p->ID, '_oay_status', true ), 'date' => get_post_time( 'U', true, $p ) * 1000,
