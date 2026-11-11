@@ -87,13 +87,17 @@ function oay_acc_team_report() {
 	$me = oay_acc_need_user(); if ( ! oay_team_lead( $me ) ) { oay_acc_err( 'غير مسموح', 403 ); }
 	$uid = absint( oay_acc_arg( 'user', 12 ) ); $days = max( 1, min( 90, absint( oay_acc_arg( 'days', 3 ) ) ?: 7 ) ); $since = oay_team_ms() - $days * 86400000;
 	$log = get_option( 'oay_team_log', array() ); $log = is_array( $log ) ? $log : array();
+	$boss = oay_acc_is_admin( $me );   // the management's own activity is seen by the management only
+	$hide = array(); if ( ! $boss ) { foreach ( oay_admin_ids() as $id ) { $x = get_userdata( $id ); if ( $x && oay_acc_is_admin( $x ) ) { $hide[ (int) $id ] = 1; } } }
+	if ( $hide ) { $log = array_values( array_filter( $log, function ( $e ) use ( $hide ) { return empty( $hide[ (int) $e['u'] ] ); } ) ); }
+	if ( isset( $hide[ $uid ] ) ) { $uid = 0; }
 	$team = array(); $cnt = array(); $lastLogin = array();
 	foreach ( $log as $e ) {
 		if ( 'login' === $e['k'] && ! isset( $lastLogin[ $e['u'] ] ) ) { $lastLogin[ $e['u'] ] = $e['t']; }
 		if ( $e['t'] >= $since ) { $cnt[ $e['u'] ][ $e['k'] ] = ( $cnt[ $e['u'] ][ $e['k'] ] ?? 0 ) + 1; }
 	}
 	foreach ( oay_admin_ids() as $id ) {
-		$u = get_userdata( $id ); if ( ! $u || ! oay_role( $u ) ) { continue; }
+		$u = get_userdata( $id ); if ( ! $u || ! oay_role( $u ) || isset( $hide[ (int) $id ] ) ) { continue; }
 		$team[] = array( 'id' => (int) $id, 'name' => $u->display_name, 'role' => oay_role( $u ), 'roleLabel' => oay_role_label( $u ), 'avatar' => (string) get_user_meta( $id, 'oay_avatar', true ),
 			'seen' => oay_seen_ms( $id ), 'online' => oay_is_online( $id ), 'login' => (int) ( $lastLogin[ $id ] ?? 0 ), 'counts' => (object) ( $cnt[ $id ] ?? array() ) );
 	}
