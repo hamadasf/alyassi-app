@@ -215,7 +215,7 @@ add_action( 'init', function () {
 	}
 }, 1 );
 /* the app's signing fingerprints (Android) — the admin pastes the one from Google Play Console ← App integrity */
-const OAY_ANDROID_UPLOAD_SHA256 = '';   // filled in from the build (the key the app on GitHub is signed with)
+const OAY_ANDROID_UPLOAD_SHA256 = 'BD:0A:75:D6:6F:B7:7A:76:B3:C4:C7:FC:B6:6A:4E:4D:25:47:A6:5B:9C:DA:6A:D8:1B:D7:19:60:F0:75:ED:BC';   // filled in from the build (the key the app on GitHub is signed with)
 add_action( 'wp_ajax_oay_acc_adm_applinks', 'oay_acc_adm_applinks' ); add_action( 'wp_ajax_nopriv_oay_acc_adm_applinks', 'oay_acc_adm_applinks' );
 function oay_acc_adm_applinks() {
 	oay_acc_need_admin(); $in = oay_acc_in();
