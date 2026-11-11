@@ -2,7 +2,7 @@
 // (privacy.html · terms.html · delete-account.html) for Google Play's «Privacy policy» and «Delete account» links.
 // Plain data only (no browser code), so the web build can import it too.
 
-export const UPDATED = { ar: '2 نوفمبر 2026', en: '2 November 2026' };
+export const UPDATED = { ar: '11 نوفمبر 2026', en: '11 November 2026' };
 const CO = { phone: '06 744 2027', tel: '+97167442027', mail: 'omaralyassi.realestate@gmail.com', ig: 'omaralyassi.uae3', addr: 'الشارقة – شارع مليحة، مكتب رقم 2، الإمارات العربية المتحدة', addrEn: 'Office 2, Maliha Road, Sharjah, United Arab Emirates' };
 export const DELETE_URL = 'https://hamadasf.github.io/alyassi-app/delete-account.html';
 
@@ -97,6 +97,7 @@ const termsAr = `
 <ul>
 <li>التواصل حول الإعلانات يتم عبر الشركة. يُمنع نشر أرقام الهواتف أو روابط التواصل الخارجية داخل المحادثات والمجموعة العامة.</li>
 <li>يُمنع: المحتوى المسيء أو المضلل أو المخالف للآداب العامة أو لقوانين الدولة، الاحتيال أو انتحال الشخصية، الرسائل المزعجة، محاولة الوصول غير المصرّح به أو تعطيل الخدمة.</li>
+<li><b>لا تسامح مطلقاً</b> مع المحتوى المسيء أو المرفوض أو الأعضاء المسيئين. يمكنك الإبلاغ عن أي رسالة أو إعلان بزر «إبلاغ»، وحظر أي عضو بزر «حظر» (وإلغاء الحظر من الإعدادات ← المحظورون). تُراجع الإدارة البلاغات خلال 24 ساعة.</li>
 <li>يحق للإدارة حذف أي محتوى مخالف وإيقاف الحساب دون إشعار مسبق.</li>
 </ul>
 
@@ -187,7 +188,8 @@ const termsEn = `
 <li>You grant the company a free, non-exclusive licence to display, copy and format your listing content in the app, website and its marketing while the listing is live.</li>
 <li>If you give a plot number in one of our projects, the land may appear on that project's interactive plan after approval.</li></ul>
 <h3>4. Contact and conduct</h3><ul><li>Contact about listings goes through the company. Phone numbers and outside contact links are not allowed in chats or the public group.</li>
-<li>Abusive, misleading or unlawful content, fraud, impersonation, spam and attempts to disrupt the service are forbidden; the office may remove content and suspend accounts without notice.</li></ul>
+<li>Abusive, misleading or unlawful content, fraud, impersonation, spam and attempts to disrupt the service are forbidden; the office may remove content and suspend accounts without notice.</li>
+<li><b>Zero tolerance</b> for objectionable content or abusive users. You can report any message or listing with «Report» and block any member with «Block» (unblock in Settings → Blocked). The office reviews reports within 24 hours.</li></ul>
 <h3>5. Points and featured listings</h3><p>Points are granted free by the office and used only to feature listings; they have no cash value and cannot be refunded or transferred. There are currently no purchases or payments in the app.</p>
 <h3>6. Prices and information</h3><p>Prices, statuses, areas and plans are for guidance and may change without notice. The instalment calculator is an estimate and payment plans are illustrative and subject to the signed contract. Nothing in the app is a binding offer; the final reference is the company's confirmation, the signed contract and official documents.</p>
 <h3>7. Notifications and email</h3><p>By signing up you agree to service messages (such as verification codes and listing status) and a weekly «Lands picked for you» email. You can stop marketing emails and notifications at any time.</p>

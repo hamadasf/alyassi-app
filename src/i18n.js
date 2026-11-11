@@ -12,6 +12,15 @@ document.documentElement.dir = lang === 'en' ? 'ltr' : 'rtl';
 
 /* Arabic → English. Longer phrases are matched before shorter ones, whole words only. */
 const EN = {
+  // safety: report / block
+  'الإبلاغ عن الإعلان': 'Report this listing', 'حظر المعلن': 'Block advertiser', 'إبلاغ': 'Report', 'حظر': 'Block', 'المحظورون': 'Blocked', 'الأعضاء الذين حظرتهم': 'Members you blocked',
+  'إلغاء الحظر': 'Unblock', 'لم تحظر أحداً.': "You haven't blocked anyone.", 'الإبلاغ عن رسالة': 'Report a message', 'إرسال البلاغ': 'Send report', 'تم الحظر': 'Blocked', 'تم إلغاء الحظر': 'Unblocked',
+  'حظر هذا العضو؟': 'Block this member?', 'حظر المعلن؟': 'Block this advertiser?', 'البلاغات': 'Reports', 'لا توجد بلاغات.': 'No reports.', 'تمت المراجعة': 'Reviewed',
+  'سيصل البلاغ للإدارة وتُراجعه خلال 24 ساعة، وتختفي الرسالة من عندك.': 'The office will review your report within 24 hours; the message is hidden for you.',
+  'سيصل البلاغ للإدارة وتُراجعه خلال 24 ساعة، ويختفي الإعلان من عندك.': 'The office will review your report within 24 hours; the listing is hidden for you.',
+  'الأعضاء الذين حظرتهم لا تظهر لك رسائلهم في المجموعة ولا إعلاناتهم.': "Members you blocked: you don't see their group messages or listings.",
+  'شكراً — وصل بلاغك للإدارة وسيُراجع خلال 24 ساعة.': 'Thank you — the office will review your report within 24 hours.',
+  'لا تسامح مع المحتوى المسيء أو الأعضاء المسيئين.': 'Zero tolerance for objectionable content or abusive users.', 'بإنشاء الحساب فأنت توافق على': 'By creating an account you agree to the',
   // navigation & headers
   'الرئيسية': 'Home', 'الأراضي': 'Lands', 'المشاريع': 'Projects', 'المفضلة': 'Favourites', 'المحادثات': 'Chats', 'المزيد': 'More',
   'تواصل معنا': 'Contact us', 'آخر التحديثات': 'Latest updates', 'التحديثات': 'Updates', 'تفاصيل الأرض': 'Land details', 'المشروع': 'Project',

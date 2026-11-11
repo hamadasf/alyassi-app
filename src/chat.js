@@ -354,7 +354,7 @@ export function initGroup(pg) {
         <div class="cmsg ${m.mine ? 'me' : 'them'}${first ? ' tail' : ''}" data-mid="${m.id}">${quoteHTML(m.reply, (r) => (r.uid && items.some((x) => x.mine && x.user.id === r.uid) ? 'أنت' : r.name || 'عضو'))}
           ${!m.mine && first ? `<button class="gname notr" data-prof="${pid}" style="color:${hue(m.user.id)}">${esc(who(m.user))} ${m.user.verified ? I.verified : ''}${m.user.admin ? '<i class="pill plan">الإدارة</i>' : ''}</button>` : ''}
           ${filesHTML(m.files)}${text ? `<p class="notr${long ? ' clamp' : ''}">${linkify(text)}</p>${long ? '<button class="gmore" data-gmore>قراءة المزيد</button>' : ''}` : ''}
-          <div class="gact">${!m.mine ? `<button data-greply="${m.id}">${I.chat} رد على الخاص</button>` : ''}${text ? `<button data-gcopy="${m.id}">نسخ</button>` : ''}${m.mine || admin ? `<button data-gdel="${m.id}" class="del">حذف</button>` : ''}${meta(m, false)}</div></div></div>`;
+          <div class="gact">${!m.mine ? `<button data-greply="${m.id}">${I.chat} رد على الخاص</button>` : ''}${text ? `<button data-gcopy="${m.id}">نسخ</button>` : ''}${!m.mine && !m.user.admin ? `<button data-grep="${m.id}">إبلاغ</button><button data-gblock="${m.id}">حظر</button>` : ''}${m.mine || admin ? `<button data-gdel="${m.id}" class="del">حذف</button>` : ''}${meta(m, false)}</div></div></div>`;
       prev = m;
     }
     box.innerHTML = h;
@@ -382,10 +382,21 @@ export function initGroup(pg) {
   });
   box.addEventListener('click', async (e) => {
     const t = e.target.closest('button'); if (!t || t.dataset.prof !== undefined || t.dataset.view !== undefined) return;
-    const m = items.find((x) => String(x.id) === (t.dataset.greply || t.dataset.gcopy || t.dataset.gdel || t.closest('[data-gid]')?.dataset.gid));
+    const m = items.find((x) => String(x.id) === (t.dataset.greply || t.dataset.gcopy || t.dataset.gdel || t.dataset.grep || t.dataset.gblock || t.closest('[data-gid]')?.dataset.gid));
     if (t.dataset.gmore !== undefined) { t.previousElementSibling.classList.remove('clamp'); t.remove(); return; }
     if (!m) return;
     if (t.dataset.gcopy) { try { await navigator.clipboard.writeText(m.text); H.toast('تم النسخ'); } catch { H.toast('تعذّر النسخ'); } return; }
+    if (t.dataset.grep) {
+      const why = await uiPrompt('سيصل البلاغ للإدارة وتُراجعه خلال 24 ساعة، وتختفي الرسالة من عندك.', '', { title: 'الإبلاغ عن رسالة', ok: 'إرسال البلاغ', placeholder: 'السبب (اختياري): مسيء، احتيال، إزعاج…', multiline: true });
+      if (why === null) return;
+      try { const j = await api('report', { kind: 'msg', id: m.id, reason: why }); items = items.filter((x) => x !== m); draw(true); H.toast(j.message || 'تم إرسال البلاغ'); } catch (ex) { H.toast(ex.message); }
+      return;
+    }
+    if (t.dataset.gblock) {
+      if (!(await uiConfirm(`لن تظهر لك رسائل ${who(m.user)} ولا إعلاناته بعد الآن. يمكنك إلغاء الحظر من الإعدادات ← المحظورون.`, { title: 'حظر هذا العضو؟', ok: 'حظر', danger: true }))) return;
+      try { await api('block', { id: m.user.id }); items = items.filter((x) => x.user.id !== m.user.id); draw(true); H.toast('تم الحظر'); } catch (ex) { H.toast(ex.message); }
+      return;
+    }
     if (t.dataset.gdel) { if (!(await uiConfirm('حذف هذه الرسالة من المجموعة؟', { danger: true }))) return; try { await api('group_delete', { id: m.id }); items = items.filter((x) => x !== m); draw(true); } catch (ex) { H.toast(ex.message); } return; }
     if (t.dataset.greply) {
       if (admin) { H.pushPage('chat', String(m.user.id)); return; }

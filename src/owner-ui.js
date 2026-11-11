@@ -4,7 +4,7 @@ import { phoneField } from './phone.js';
 import { advStrip } from './adv.js';
 import { pickersHTML, bindPickers, pickersError, submitAdv, advMissing, renderAdvReqs, advReqClick } from './advui.js';
 import { Capacitor } from '@capacitor/core';
-import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands, can, isBroker } from './owner.js';
+import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands, loadOwnerLands, can, isBroker } from './owner.js';
 import { contactBar, refLine } from './contact.js';
 import { APP_URL } from './config.js';
 import { renderDealReqs, dealReqClick } from './wallet.js';
@@ -53,6 +53,7 @@ export function accountPage() {
         <small>لم يصلك؟ تحقق من مجلد الرسائل غير المرغوبة (Spam)، أو <button type="button" class="linkbtn" id="resend">أعد الإرسال</button></small>
       </div>
       <p class="ferr" id="accErr" hidden></p>
+      <p class="muted terms-ok" data-only="register">بإنشاء الحساب فأنت توافق على <button type="button" class="linkbtn" data-legal="terms">شروط الاستخدام</button> و<button type="button" class="linkbtn" data-legal="privacy">سياسة الخصوصية</button>. لا تسامح مع المحتوى المسيء أو الأعضاء المسيئين.</p>
       <button class="btn primary block" type="submit" id="accGo">دخول</button>
       <button class="linkbtn" type="button" id="forgot" data-only="login">نسيت كلمة المرور؟</button>
     </form>
@@ -290,6 +291,7 @@ export async function initAddLand(pg) {
 
 /* ================= admin ================= */
 const ADM = { tab: 'pending' };
+export function admTab(t) { ADM.tab = t; }
 const admCache = new Map();   // id → card, for the detail page
 function admCard(x) {
   const { esc, money } = H; admCache.set(String(x.id), x);
@@ -302,7 +304,7 @@ function admCard(x) {
 }
 export function adminPage() {
   return `<div class="pad acc">
-    <div class="seg four"><button data-atab="pending">الطلبات <em id="cPending"></em></button><button data-atab="publish">المعروضة</button><button data-atab="draft">المرفوضة</button>${(session.user() || {}).admin ? '<button data-atab="verify">التوثيق <em id="cVerify"></em></button>' : ''}<button data-atab="advs">الصور <em id="cAdv"></em></button><button data-atab="deals">الصفقات <em id="cDeal"></em></button><button data-atab="users">المستخدمون</button></div>
+    <div class="seg four"><button data-atab="pending">الطلبات <em id="cPending"></em></button><button data-atab="publish">المعروضة</button><button data-atab="draft">المرفوضة</button>${(session.user() || {}).admin ? '<button data-atab="verify">التوثيق <em id="cVerify"></em></button>' : ''}<button data-atab="advs">الصور <em id="cAdv"></em></button><button data-atab="deals">الصفقات <em id="cDeal"></em></button><button data-atab="users">المستخدمون</button>${(session.user() || {}).admin ? '<button data-atab="reports">البلاغات <em id="cRep"></em></button>' : ''}</div>
     <div id="admSearch" hidden><input class="srch" id="admQ" placeholder="ابحث بالاسم أو البريد…"></div>
     <div id="admList"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>
   </div>`;
@@ -326,6 +328,18 @@ export function initAdmin(pg) {
             <span class="muted">${new Date(u.verify.t).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE')}</span>
             <div class="admact"><button class="btn wa" data-vok="${u.id}">✓ توثيق (+500 نقطة)</button><button class="btn ghost" data-vno="${u.id}">✕ رفض</button></div></div>`).join('')
           : '<p class="muted">لا توجد طلبات توثيق.</p>';
+      } else if (ADM.tab === 'reports') {
+        const j = await api('adm_reports');
+        const open = j.items.filter((r) => !r.done).length; const c = pg.querySelector('#cRep'); if (c) c.textContent = open ? `(${open})` : '';
+        const K = { msg: 'رسالة في المجموعة', land: 'إعلان أرض', user: 'عضو' };
+        list.innerHTML = j.items.length ? j.items.map((r) => `<div class="vreq${r.done ? ' done' : ''}" data-rep="${r.n}">
+            <b>#${r.n} · ${K[r.kind] || r.kind}${r.done ? ' · ✓ تمت المراجعة' : ''}</b>
+            <span class="notr">«${esc(r.what)}»</span>
+            <span>صاحب المحتوى: <b class="notr">${esc(r.authorName)}</b> · المُبلِّغ: <span class="notr">${esc(r.byName)}</span></span>
+            ${r.reason ? `<span>السبب: <span class="notr">${esc(r.reason)}</span></span>` : ''}
+            <span class="muted">${new Date(r.t * 1000).toLocaleString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE')}${r.exists ? '' : ' · المحتوى محذوف'}</span>
+            <div class="admact">${r.kind === 'msg' && r.exists ? `<button class="btn ghost" data-repdelmsg="${r.id}">حذف الرسالة</button>` : ''}${r.kind === 'land' && r.exists ? `<button class="btn ghost" data-repdelad="${r.id}">حذف الإعلان</button>` : ''}${r.author ? `<button class="btn ghost" data-repban="${r.author}">إيقاف الحساب</button>` : ''}${r.done ? '' : `<button class="btn wa" data-repdone="${r.n}">✓ تمت المراجعة</button>`}</div></div>`).join('')
+          : '<p class="muted">لا توجد بلاغات.</p>';
       } else if (ADM.tab === 'users') {
         const j = await api('adm_users', { q: q.value.trim() });
         list.innerHTML = j.items.length ? j.items.map((u) => `<div class="strow" data-auser="${u.id}">${u.avatar ? `<img class="stav" src="${esc(u.avatar)}" alt="">` : `<div class="stav">${esc((u.name || u.email || '?').charAt(0).toUpperCase())}</div>`}
@@ -341,6 +355,18 @@ export function initAdmin(pg) {
   };
   pg.querySelectorAll('[data-atab]').forEach((b) => { b.onclick = () => { ADM.tab = b.dataset.atab; load(); }; });
   list.addEventListener('click', async (e) => {
+    const rb = e.target.closest('[data-repdelmsg],[data-repdelad],[data-repban],[data-repdone]');
+    if (rb) {
+      const d = rb.dataset;
+      try {
+        if (d.repdelmsg) { if (!(await uiConfirm('حذف هذه الرسالة من المجموعة؟', { danger: true }))) return; await api('group_delete', { id: +d.repdelmsg }); }
+        else if (d.repdelad) { if (!(await uiConfirm('حذف هذا الإعلان؟', { danger: true }))) return; await api('adm_delete', { id: +d.repdelad }); }
+        else if (d.repban) { if (!(await uiConfirm('إيقاف حساب صاحب المحتوى؟ تُخفى إعلاناته ولا يستطيع الدخول.', { title: 'إيقاف الحساب', ok: 'إيقاف', danger: true }))) return; await api('adm_ban', { id: +d.repban, on: '1' }); }
+        else if (d.repdone) { await api('adm_report_done', { n: +d.repdone }); }
+        H.toast('تم'); load();
+      } catch (ex) { H.toast(ex.message); }
+      return;
+    }
     if (await advReqClick(e, load)) return;
     if (await dealReqClick(e, list, load)) return;
     const ok = e.target.closest('[data-vok]'), no = e.target.closest('[data-vno]'); if (!ok && !no) return;
@@ -575,6 +601,36 @@ export function oLandPage(x) {
       <div class="inst">${rows.map((r) => `<div class="r"><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}</div>
       ${x.description ? `<p class="odesc notr">${esc(x.description)}</p>` : ''}
       ${x.maps ? `<a class="btn ghost block" href="${esc(x.maps)}" data-ext>${I.pin} الموقع على الخريطة</a>` : ''}
+      ${x.by && !(session.user() && +x.by === +session.user().id) ? `<div class="safety"><button class="linkbtn" data-repad="${x.id}">⚑ الإبلاغ عن الإعلان</button><button class="linkbtn" data-blockadv="${x.by}">حظر المعلن</button></div>` : ''}
     </div>
     ${contactBar({ id: String(x.id), title: x.title + (x.number ? ' · رقم ' + x.number : ''), url: x.url || '', loc: x.maps || '' })}`;
+}
+
+/* ---------- safety: report a listing / block an advertiser (App Store guideline 1.2) ---------- */
+export async function reportAd(id) {
+  if (!session.token()) { H.toast('سجّل الدخول للإبلاغ عن الإعلان'); H.pushPage('account'); return false; }
+  const why = await uiPrompt('سيصل البلاغ للإدارة وتُراجعه خلال 24 ساعة، ويختفي الإعلان من عندك.', '', { title: 'الإبلاغ عن الإعلان', ok: 'إرسال البلاغ', placeholder: 'السبب (اختياري): مضلل، احتيال، محتوى غير لائق…', multiline: true });
+  if (why === null) return false;
+  try { const j = await api('report', { kind: 'land', id: +id, reason: why }); await loadOwnerLands(); H.toast(j.message || 'تم إرسال البلاغ'); return true; } catch (ex) { H.toast(ex.message); return false; }
+}
+export async function blockAdv(uid) {
+  if (!session.token()) { H.toast('سجّل الدخول لحظر المعلن'); H.pushPage('account'); return false; }
+  if (!(await uiConfirm('لن تظهر لك إعلانات هذا المعلن ولا رسائله في المجموعة. يمكنك إلغاء الحظر من الإعدادات ← المحظورون.', { title: 'حظر المعلن؟', ok: 'حظر', danger: true }))) return false;
+  try { await api('block', { id: +uid }); await loadOwnerLands(); H.toast('تم الحظر'); return true; } catch (ex) { H.toast(ex.message); return false; }
+}
+/** «المحظورون»: the members you blocked, with «إلغاء الحظر». */
+export function blockedPage() { return '<div class="pad acc"><p class="muted">الأعضاء الذين حظرتهم لا تظهر لك رسائلهم في المجموعة ولا إعلاناتهم.</p><div id="blkList"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div></div>'; }
+export async function initBlocked(pg) {
+  const box = pg.querySelector('#blkList'); const { esc } = H;
+  const draw = async () => {
+    try {
+      const j = await api('blocked');
+      box.innerHTML = j.items.length ? j.items.map((u) => `<div class="strow"><div class="stinfo"><b class="notr">${esc(u.name)}</b></div><button class="btn ghost" data-unblock="${u.id}">إلغاء الحظر</button></div>`).join('') : '<p class="muted">لم تحظر أحداً.</p>';
+    } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+  };
+  box.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-unblock]'); if (!b) return;
+    try { await api('block', { id: +b.dataset.unblock, on: '0' }); await loadOwnerLands(); H.toast('تم إلغاء الحظر'); draw(); } catch (ex) { H.toast(ex.message); }
+  });
+  draw();
 }

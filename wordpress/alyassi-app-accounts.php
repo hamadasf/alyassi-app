@@ -138,7 +138,7 @@ function oay_acc_new_user( $email, $name, $pass ) {
 /* ---------------- account API ---------------- */
 $oay_acc_actions = array( 'register', 'reg_code', 'login', 'google', 'me', 'profile', 'email_code', 'email_change', 'logout', 'meta', 'upload', 'submit', 'mine', 'public', 'delete', 'plotcheck', 'feature',
 	'forgot', 'delete_account', 'avatar', 'verify_request', 'adm_verifs', 'adm_verify', 'chat_get', 'chat_send', 'chat_unread', 'adm_chats', 'adm_chat', 'adm_chat_send', 'notif_get', 'notif_save', 'group_get', 'group_send', 'group_delete', 'chat_file', 'user_get', 'news', 'rate_send', 'rate_delete', 'track', 'adm_report', 'adm_staff', 'adm_staff_list', 'adm_news_add', 'adm_news_delete', 'adm_news_move', 'adm_news_edit', 'adm_news_speed',
-	'adm_ads', 'adm_review', 'adm_save', 'adm_delete', 'adm_feature', 'adm_users', 'adm_user', 'adm_points', 'adm_ban' );
+	'adm_ads', 'adm_review', 'adm_save', 'adm_delete', 'adm_feature', 'adm_users', 'adm_user', 'adm_points', 'adm_ban', 'report', 'block', 'blocked', 'adm_reports', 'adm_report_done' );
 foreach ( $oay_acc_actions as $a ) {
 	add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a );
 	add_action( 'wp_ajax_nopriv_oay_acc_' . $a, 'oay_acc_' . $a );
@@ -547,6 +547,11 @@ function oay_acc_delete() {
 function oay_acc_public() {
 	$q = get_posts( array( 'post_type' => 'lands', 'post_status' => 'publish', 'numberposts' => 200, 'meta_key' => '_oay_from_app', 'orderby' => 'date', 'order' => 'DESC' ) );
 	$q = array_values( array_filter( $q, function ( $p ) { return ! get_user_meta( $p->post_author, 'oay_banned', true ); } ) );
+	$me = oay_acc_user_from_token( oay_acc_arg( 'token', 120 ) );
+	if ( $me ) {
+		$bl = oay_blocked_ids( $me->ID ); $hid = oay_hidden_ids( $me->ID, 'lands' );
+		if ( $bl || $hid ) { $q = array_values( array_filter( $q, function ( $p ) use ( $bl, $hid ) { return ! in_array( (int) $p->post_author, $bl, true ) && ! in_array( (int) $p->ID, $hid, true ); } ) ); }
+	}
 	$items = array_map( 'oay_acc_card', $q );
 	usort( $items, function ( $a, $b ) { return ( $b['featured'] <=> $a['featured'] ) ?: ( $b['date'] <=> $a['date'] ); } );   // featured first, then newest
 	oay_acc_ok( array( 'items' => $items ) );
@@ -886,6 +891,10 @@ function oay_group_msgs( $after = 0, $me = 0 ) {
 	if ( $after ) { $args['comment__in'] = null; }
 	$cs = array_reverse( get_comments( $args ) );
 	if ( $after ) { $cs = array_values( array_filter( $cs, function ( $c ) use ( $after ) { return (int) $c->comment_ID > $after; } ) ); }
+	if ( $me ) {
+		$bl = oay_blocked_ids( $me ); $hid = oay_hidden_ids( $me, 'msgs' );
+		if ( $bl || $hid ) { $cs = array_values( array_filter( $cs, function ( $c ) use ( $bl, $hid ) { return ! in_array( (int) $c->user_id, $bl, true ) && ! in_array( (int) $c->comment_ID, $hid, true ); } ) ); }
+	}
 	return array_map( function ( $c ) use ( $me ) {
 		$u = get_userdata( $c->user_id ); $uid = (int) $c->user_id;
 		return array( 'id' => (int) $c->comment_ID, 't' => strtotime( $c->comment_date_gmt . ' UTC' ) * 1000, 'text' => $c->comment_content, 'mine' => $uid === $me, 'files' => oay_chat_files_out( $c->comment_ID ), 'reply' => oay_reply_out( $c->comment_ID ),
@@ -928,6 +937,89 @@ function oay_group_summary( $uid ) {
 		$n = count( array_filter( get_comments( array( 'post_id' => oay_group_id(), 'type' => 'oay_gmsg', 'number' => 100, 'orderby' => 'comment_ID', 'order' => 'DESC', 'fields' => 'ids' ) ), function ( $id ) use ( $read ) { return (int) $id > $read; } ) );
 	}
 	return array( 'last' => (int) ( $last['t'] ?? 0 ), 'lastText' => (string) ( $last['text'] ?? '' ), 'unread' => $n );
+}
+
+/* ================= safety: report content & block members (App Store guideline 1.2) ================= */
+function oay_blocked_ids( $uid ) { $b = get_user_meta( $uid, 'oay_blocked', true ); return is_array( $b ) ? array_values( array_map( 'intval', $b ) ) : array(); }
+function oay_hidden_ids( $uid, $kind ) { $h = get_user_meta( $uid, 'oay_hidden_' . $kind, true ); return is_array( $h ) ? array_values( array_map( 'intval', $h ) ) : array(); }
+/** Block (on=1) or unblock (on=0) a member: their group messages and listings no longer show for this user. */
+function oay_acc_block() {
+	$u = oay_acc_need_user(); $id = absint( oay_acc_arg( 'id', 12 ) );
+	$t = $id ? get_userdata( $id ) : null;
+	if ( ! $t || $id === $u->ID ) { oay_acc_err( 'غير متاح' ); }
+	if ( user_can( $t, 'manage_options' ) ) { oay_acc_err( 'لا يمكن حظر الإدارة' ); }
+	$b = oay_blocked_ids( $u->ID );
+	if ( '0' === (string) oay_acc_arg( 'on', 2 ) ) { $b = array_values( array_diff( $b, array( $id ) ) ); }
+	elseif ( ! in_array( $id, $b, true ) ) { $b[] = $id; }
+	update_user_meta( $u->ID, 'oay_blocked', array_slice( $b, -500 ) );
+	oay_acc_ok( array( 'blocked' => $b ) );
+}
+/** The members this user blocked (for «المحظورون» in settings). */
+function oay_acc_blocked() {
+	$u = oay_acc_need_user();
+	$items = array();
+	foreach ( oay_blocked_ids( $u->ID ) as $id ) { $t = get_userdata( $id ); if ( $t ) { $items[] = array( 'id' => $id, 'name' => get_user_meta( $id, 'oay_company', true ) ?: $t->display_name ); } }
+	oay_acc_ok( array( 'items' => $items ) );
+}
+/** Report a group message, a member's listing or a member. The office is told at once (e-mail + notification);
+ *  what was reported is hidden for the reporter straight away. */
+function oay_acc_report() {
+	$u = oay_acc_need_user(); oay_acc_limit( 'report_' . $u->ID, 20 );
+	$kind = (string) oay_acc_arg( 'kind', 10 ); $id = absint( oay_acc_arg( 'id', 12 ) );
+	$reason = trim( sanitize_textarea_field( oay_acc_arg( 'reason', 500 ) ) );
+	$what = ''; $author = 0;
+	if ( 'msg' === $kind ) {
+		$c = get_comment( $id ); if ( ! $c || 'oay_gmsg' !== $c->comment_type ) { oay_acc_err( 'غير موجود', 404 ); }
+		$what = $c->comment_content; $author = (int) $c->user_id;
+	} elseif ( 'land' === $kind ) {
+		$p = get_post( $id ); if ( ! $p || 'lands' !== $p->post_type ) { oay_acc_err( 'غير موجود', 404 ); }
+		$what = $p->post_title . ' — ' . get_permalink( $p ); $author = (int) $p->post_author;
+	} elseif ( 'user' === $kind ) {
+		$t = get_userdata( $id ); if ( ! $t ) { oay_acc_err( 'غير موجود', 404 ); }
+		$what = $t->display_name; $author = $id;
+	} else { oay_acc_err( 'نوع البلاغ غير صالح' ); }
+	$list = get_option( 'oay_reports', array() ); if ( ! is_array( $list ) ) { $list = array(); }
+	$rid = (int) get_option( 'oay_report_seq', 0 ) + 1; update_option( 'oay_report_seq', $rid, false );
+	$list[] = array( 'n' => $rid, 't' => time(), 'by' => $u->ID, 'kind' => $kind, 'id' => $id, 'author' => $author, 'reason' => $reason, 'what' => mb_substr( $what, 0, 400 ), 'done' => 0 );
+	update_option( 'oay_reports', array_slice( $list, -300 ), false );
+	if ( 'msg' === $kind || 'land' === $kind ) {
+		$key = 'msg' === $kind ? 'msgs' : 'lands'; $h = oay_hidden_ids( $u->ID, $key );
+		if ( ! in_array( $id, $h, true ) ) { $h[] = $id; update_user_meta( $u->ID, 'oay_hidden_' . $key, array_slice( $h, -1000 ) ); }
+	}
+	$kinds = array( 'msg' => 'رسالة في المجموعة العامة', 'land' => 'إعلان أرض', 'user' => 'عضو' );
+	$au = $author ? get_userdata( $author ) : null;
+	$body = "بلاغ جديد رقم #$rid في تطبيق عمر الياسي للعقارات\n\n"
+		. 'النوع: ' . $kinds[ $kind ] . "\n"
+		. 'المحتوى: ' . mb_substr( $what, 0, 400 ) . "\n"
+		. 'صاحب المحتوى: ' . ( $au ? $au->display_name . ' (' . $au->user_email . ', رقم ' . $author . ')' : '-' ) . "\n"
+		. 'السبب: ' . ( '' !== $reason ? $reason : '-' ) . "\n"
+		. 'المُبلِّغ: ' . $u->display_name . ' (' . $u->user_email . ")\n\n"
+		. "راجِع البلاغ خلال 24 ساعة: احذف المحتوى المخالف من التطبيق، وأوقف حساب صاحبه إن لزم.";
+	wp_mail( get_option( 'admin_email' ), 'بلاغ جديد #' . $rid . ': ' . $kinds[ $kind ], $body );
+	if ( function_exists( 'oay_push_to' ) ) {
+		$adm = get_users( array( 'capability' => 'manage_options', 'fields' => 'ID' ) );
+		if ( $adm ) { oay_push_to( array_map( 'intval', $adm ), 'بلاغ جديد #' . $rid, $kinds[ $kind ] . ': ' . mb_substr( $what, 0, 90 ), array( 'open' => 'reports' ) ); }
+	}
+	oay_acc_ok( array( 'message' => 'شكراً — وصل بلاغك للإدارة وسيُراجع خلال 24 ساعة.' ) );
+}
+/** For the office: the reports, newest first. */
+function oay_acc_adm_reports() {
+	$u = oay_acc_need_user(); if ( ! oay_acc_is_admin( $u ) ) { oay_acc_err( 'غير مسموح', 403 ); }
+	$list = get_option( 'oay_reports', array() ); if ( ! is_array( $list ) ) { $list = array(); }
+	$out = array();
+	foreach ( array_reverse( $list ) as $r ) {
+		$by = get_userdata( (int) $r['by'] ); $au = $r['author'] ? get_userdata( (int) $r['author'] ) : null;
+		$r['byName'] = $by ? $by->display_name : '-'; $r['authorName'] = $au ? $au->display_name : '-';
+		$r['exists'] = 'msg' === $r['kind'] ? (bool) get_comment( (int) $r['id'] ) : ( 'land' === $r['kind'] ? 'publish' === get_post_status( (int) $r['id'] ) : (bool) $au );
+		$out[] = $r;
+	}
+	oay_acc_ok( array( 'items' => $out ) );
+}
+function oay_acc_adm_report_done() {
+	$u = oay_acc_need_user(); if ( ! oay_acc_is_admin( $u ) ) { oay_acc_err( 'غير مسموح', 403 ); }
+	$n = absint( oay_acc_arg( 'n', 12 ) ); $list = get_option( 'oay_reports', array() ); if ( ! is_array( $list ) ) { $list = array(); }
+	foreach ( $list as &$r ) { if ( (int) $r['n'] === $n ) { $r['done'] = 1; } } unset( $r );
+	update_option( 'oay_reports', $list, false ); oay_acc_ok();
 }
 
 /* ================= photos & files in chats ================= */

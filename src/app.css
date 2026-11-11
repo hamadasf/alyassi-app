@@ -1440,3 +1440,8 @@ body.guest #sheet .memf { display: none; }
 .odlg-in .err { border-color: #c42f2b !important; box-shadow: 0 0 0 4px rgba(196,47,43,.12) !important; }
 .odlg-b { display: flex; flex-direction: column; gap: 8px; } .odlg-b .btn { width: 100%; min-height: 50px; border-radius: 14px; font-size: 16px; }
 .odlg-b .btn.danger { background: #c42f2b; color: #fff; border: 0; }
+/* report / block links under a member's listing; sign-up consent line */
+.safety{display:flex;justify-content:center;gap:18px;margin:14px 0 4px;font-size:13px}
+.safety .linkbtn{color:var(--muted,#6b7280)}
+.terms-ok{font-size:12px;line-height:1.6;margin:4px 0 8px}
+.vreq.done{opacity:.6}

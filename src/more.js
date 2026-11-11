@@ -134,7 +134,7 @@ export function settingsPage() {
       <button class="mrow danger" data-delacc><span class="mi">${I.trash}</span><b>حذف الحساب</b></button>
     </div>
     <h3 class="msec">الخصوصية</h3>
-    <div class="mbox">${row(I.shield, 'سياسة الخصوصية', 'data-legal="privacy"')}${row(I.doc, 'شروط الاستخدام', 'data-legal="terms"')}${row(I.trash || I.doc, 'حذف الحساب والبيانات', 'data-legal="delete"')}</div>
+    <div class="mbox">${row(I.shield, 'المحظورون', 'data-blocked', '<small>الأعضاء الذين حظرتهم</small>')}${row(I.shield, 'سياسة الخصوصية', 'data-legal="privacy"')}${row(I.doc, 'شروط الاستخدام', 'data-legal="terms"')}${row(I.trash || I.doc, 'حذف الحساب والبيانات', 'data-legal="delete"')}</div>
   </div>`;
 }
 export async function deleteAccount() {
