@@ -98,9 +98,11 @@ export async function initMapPage(pg) {
   const tgLbl = () => { tg.innerHTML = isSat ? `${I.map}<span>خريطة</span>` : `${I.globe || I.map}<span>قمر صناعي</span>`; };
   tgLbl(); pg.querySelector('.pmap').appendChild(tg);
   tg.addEventListener('click', () => { map.removeLayer(isSat ? sat : street); isSat = !isSat; (isSat ? sat : street).addTo(map); lsSet('pmapSat', isSat); tgLbl(); });
+  const fromP = (p) => { const v = (p.lands || []).filter((l) => l.status === 'av' && l.total > 0).map((l) => l.total); return v.length ? Math.min(...v) : 0; };
+  const shortP = (n) => (n >= 1e6 ? (Math.round(n / 1e5) / 10) + ' مليون' : Math.round(n / 1e3) + ' ألف');
   const show = (p) => {
-    const av = p.available || 0;
-    card.innerHTML = `<button class="pmap-x" data-pmx aria-label="إغلاق">✕</button><img src="${esc(p.poster)}" alt="" onerror="this.remove()"><div class="pmap-i"><b>${esc(p.name)}</b><span>${av ? `<em>${av}</em> أرض متاحة` : 'لا توجد أراضٍ متاحة حالياً'}</span>
+    const av = p.available || 0, from = fromP(p);
+    card.innerHTML = `<button class="pmap-x" data-pmx aria-label="إغلاق">✕</button><img src="${esc(p.poster)}" alt="" onerror="this.remove()"><div class="pmap-i"><b>${esc(p.name)}</b><span>${av ? `<em>${av}</em> أرض متاحة` : 'لا توجد أراضٍ متاحة حالياً'}</span>${from ? `<span class="pmap-from">تبدأ من <b>${H.money ? H.money(from) : from}</b> د.إ</span>` : ''}
       <div class="pmap-b"><button class="btn primary" data-project="${esc(p.slug)}">${I.building} تفاصيل المشروع</button>${p.map ? `<button class="btn ghost" data-pview="${esc(p.slug)}">${I.grid} المخطط</button>` : ''}</div></div>`;
     card.hidden = false;
   };
@@ -109,7 +111,8 @@ export async function initMapPage(pg) {
   for (const { p, c, g } of pins) {
     const lay = planLayer(L, p, g); if (lay) { lay.addTo(map).on('click', () => { if (!(H.editing && H.editing())) show(p); }); layers[p.slug] = lay; }
     const av = p.available || 0;
-    const icon = L.divIcon({ className: 'pmk-w', html: `<div class="pmk${av ? '' : ' none'}"><b>${esc(p.name)}</b>${av ? `<i>${av}</i>` : ''}</div>`, iconSize: null, iconAnchor: [0, 0] });
+    const from = fromP(p);   // the price bubble: «من 365 ألف»
+    const icon = L.divIcon({ className: 'pmk-w', html: `<div class="pmk${av ? '' : ' none'}"><b>${esc(p.name)}</b>${from ? `<i class="pr">من ${shortP(from)}</i>` : av ? `<i>${av}</i>` : ''}</div>`, iconSize: null, iconAnchor: [0, 0] });
     const m = L.marker(c, { icon, riseOnHover: true }).addTo(map).on('click', () => { show(p); map.flyTo(c, Math.max(map.getZoom(), 15), { duration: .6 }); });
     marks.push({ m, c, av }); bounds.push(c);
   }

@@ -714,23 +714,25 @@ function renderHome() {
     startBanner();
     return;
   }
+  const me = session.user(); const first = me && me.name ? String(me.name).trim().split(/\s+/)[0] : '';
+  const hcats = ['', ...cats.filter(Boolean).slice(0, 3)];
   el.innerHTML = `
-    <section class="hero">
+    <section class="hero hero2">
       <div class="hero-top">
-        <img class="hero-logo" src="${LOGO}" alt="عمر الياسي للعقارات">
+        <div class="hgreet"><small>${first ? `أهلاً <span class="notr">${esc(first)}</span> 👋` : 'أهلاً بك 👋'}</small><b>ابدأ البحث عن أرضك</b></div>
         <div class="hero-acts">
           <button class="hbtn" data-changes aria-label="التحديثات">${I.bell}<i id="bellN" hidden></i></button>
           <button class="hbtn hlang notr" data-lang aria-label="Language">${isEn() ? 'AR' : 'EN'}</button>
         </div>
       </div>
-      <p>أراضٍ ومشاريع في الشارقة بخطط سداد مرنة ومواقع استراتيجية</p>
-      <button class="search-fake" data-go="lands" data-focus="1">${I.search}<span>ابحث برقم القطعة أو اسم المشروع…</span></button>
-      <div class="stats">
-        <div><b>${av.length || '—'}</b><span>أرض متاحة</span></div>
-        <div><b>${projects.length || '—'}</b><span>مشروع</span></div>
-        <div><b>${lands.filter((l) => l.status === 'sold').length || '—'}</b><span>تم بيعها</span></div>
-      </div>
+      <div class="hstats"><span><b>${av.length || '—'}</b> أرض متاحة</span><span><b>${projects.length || '—'}</b> مشروع</span><span><b>${lands.filter((l) => l.status === 'sold').length || '—'}</b> تم بيعها</span></div>
     </section>
+    <div class="hsearch">
+      <div class="hs-tabs">${hcats.map((c, i) => `<button class="${i ? '' : 'on'}" data-hcat="${esc(c)}">${c ? esc(c) : 'الكل'}</button>`).join('')}</div>
+      <button class="hs-in" data-go="lands" data-focus="1">${I.search}<span>رقم القطعة أو اسم المشروع…</span></button>
+      <div class="hs-q"><button data-hf>${I.building}<span>المشروع</span></button><button data-hf>${I.ruler || I.grid}<span>المساحة</span></button><button data-hf>${I.tag || I.calc}<span>السعر</span></button></div>
+      <button class="btn gold block hs-go" data-hgo>${I.search} بحث</button>
+    </div>
     ${bannerHTML(av, projects)}
     <div class="qacts"><button data-alerts=""><span>${I.alert}</span>أرض تناسبني</button><button data-wanted><span>${I.wanted}</span>مطلوب أرض</button><button data-calc=""><span>${I.calc}</span>حاسبة الأقساط</button><button data-guide><span>${I.book}</span>دليل الإجراءات</button></div>
     ${isBroker() ? '<div id="wHome" class="whomebox"></div>' : ''}
@@ -993,7 +995,7 @@ function showTab(name, opts = {}) {
   if (!tabs.includes(name)) name = 'home';
   current = name;
   tabs.forEach((t) => { $('#' + t).hidden = t !== name; });
-  document.querySelectorAll('.nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
+  document.querySelectorAll('.nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === (name === 'projects' ? 'lands' : name)));   // «المشاريع» sits under «الأراضي»
   if (name === 'favs') renderFavs();
   if (name === 'chats') renderChatsTab($('#chats .content'));
   if (name === 'lands' && opts.focus) setTimeout(() => $('#q').focus(), 60);
@@ -1305,6 +1307,12 @@ document.addEventListener('click', (e) => {
   if (ds.web) return openWeb(ds.web);
   if (ds.recentclr !== undefined) { recent.clear(); const rb = $('#recentBox'); if (rb) rb.innerHTML = ''; return; }
   if (ds.reset !== undefined) return resetFilters();
+  if (ds.hcat !== undefined) { e.target.closest('.hs-tabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === e.target.closest('[data-hcat]'))); return; }
+  if (ds.hgo !== undefined || ds.hf !== undefined) {   // the home search card: the chosen kind → the lands list (a quick filter opens the filter sheet)
+    const c = (document.querySelector('.hs-tabs .on') || {}).dataset; resetFilters(); if (c && c.hcat) F.cat = c.hcat; renderLands(); closeAll(); showTab('lands');
+    if (ds.hf !== undefined) setTimeout(openSheet, 250);
+    return;
+  }
   if (ds.go) {
     if (ds.go === 'lands') { resetFilters(); if (ds.sort) F.sort = ds.sort; if (ds.feat) F.feat = true; if (ds.offers) F.offers = true; renderLands(); }
     closeAll(); return showTab(ds.go, { focus: !!ds.focus });
@@ -1381,7 +1389,7 @@ initAdvUI({ toast, closeTop: () => closeTop() });
 initStats({ toast });
 initMailAdm({ toast, esc });
 initMarket({ toast, I, projects: () => DATA().projects });
-initProjMap({ esc, I, toast, projects: () => DATA().projects, isAdmin: () => !!(session.user() || {}).admin, reopen: () => { closeTop(); setTimeout(() => pushPage('map'), 400); } });
+initProjMap({ esc, I, toast, money, projects: () => DATA().projects, isAdmin: () => !!(session.user() || {}).admin, reopen: () => { closeTop(); setTimeout(() => pushPage('map'), 400); } });
 initExtras({ esc, I, toast, native, shareFile: (f, t, ti) => shareFile(f, t, ti) });
 initSellMod({ esc, toast });
 initFavx({ DATA, esc, money, toast, I, findLand: (id) => findLand(id) });
@@ -1430,8 +1438,22 @@ function netState() {
 }
 window.addEventListener('online', () => { netState(); refresh(false); loadNews(); refreshUnread(); });
 window.addEventListener('offline', netState);
+/* the first time the app is opened: a welcome screen over a project photo (once per phone) */
+function welcome() {
+  try { if (localStorage.getItem('oay:welcome1')) return; localStorage.setItem('oay:welcome1', '1'); } catch { return; }
+  const ps = (DATA().projects || []).filter((p) => p.poster).sort((a, b) => b.available - a.available);
+  const img = ps.length ? ps[0].poster : 'assets/villa-invest.jpg';
+  const el = document.createElement('div'); el.className = 'wlc';
+  el.innerHTML = `<img class="wlc-bg" src="${esc(img)}" alt="" onerror="this.src='assets/villa-invest.jpg'"><span class="wlc-shade"></span>
+    <div class="wlc-top"><img src="assets/mark.png" alt="" onerror="this.remove()"><b>عمر الياسي للعقارات</b></div>
+    <div class="wlc-body"><h1>أرضك في الشارقة<br>وعجمان… بين يديك</h1><p>تصفّح المشاريع والمخططات التفاعلية، قارن الأسعار وخطط السداد، واحجز معاينتك — كله من مكان واحد.</p>
+      <button class="wlc-go" data-wgo>ابدأ <svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button><button class="wlc-in" data-wsign>لديك حساب؟ <b>تسجيل الدخول</b></button></div>`;
+  const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 350); };
+  el.addEventListener('click', (e) => { if (e.target.closest('[data-wgo]')) close(); else if (e.target.closest('[data-wsign]')) { close(); pushPage('account'); } });
+  document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('in'));
+}
 async function boot() {
-  const spT = Date.now(); const spHide = () => { const sp = document.getElementById('splash'); if (sp && !sp.classList.contains('out')) setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 500); }, Math.max(0, 1300 - (Date.now() - spT))); };
+  const spT = Date.now(); const spHide = () => { const sp = document.getElementById('splash'); if (sp && !sp.classList.contains('out')) setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 500); welcome(); }, Math.max(0, 1300 - (Date.now() - spT))); };
   startI18n();
   netState();
   track('open');

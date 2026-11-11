@@ -37,13 +37,13 @@ function oay_acc_listing_stats() {
 	$id = substr( preg_replace( '/[^\w:\-]/u', '', oay_acc_arg( 'id', 60 ) ), 0, 60 );
 	if ( '' === $id ) { oay_acc_err( 'غير موجود', 404 ); }
 	if ( ! oay_stats_allowed( $u, $id ) ) { oay_acc_err( 'غير مسموح', 403 ); }
-	$series = array(); $tot = array_fill_keys( OAY_STAT_KINDS, 0 );
-	foreach ( oay_stats_days( oay_stats_days_arg() ) as $day ) {
+	$series = array(); $tot = array_fill_keys( OAY_STAT_KINDS, 0 ); $prev = $tot; $days = oay_stats_days_arg();
+	foreach ( oay_stats_days( $days * 2 ) as $i => $day ) {   // the period before, to compare with
 		$row = array( 'd' => $day['d'] );
-		foreach ( OAY_STAT_KINDS as $k ) { $n = (int) ( $day['raw'][ $k ][ $id ] ?? 0 ); $row[ $k ] = $n; $tot[ $k ] += $n; }
-		$series[] = $row;
+		foreach ( OAY_STAT_KINDS as $k ) { $n = (int) ( $day['raw'][ $k ][ $id ] ?? 0 ); $row[ $k ] = $n; if ( $i < $days ) { $prev[ $k ] += $n; } else { $tot[ $k ] += $n; } }
+		if ( $i >= $days ) { $series[] = $row; }
 	}
-	oay_acc_ok( array( 'id' => $id, 'name' => function_exists( 'oay_land_name' ) ? oay_land_name( $id ) : $id, 'series' => $series, 'total' => $tot ) );
+	oay_acc_ok( array( 'id' => $id, 'name' => function_exists( 'oay_land_name' ) ? oay_land_name( $id ) : $id, 'series' => $series, 'total' => $tot, 'prev' => $prev ) );
 }
 /** A list of listings with their totals: a member's own listings, or (office) the most seen listings of all. */
 function oay_acc_my_stats() {
@@ -54,20 +54,24 @@ function oay_acc_my_stats() {
 		$posts = get_posts( array( 'post_type' => 'lands', 'author' => $u->ID, 'post_status' => array( 'publish', 'pending', 'draft' ), 'numberposts' => 200, 'fields' => 'ids' ) );
 		foreach ( $posts as $pid ) { $mine[ (string) $pid ] = true; }
 	}
-	$agg = array();
-	foreach ( oay_stats_days( $days ) as $day ) {
+	$agg = array(); $series = array(); $prev = array_fill_keys( OAY_STAT_KINDS, 0 );
+	foreach ( oay_stats_days( $days * 2 ) as $i => $day ) {
+		$cur = $i >= $days; $row = array( 'd' => $day['d'] ) + array_fill_keys( OAY_STAT_KINDS, 0 );
 		foreach ( OAY_STAT_KINDS as $k ) {
 			foreach ( (array) ( $day['raw'][ $k ] ?? array() ) as $id => $n ) {
 				$id = (string) $id; if ( ! $office && ! isset( $mine[ $id ] ) ) { continue; }
+				if ( ! $cur ) { $prev[ $k ] += (int) $n; continue; }
+				$row[ $k ] += (int) $n;
 				if ( ! isset( $agg[ $id ] ) ) { $agg[ $id ] = array_fill_keys( OAY_STAT_KINDS, 0 ); }
 				$agg[ $id ][ $k ] += (int) $n;
 			}
 		}
+		if ( $cur ) { $series[] = $row; }
 	}
 	if ( ! $office ) { foreach ( array_keys( $mine ) as $id ) { if ( ! isset( $agg[ $id ] ) ) { $agg[ $id ] = array_fill_keys( OAY_STAT_KINDS, 0 ); } } }
 	uasort( $agg, function ( $a, $b ) { return ( $b['view'] + 3 * ( $b['call'] + $b['wa'] ) ) <=> ( $a['view'] + 3 * ( $a['call'] + $a['wa'] ) ); } );
 	$items = array(); $tot = array_fill_keys( OAY_STAT_KINDS, 0 );
 	foreach ( $agg as $id => $c ) { foreach ( OAY_STAT_KINDS as $k ) { $tot[ $k ] += $c[ $k ]; } }
 	foreach ( array_slice( $agg, 0, 60, true ) as $id => $c ) { $items[] = array( 'id' => (string) $id, 'name' => function_exists( 'oay_land_name' ) ? oay_land_name( (string) $id ) : (string) $id ) + $c; }
-	oay_acc_ok( array( 'office' => $office, 'days' => $days, 'items' => $items, 'total' => $tot ) );
+	oay_acc_ok( array( 'office' => $office, 'days' => $days, 'items' => $items, 'total' => $tot, 'prev' => $prev, 'series' => $series ) );
 }

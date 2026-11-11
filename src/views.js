@@ -36,14 +36,24 @@ export async function initBook(pg) {
   let date = '', time = '';
   const ready = () => { go.disabled = !(date && time); go.textContent = date && time ? `تأكيد الحجز · ${dayName(date)} · ${t12(time)}` : 'اختر اليوم والوقت'; };
   let cfg = { days: [0, 1, 2, 3, 4, 6], ahead: 14 };
-  try { cfg = (await api('view_cfg')).cfg; } catch { /* defaults */ }
+  try { cfg = (await api('view_cfg')).cfg || cfg; } catch { /* defaults */ }
   const list = []; const d = new Date();
   for (let i = 0; list.length < cfg.ahead && i < 40; i++) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + i); if (cfg.days.includes(x.getDay())) list.push(iso(x)); }
-  days.innerHTML = list.map((s) => { const x = new Date(s + 'T12:00:00'); return `<button data-day="${s}"><small>${x.toLocaleDateString(loc(), { weekday: 'short' })}</small><b>${x.getDate()}</b><small>${x.toLocaleDateString(loc(), { month: 'short' })}</small></button>`; }).join('');
+  // a month calendar: the bookable days are the dark ones; ‹ › moves between the months that have bookable days
+  const ok = new Set(list), months = [...new Set(list.map((x) => x.slice(0, 7)))]; let mi = 0;
+  const wk = [...Array(7)].map((_, i) => new Date(2023, 0, 1 + i).toLocaleDateString(loc(), { weekday: 'narrow' }));   // Sun … Sat
+  const drawCal = () => {
+    const [Y, M] = months[mi].split('-').map(Number), first = new Date(Y, M - 1, 1), n = new Date(Y, M, 0).getDate(), today = iso(new Date());
+    const cells = [...Array(first.getDay())].map(() => '<span></span>').concat([...Array(n)].map((_, i) => { const dd = iso(new Date(Y, M - 1, i + 1)); return ok.has(dd) ? `<button data-day="${dd}" class="${dd === date ? 'on' : ''}${dd === today ? ' today' : ''}">${i + 1}</button>` : `<span class="off${dd === today ? ' today' : ''}">${i + 1}</span>`; }));
+    days.innerHTML = `<div class="vcal"><div class="vcal-h"><button type="button" data-cm="-1" ${mi ? '' : 'disabled'} aria-label="الشهر السابق">›</button><b>${first.toLocaleDateString(loc(), { month: 'long', year: 'numeric' })}</b><button type="button" data-cm="1" ${mi < months.length - 1 ? '' : 'disabled'} aria-label="الشهر التالي">‹</button></div>
+      <div class="vcal-w">${wk.map((w) => `<i>${w}</i>`).join('')}</div><div class="vcal-g">${cells.join('')}</div></div>`;
+  };
+  if (months.length) drawCal(); else days.innerHTML = '<p class="muted">لا توجد أيام متاحة للحجز حالياً</p>';
+  days.addEventListener('click', (e) => { const m = e.target.closest('[data-cm]'); if (m) { mi = Math.max(0, Math.min(months.length - 1, mi + +m.dataset.cm)); drawCal(); } });
   days.onclick = async (e) => {
     const t = e.target.closest('[data-day]'); if (!t) return;
     date = t.dataset.day; time = ''; ready();
-    days.querySelectorAll('[data-day]').forEach((x) => x.classList.toggle('on', x === t));
+    days.querySelectorAll('[data-day]').forEach((x) => x.classList.toggle('on', x === t));   // (the calendar keeps it when the month is changed: drawCal reads «date»)
     slots.innerHTML = loading;
     try {
       const j = await api('view_slots', { date });

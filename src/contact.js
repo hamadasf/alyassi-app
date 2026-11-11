@@ -18,11 +18,11 @@ export function contactBar({ id, title, url, loc = '' }) {
   const { esc, I, CONTACT, waLink } = H;
   const ref = refOf(typeof id === 'string' && id.includes(':') ? { project: id.split(':')[0], n: id.split(':')[1] } : { id });
   const msg = waText(title, url, ref);
-  return `<button class="btn bookbtn" data-book="${esc(id)}" data-btitle="${esc(title)}" data-bref="${esc(ref)}" data-bloc="${esc(loc)}">${I.calendar} احجز موعد معاينة</button>
-  <div class="bar cbar3">
-    <a class="btn call" href="tel:${CONTACT.phone}" data-tid="${esc(id)}">${I.phone} اتصال</a>
-    <a class="btn wa" href="${esc(waLink(msg))}" data-ext data-tid="${esc(id)}">${I.wa} واتساب</a>
-    <button class="btn ghost cb" data-callback="${esc(id)}" data-cbt="${esc(title)}" data-ref="${esc(ref)}">${I.chat} طلب اتصال</button></div>`;
+  return `<button class="btn ghost block cbinline" data-callback="${esc(id)}" data-cbt="${esc(title)}" data-ref="${esc(ref)}">${I.chat} طلب اتصال — نتصل بك نحن</button>
+  <div class="bar cbar4">
+    <button class="btn book" data-book="${esc(id)}" data-btitle="${esc(title)}" data-bref="${esc(ref)}" data-bloc="${esc(loc)}">${I.calendar} احجز معاينة</button>
+    <a class="btn call ic" href="tel:${CONTACT.phone}" data-tid="${esc(id)}" aria-label="اتصال">${I.phone}</a>
+    <a class="btn wa ic" href="${esc(waLink(msg))}" data-ext data-tid="${esc(id)}" aria-label="واتساب">${I.wa}</a></div>`;
 }
 export const refLine = (id) => `<div class="refno">رقم المرجع: <b dir="ltr">${refOf(typeof id === 'string' && id.includes(':') ? { project: id.split(':')[0], n: id.split(':')[1] } : { id })}</b></div>`;
 

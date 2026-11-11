@@ -72,7 +72,8 @@ export function accountPage() {
     </div>`;
   }
   return `<div class="pad acc">
-    <div class="acc-hero"><h2>حسابك في عمر الياسي للعقارات</h2><p>سجّل لتضيف أرضك للبيع — تظهر في التطبيق بعد مراجعة وموافقة الإدارة.</p></div>
+    <div class="acc-hero2"><img src="assets/mark.png" alt="" onerror="this.remove()"><b>عمر الياسي للعقارات</b><small>OMAR AL YASSI REAL ESTATE</small></div>
+    <div class="acc-ttl"><h2 id="accT">تسجيل الدخول</h2><p id="accS">أهلاً بعودتك — تابع أراضيك ومفضلتك وإعلاناتك</p></div>
     <div id="gwrap" class="gwrap" hidden><div id="gbtn"></div><div class="or"><span>أو بالبريد الإلكتروني</span></div></div>
     <div class="seg"><button class="on" data-accmode="login">تسجيل الدخول</button><button data-accmode="register">حساب جديد</button></div>
     <form class="accf" id="accForm" novalidate>
@@ -145,6 +146,7 @@ export async function initAccount(pg, next) {
     form.querySelectorAll('[data-only]').forEach((el) => { el.hidden = el.dataset.only !== m; });
     form.password.autocomplete = m === 'login' ? 'current-password' : 'new-password';
     go.textContent = m === 'login' ? 'دخول' : 'إنشاء الحساب'; err.hidden = true;
+    { const T = pg.querySelector('#accT'), S = pg.querySelector('#accS'); if (T) T.textContent = m === 'login' ? 'تسجيل الدخول' : 'إنشاء حساب'; if (S) S.textContent = m === 'login' ? 'أهلاً بعودتك — تابع أراضيك ومفضلتك وإعلاناتك' : 'سجّل بياناتك أو استخدم حساب جوجل — مجاناً'; }
   };
   pg.querySelectorAll('[data-accmode]').forEach((b) => { b.onclick = () => setMode(b.dataset.accmode); });
   pg.querySelector('#forgot').onclick = async () => {

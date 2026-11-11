@@ -55,6 +55,8 @@ export const I = {
   logout: s('<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17 5 12l5-5M5 12h11"/>'),
   doc: s('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'),
   trash: s('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
+  ruler: s('<path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/>'),
+  plus: s('<path d="M12 5v14M5 12h14"/>'),
   plusc: s('<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>'),
   verified: '<svg class="vbadge" viewBox="0 0 24 24" aria-label="موثّق"><path d="M12.00 2.10 L13.99 4.56 L16.95 3.43 L17.44 6.56 L20.57 7.05 L19.44 10.01 L21.90 12.00 L19.44 13.99 L20.57 16.95 L17.44 17.44 L16.95 20.57 L13.99 19.44 L12.00 21.90 L10.01 19.44 L7.05 20.57 L6.56 17.44 L3.43 16.95 L4.56 13.99 L2.10 12.00 L4.56 10.01 L3.43 7.05 L6.56 6.56 L7.05 3.43 L10.01 4.56Z" fill="#0494F8" stroke="#0494F8" stroke-width="2.4" stroke-linejoin="round"/><path d="m8.3 12.6 2.6 2.6 5.3-5.3" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   send: s('<path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m21 3-11 10"/>'),

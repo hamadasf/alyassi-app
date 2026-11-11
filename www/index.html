@@ -24,6 +24,7 @@
       <button id="filterBtn" class="iconbtn" aria-label="الفلاتر"><span data-i="filter"></span><i class="n"></i></button>
       <button class="iconbtn" data-pmap aria-label="الخريطة"><span data-i="map"></span></button>
     </header>
+    <div class="lpseg"><button data-tab="lands" class="on">قطع الأراضي</button><button data-tab="projects">المشاريع</button></div>
     <div class="chips scroll sticky"></div>
     <div class="ptr" data-i="refresh"></div>
     <div class="scroller"><div class="count"></div><div class="list"></div></div>
@@ -32,6 +33,7 @@
   <!-- PROJECTS -->
   <section class="tab" id="projects" hidden>
     <header class="top"><h1>المشاريع</h1><button class="mapbtn" data-pmap><span data-i="map"></span>الخريطة</button></header>
+    <div class="lpseg"><button data-tab="lands">قطع الأراضي</button><button data-tab="projects" class="on">المشاريع</button></div>
     <div class="ptr" data-i="refresh"></div>
     <div class="scroller"><div class="list"></div></div>
   </section>
@@ -59,7 +61,7 @@
   <nav class="nav">
     <button data-tab="home" class="on"><span data-i="home"></span>الرئيسية</button>
     <button data-tab="lands"><span data-i="grid"></span>الأراضي</button>
-    <button data-tab="projects"><span data-i="building"></span>المشاريع</button>
+    <button class="navplus" data-addland aria-label="أضف أرضك للبيع"><span data-i="plus"></span></button>
     <button data-tab="chats"><span data-i="chat"></span><i class="nbadge" id="chatN" hidden></i>المحادثات</button>
     <button data-tab="contact"><span data-i="dots"></span>المزيد</button>
   </nav>
