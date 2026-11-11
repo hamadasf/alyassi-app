@@ -464,7 +464,7 @@ export function initAdmAd(pg, id) {
     catch (ex) { err.textContent = ex.message; err.hidden = false; go.disabled = false; go.textContent = 'حفظ التعديلات'; }
   };
 }
-export const TPLS = { oy: 'قالب عمر الياسي', ar: 'قالب عبد الرحمن', co: 'قالب الشركة', gr: 'قالب عبادة', pk: 'قالب آية الجابري', aya: 'قالب آية الجديد', ayk: 'قالب آية كامل' };
+export const TPLS = { oy: 'قالب عمر الياسي', ar: 'قالب عبد الرحمن', co: 'قالب الشركة', gr: 'قالب عبادة', pk: 'قالب آية الجابري', aya: 'قالب آية الجديد', ayk: 'قالب آية كامل', wr: 'قالب لين واتس أب', wi: 'قالب لين إنستجرام' };
 export const STAFF = { chats: 'الرد على المحادثات', leads: 'متابعة العملاء وسجل التواصل', viewings: 'مواعيد المعاينة', listings: 'مراجعة الإعلانات وطلبات الشراء', news: 'الأخبار والدليل', push: 'الإشعارات الموجّهة', report: 'التقرير الأسبوعي', payplan: 'إرسال خطة السداد', design: 'تصميم البوستات', owners: 'رؤية اسم مالك الأرض', plots: 'إضافة / تعديل القطع (الحالة والسعر والدفعات)' };
 export const ROLES = { staff: 'موظف', mgr: 'مدير', mkt: 'مدير تسويق' };
 /* ---------- the office team (admin only) ---------- */
