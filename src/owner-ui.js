@@ -4,7 +4,7 @@ import { phoneField } from './phone.js';
 import { advStrip } from './adv.js';
 import { pickersHTML, bindPickers, pickersError, submitAdv, advMissing, renderAdvReqs, advReqClick } from './advui.js';
 import { Capacitor } from '@capacitor/core';
-import { api, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands, loadOwnerLands, can, isBroker } from './owner.js';
+import { api, signIn, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands, loadOwnerLands, can, isBroker } from './owner.js';
 import { contactBar, refLine } from './contact.js';
 import { APP_URL } from './config.js';
 import { renderDealReqs, dealReqClick } from './wallet.js';
@@ -196,7 +196,7 @@ export async function initAccount(pg, next) {
     if (mode === 'register' && !/^\d{6}$/.test(String(f.code || '').replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)))) { err.textContent = 'اكتب كود التفعيل (6 أرقام)'; err.hidden = false; go.disabled = false; go.textContent = 'تأكيد وإنشاء الحساب'; return; }
     if (mode === 'register') f.code = String(f.code).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
     try {
-      const j = await api(mode, mode === 'login' ? { email: f.email, password: f.password } : f);
+      const j = mode === 'login' ? await signIn('login', { email: f.email, password: f.password }) : await api(mode, f);
       session.set(j.token, j.user);
       if (mode === 'register' && f.invite) { try { localStorage.removeItem('oay:inv'); localStorage.removeItem('oay:ref'); } catch { /* none */ } if (invOk) toast('أهلاً بك في فريق عمر الياسي للعقارات ✓'); }
       if (mode === 'register' && pics.photo) { try { await submitAdv(pics); toast(pics.logo ? 'أُرسلت صورتك وشعار الشركة للاعتماد' : 'أُرسلت صورتك للاعتماد'); } catch { /* can be sent again from the account page */ } }

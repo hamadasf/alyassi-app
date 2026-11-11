@@ -208,6 +208,7 @@ function oay_acc_login() {
 	$u     = $email ? get_user_by( 'email', $email ) : null;
 	if ( ! $u || ! wp_check_password( oay_acc_arg( 'password', 200 ), $u->user_pass, $u->ID ) ) { oay_acc_err( 'البريد أو كلمة المرور غير صحيحة', 401 ); }
 	if ( get_user_meta( $u->ID, 'oay_banned', true ) ) { oay_acc_err( 'هذا الحساب موقوف — تواصل مع الإدارة', 403 ); }
+	if ( function_exists( 'oay_2fa_gate' ) ) { oay_2fa_gate( $u ); }   // the management and the managers: a new phone asks for an e-mailed code
 	oay_acc_ok( array( 'token' => oay_acc_issue_token( $u->ID ), 'user' => oay_acc_userdata( $u ) ) );
 }
 /** Google: the app sends the ID token from Google's sign-in button; it is checked with Google before use. */
@@ -232,6 +233,7 @@ function oay_acc_google() {
 	$u = oay_acc_google_user( oay_acc_arg( 'credential', 4000 ) );
 	if ( is_wp_error( $u ) ) { oay_acc_err( $u->get_error_message() ); }
 	if ( get_user_meta( $u->ID, 'oay_banned', true ) ) { oay_acc_err( 'هذا الحساب موقوف — تواصل مع الإدارة', 403 ); }
+	if ( function_exists( 'oay_2fa_gate' ) ) { oay_2fa_gate( $u ); }   // the management and the managers: a new phone asks for an e-mailed code
 	oay_acc_ok( array( 'token' => oay_acc_issue_token( $u->ID ), 'user' => oay_acc_userdata( $u ) ) );
 }
 function oay_acc_me() { $u = oay_acc_need_user(); oay_acc_ok( array( 'user' => oay_acc_userdata( $u ) ) ); }
@@ -657,9 +659,11 @@ add_action( 'init', function () {
 		$u = oay_acc_google_user( wp_unslash( $_POST['credential'] ) );
 		if ( is_wp_error( $u ) ) { wp_die( esc_html( $u->get_error_message() ) ); }
 		if ( get_user_meta( $u->ID, 'oay_banned', true ) ) { wp_die( 'هذا الحساب موقوف — تواصل مع الإدارة' ); }
-		$tok  = oay_acc_issue_token( $u->ID );
-		$back = OAY_ACC_SCHEME . '://auth?token=' . rawurlencode( $tok );
-		$intent = 'intent://auth?token=' . rawurlencode( $tok ) . '#Intent;scheme=' . OAY_ACC_SCHEME . ';package=' . OAY_ACC_SCHEME . ';end';
+		$dev = preg_replace( '/[^A-Za-z0-9]/', '', (string) ( $_GET['dev'] ?? '' ) );
+		$tk = function_exists( 'oay_2fa_ticket' ) ? oay_2fa_ticket( $u, strlen( $dev ) >= 12 ? hash( 'sha256', $dev ) : '' ) : '';   // the management: the code step goes on in the app
+		$q = $tk ? '2fa=' . rawurlencode( $tk ) . '&to=' . rawurlencode( oay_2fa_mask( $u->user_email ) ) : 'token=' . rawurlencode( oay_acc_issue_token( $u->ID ) );
+		$back = OAY_ACC_SCHEME . '://auth?' . $q;
+		$intent = 'intent://auth?' . $q . '#Intent;scheme=' . OAY_ACC_SCHEME . ';package=' . OAY_ACC_SCHEME . ';end';
 		nocache_headers();
 		echo '<!doctype html><html dir="rtl" lang="ar"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تم تسجيل الدخول</title><body style="font-family:Tahoma,sans-serif;text-align:center;padding:60px 20px;background:#0e1c36;color:#fff">'
 			. '<h2>تم تسجيل الدخول ✓</h2><p>اضغط للعودة إلى التطبيق</p><p><a id="b" href="' . esc_attr( $intent ) . '" style="display:inline-block;background:#c9a14a;color:#0e1c36;padding:14px 28px;border-radius:12px;font-weight:bold;text-decoration:none">العودة إلى التطبيق</a></p>'
@@ -671,7 +675,7 @@ add_action( 'init', function () {
 		. '<body style="font-family:Tahoma,sans-serif;text-align:center;padding:50px 20px;background:#f6f7fb;color:#0e1c36"><h2>عمر الياسي للعقارات</h2><p>سجّل الدخول بحساب جوجل للمتابعة في التطبيق</p>';
 	if ( $cid ) {
 		echo '<script src="https://accounts.google.com/gsi/client" async></script>'
-			. '<div id="g_id_onload" data-client_id="' . esc_attr( $cid ) . '" data-ux_mode="redirect" data-login_uri="' . esc_url( home_url( '/?oay_app_google=1' ) ) . '" data-auto_prompt="false"></div>'
+			. '<div id="g_id_onload" data-client_id="' . esc_attr( $cid ) . '" data-ux_mode="redirect" data-login_uri="' . esc_url( home_url( '/?oay_app_google=1' . ( ! empty( $_GET['dev'] ) ? '&dev=' . rawurlencode( preg_replace( '/[^A-Za-z0-9]/', '', (string) $_GET['dev'] ) ) : '' ) ) ) . '" data-auto_prompt="false"></div>'
 			. '<div style="display:inline-block" class="g_id_signin" data-type="standard" data-size="large" data-text="continue_with" data-locale="ar" data-shape="pill"></div>';
 	} else { echo '<p>تسجيل الدخول بجوجل غير مفعّل بعد.</p>'; }
 	echo '</body></html>';

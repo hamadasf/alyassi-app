@@ -64,6 +64,11 @@ jobs:
           f2 = ('<intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" />'
                 '<category android:name="android.intent.category.BROWSABLE" /><data android:scheme="com.omaralyassi.realestate" android:host="open" /></intent-filter>')
           i = s.index('</activity>'); s = s[:i] + f2 + s[i:]
+          # shared plot links https://omaralyassirealestate.com/l/<project>-<plot> open the app (verified with the site's assetlinks.json)
+          f3 = ('<intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" />'
+                '<category android:name="android.intent.category.BROWSABLE" /><data android:scheme="https" android:host="omaralyassirealestate.com" android:pathPrefix="/l/" />'
+                '<data android:scheme="https" android:host="www.omaralyassirealestate.com" android:pathPrefix="/l/" /></intent-filter>')
+          i = s.index('</activity>'); s = s[:i] + f3 + s[i:]
           # the home-screen widget (latest news + offer)
           w = ('<receiver android:name=".NewsWidget" android:exported="false" android:label="أخبار عمر الياسي">'
                '<intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>'
@@ -89,6 +94,7 @@ jobs:
           sed -i "s/versionCode [0-9]*/versionCode $RUN/" $G
           sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.$RUN\"/" $G
           echo "$KS_B64" | base64 -d > android/app/release.jks
+          keytool -list -v -keystore android/app/release.jks -storepass "$KS_PW" 2>/dev/null | grep -m1 "SHA256:" | sed 's/^/UPLOAD-KEY /' || true   # public fingerprint, for the site's assetlinks.json
           cat >> $G <<'EOF'
 
           android {

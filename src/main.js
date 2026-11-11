@@ -15,6 +15,7 @@ import { initCalc, calcPage, initCalc2 } from './calc.js';
 import { initPlanView, planViewPage, initPlanView2 } from './planview.js';
 import { initAdgen, adgenPage, initAdgen2, initAdgenPick, closeAdgen, adgenWant } from './adgen.js';
 import { initTeam, teamPage, initTeamPage } from './team.js';
+import { initSafety, backupsPage, initBackups, errsPage, initErrs, startErrorReports } from './safety.js';
 import { track, deviceId } from './track.js';
 import { buildCleanPlanPdf } from './cleanplan.js';
 import { initPlotEdit, plotEditPage, initPlotEditPage } from './plotedit.js';
@@ -61,7 +62,7 @@ const landUrl = (l) => `${SITE}/${l.project}/#p${l.n}`;
 /** Link for messages: its WhatsApp preview shows the plot highlighted on the plan (the website page then opens the plan). */
 // switched on once the website has the share page (alyassi-app-crm.php §8)
 const SHARE_PAGE = true;
-const shareUrl = (l) => (SHARE_PAGE ? `${SITE}/?oay_p=${encodeURIComponent(l.project + '-' + l.n)}` : landUrl(l));
+const shareUrl = (l) => (SHARE_PAGE ? `${SITE}/l/${encodeURIComponent(l.project + '-' + l.n)}` : landUrl(l));   // opens the app on Android (App Links), else the share page
 const landMsg = (l) => waText(`قطعة رقم ${l.n} · ${l.projectName}`, shareUrl(l), refOf(l));
 
 async function openWeb(url, title) {
@@ -1027,6 +1028,8 @@ function pushPage(kind, id) {
   else if (kind === 'refs') { html = refsPage(); }
   else if (kind === 'plotedit') { html = plotEditPage(); }
   else if (kind === 'team') { html = teamPage(); }
+  else if (kind === 'backups') { html = backupsPage(); }
+  else if (kind === 'errs') { html = errsPage(); }
   else if (kind === 'limport') { html = importPage(); }
   else if (kind === 'saved') { html = savedPage(); }
   else if (kind === 'legal') { html = legalPage(id); }
@@ -1066,7 +1069,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = glock() ? guestLandPage(l) : landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { team: 'نشاط الفريق', tools: 'لوحة العمل', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', plotedit: 'إضافة / تعديل قطعة', limport: 'استيراد ملف الأراضي', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', blocked: 'المحظورون', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { backups: 'النسخ الاحتياطية', errs: 'أعطال التطبيق', team: 'نشاط الفريق', tools: 'لوحة العمل', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', plotedit: 'إضافة / تعديل قطعة', limport: 'استيراد ملف الأراضي', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', blocked: 'المحظورون', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -1082,6 +1085,8 @@ function pushPage(kind, id) {
   if (kind === 'refs') initRefs(pg);
   if (kind === 'plotedit') initPlotEditPage(pg, id || '');
   if (kind === 'team') initTeamPage(pg);
+  if (kind === 'backups') initBackups(pg);
+  if (kind === 'errs') initErrs(pg);
   if (kind === 'limport') initImportPage(pg);
   if (kind === 'rates') initRatesPage(pg);
   if (kind === 'prereg') initPreregPage(pg);
@@ -1248,6 +1253,8 @@ document.addEventListener('click', (e) => {
   if (ds.views !== undefined) { pushPage('views'); return; }
   if (ds.staff !== undefined) { pushPage('staff'); return; }
   if (ds.team !== undefined) { pushPage('team'); return; }
+  if (ds.backups !== undefined) { pushPage('backups'); return; }
+  if (ds.errs !== undefined) { pushPage('errs'); return; }
   if (ds.calc !== undefined) { pushPage('calc', ds.calc); return; }
   if (ds.prof !== undefined) { if (session.token()) pushPage('uprof', ds.prof); return; }
   if (ds.chat) { pushPage('chat', ds.chat); return; }
@@ -1406,6 +1413,13 @@ initPlanView({ esc, toast, I, money, canDesign: () => can('design'), canPlots: (
 initAdgen({ teamEv: (k, id, th) => teamEv(k, id, th), ownerOf: (id) => ownerOf(id), toast, api: accApi, myName: () => (session.user() || {}).name || '', landsOf: (slug) => DATA().lands.concat(naLands()).filter((x) => x.project === slug), openPlan: (slug) => pushPage('plan', slug), isAdmin: () => !!(session.user() || {}).admin, tpls: () => (session.user() || {}).tpl || [] });
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
 initTeam({ esc, I, openLand: (id) => openLandId(id) });
+initSafety({ esc, I, toast, refreshData: () => refresh(true), saveFile: async (blob, name) => {   // a backup file: Documents/عمر الياسي on the phone, a download on the web
+  if (!native) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); return; }
+  const u8 = new Uint8Array(await blob.arrayBuffer());
+  try { await Filesystem.writeFile({ path: 'عمر الياسي/' + name, data: b64(u8), directory: Directory.Documents, recursive: true }); toast('تم الحفظ في: المستندات ← عمر الياسي'); }
+  catch { await shareFile({ bytes: u8, name, type: 'application/json' }, name, name); }
+} });
+startErrorReports(typeof __VERSION__ !== 'undefined' ? __VERSION__ : '', native ? Capacitor.getPlatform() : 'web');
 initPlotEdit({ esc, toast, I, money, DATA: () => DATA(), findLand: (id) => findLand(id), refreshData: () => refresh(true) });
 initLandImport({ esc, toast, I, money, DATA: () => DATA(), refreshData: () => refresh(true), reloadOwners: () => reloadOwners() });
 initGrowth({ esc, toast, I, money, waLink, APP_URL, findLand: (id) => findLand(id), openExternal: (u) => openExternal(u), quoteToOffice: (t) => quoteToOffice(t), pushPage: (k, id) => pushPage(k, id) });
@@ -1481,6 +1495,8 @@ async function boot() {
     App.addListener('backButton', goBack);
     // links from the home-screen widget: com.omaralyassi.realestate://open/news | home | land/<id> | oland/<id>
     const widgetLink = (url) => {
+      const sh = /^https:\/\/(?:www\.)?omaralyassirealestate\.com\/l\/([a-z0-9-]+)-([A-Za-z0-9]+)\/?/.exec(url || '');   // a shared plot link opened in the app
+      if (sh) { setTimeout(() => { closeAll(); refresh(false); openLandId(sh[1] + ':' + sh[2]); }, 400); return; }
       const m = /^com\.omaralyassi\.realestate:\/\/open\/([^/?#]+)(?:\/([^?#]+))?/.exec(url || ''); if (!m) return;
       const id = m[2] ? decodeURIComponent(m[2]) : '';
       setTimeout(() => {

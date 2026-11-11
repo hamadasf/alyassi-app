@@ -20,6 +20,28 @@ export async function api(action, body = {}) {
   return j;
 }
 
+/** this phone's own id (random, made once): the server remembers the phones a management account has confirmed */
+export function deviceId() {
+  let d = ls.get('dev2'); if (!d) { d = Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => b.toString(16).padStart(2, '0')).join(''); ls.set('dev2', d); }
+  return d;
+}
+/** sign-in (password or Google): the management / a manager on a new phone is asked for the code sent to their e-mail */
+export async function signIn(action, body) {
+  const j = await api(action, { ...body, dev: deviceId() });
+  if (!j.need2fa) return j;
+  return codeStep(j.ticket, j.to);
+}
+async function codeStep(ticket, to) {
+  const { uiPrompt, uiConfirm } = await import('./dialog.js');
+  for (let tries = 0; tries < 5; tries++) {
+    const code = await uiPrompt(`أرسلنا كود دخول من 6 أرقام إلى ${to} — لحماية حساب الإدارة عند الدخول من جهاز جديد.`, '', { title: 'تأكيد الدخول', icon: 'mail', ok: 'تأكيد', inputmode: 'numeric', placeholder: '••••••', required: true });
+    if (code == null) throw new Error('لم يكتمل الدخول — الكود مطلوب');
+    try { return await api('login_2fa', { ticket, code, dev: deviceId() }); }
+    catch (e) { if (/انتهت|كثيرة|موقوف/.test(e.message)) throw e; if (!(await uiConfirm(e.message + ' — حاول مرة أخرى؟', { title: 'الكود غير صحيح', ok: 'إعادة المحاولة' }))) throw e; }
+  }
+  throw new Error('محاولات كثيرة — سجّل الدخول من جديد');
+}
+
 export const session = {
   token: () => ls.get('acc_token'),
   user: () => ls.get('acc_user'),
@@ -51,8 +73,14 @@ let googleWait = null;
 if (native) {
   App.addListener('appUrlOpen', async ({ url }) => {
     const m = /^com\.omaralyassi\.realestate:\/\/auth\?token=([^&#]+)/.exec(url || '');
-    if (!m) return;
+    const f = /^com\.omaralyassi\.realestate:\/\/auth\?2fa=([^&#]+)&to=([^&#]+)/.exec(url || '');   // the management: the e-mailed code
+    if (!m && !f) return;
     try { await InAppBrowser.close(); } catch { /* already closed */ }
+    if (f) {
+      try { const j = await codeStep(decodeURIComponent(f[1]), decodeURIComponent(f[2])); session.set(j.token, j.user); if (googleWait) { googleWait(j.user); googleWait = null; } }
+      catch { if (googleWait) { googleWait(null); googleWait = null; } }
+      return;
+    }
     session.set(decodeURIComponent(m[1]), null);
     const u = await refreshMe();
     session.set(session.token(), u);
@@ -62,7 +90,7 @@ if (native) {
 export function googleNative() {
   return new Promise((ok) => {
     googleWait = ok;
-    InAppBrowser.openInSystemBrowser({ url: SITE + '/?oay_app_google=1', options: DefaultSystemBrowserOptions }).catch(() => { googleWait = null; ok(null); });
+    InAppBrowser.openInSystemBrowser({ url: SITE + '/?oay_app_google=1&dev=' + deviceId(), options: DefaultSystemBrowserOptions }).catch(() => { googleWait = null; ok(null); });
   });
 }
 // Web / iPhone: Google's own button, shown inside the page.
@@ -75,7 +103,7 @@ export async function googleWebButton(el, clientId, onDone, onErr) {
   await loadGsi();
   window.google.accounts.id.initialize({
     client_id: clientId, ux_mode: 'popup', auto_select: false, cancel_on_tap_outside: true,
-    callback: async (res) => { try { const j = await api('google', { credential: res.credential }); session.set(j.token, j.user); onDone(j.user); } catch (e) { onErr(e); } },
+    callback: async (res) => { try { const j = await signIn('google', { credential: res.credential }); session.set(j.token, j.user); onDone(j.user); } catch (e) { onErr(e); } },
   });
   window.google.accounts.id.renderButton(el, { type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', locale: 'ar', width: Math.min(360, el.clientWidth || 320) });
 }

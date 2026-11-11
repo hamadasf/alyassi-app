@@ -301,6 +301,8 @@ export function toolsPage() {
       t(can('listings') || can('report'), I.chart, 'إحصائيات الإعلانات', 'data-mystats'),
       t(!!u.admin, I.verified, 'الموظفون والصلاحيات', 'data-staff'),
       t(!!u.admin || u.role === 'mgr', I.users || I.user, 'نشاط الفريق', 'data-team'),
+      t(!!u.admin, I.shield, 'النسخ الاحتياطية', 'data-backups'),
+      t(!!u.admin, I.alert, 'أعطال التطبيق', 'data-errs'),
     ])}
   </div>`;
 }

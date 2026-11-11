@@ -21,7 +21,7 @@ export function initPlotEditPage(pg, id = '') {
       <div class="cgrid"><label>المشروع<select id="peProj">${projects.map((p) => `<option value="${esc(p.slug)}"${p.slug === slug0 ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
         <label>رقم القطعة<span class="pe-n"><input id="peN" inputmode="numeric" value="${esc(n0s || '')}" placeholder="مثال: 4701"><button class="btn primary" data-peload>عرض</button></span></label></div>
       <p class="muted pe-info" id="peInfo">اكتب رقم القطعة كما في مخطط المشروع ثم اضغط «عرض».</p></div>
-    <div id="peForm" hidden></div>`;
+    <div id="peForm" hidden></div><div id="peHist"></div>`;
   const $ = (s) => el.querySelector(s);
   const area = () => n0($('#peFt') && $('#peFt').value) || (cur && cur.planFt) || 0;
   const total = () => n0($('#peTotal') && $('#peTotal').value);
@@ -60,6 +60,20 @@ export function initPlotEditPage(pg, id = '') {
       <p class="muted cnote">يظهر التعديل في الموقع والتطبيق خلال دقائق، ويصل إشعار للعملاء عند إضافة أرض متاحة أو تغيّر الحالة أو السعر.</p>`;
     drawInst();
   };
+  const SL = { av: 'متاحة', res: 'محجوزة', sold: 'مباعة', '': 'غير معروضة' };
+  const brief = (x) => (x ? `<i class="ph-s ${x.s || 'off'}">${SL[x.s] || x.s}</i>${x.s && x.s !== 'sold' && x.total ? ` ${money(x.total)} د.إ` : ''}${x.inst ? ` · ${x.inst} قسط` : ''}` : '—');
+  /** «سجل التغييرات»: this plot's changes (or the latest everywhere) — who, when, before → after, and «تراجع» */
+  const history = async (id) => {
+    const box = $('#peHist'); box.innerHTML = '';
+    try {
+      const j = await api('adm_plot_history', id ? { id } : {});
+      if (!j.items.length) { box.innerHTML = id ? '<div class="ccard ph-box"><h3>سجل التغييرات</h3><p class="muted">لا توجد تعديلات مسجّلة على هذه القطعة بعد.</p></div>' : ''; return; }
+      box.innerHTML = `<div class="ccard ph-box"><h3>${id ? 'سجل التغييرات' : 'آخر التعديلات على القطع'}</h3>${j.items.map((x) => `<div class="ph-row${x.undone ? ' undone' : ''}">
+          <div class="ph-top">${id ? '' : `<b class="notr">${esc(x.name)}</b>`}<small>${new Date(x.k).toLocaleString('ar-AE', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ${esc(x.by)}</small></div>
+          <div class="ph-ch">${x.b ? `<span>${brief(x.b)}</span><em>←</em>` : ''}<span>${brief(x.a)}</span></div>
+          ${x.undo ? `<button class="btn ghost sm" data-peundo="${x.k}" data-peid="${esc(x.id)}">↶ تراجع</button>` : x.undone ? '<small class="ph-u">تم التراجع عنه</small>' : ''}</div>`).join('')}</div>`;
+    } catch { /* no permission: nothing */ }
+  };
   const load = async () => {
     const n = $('#peN').value.trim(); if (!n) { H.toast('اكتب رقم القطعة'); return; }
     $('#peInfo').innerHTML = '<i class="spin"></i> جارِ التحميل…';
@@ -68,11 +82,18 @@ export function initPlotEditPage(pg, id = '') {
       cur = j.plot; inst = (cur.inst || []).map((x) => [x[0], +x[1] || 0]); stt = cur.listed ? cur.s : 'av';
       const p = projects.find((x) => x.slug === $('#peProj').value), l = H.findLand($('#peProj').value + ':' + n);
       $('#peInfo').innerHTML = `<b>قطعة ${esc(cur.n)}</b> · ${esc(p ? p.name : '')}${l && l.use ? ' · ' + esc(l.use) : ''}${cur.planFt ? ` · ${money(cur.planFt)} قدم² في المخطط` : ''}<br>${cur.listed ? `معروضة حالياً: <b>${{ av: 'متاحة', res: 'محجوزة', sold: 'مباعة' }[cur.s] || cur.s}</b>` : '<b class="newp">غير معروضة — ستُضاف للمخطط عند الحفظ</b>'}`;
-      form();
+      form(); history($('#peProj').value + ':' + cur.n);
     } catch (e) { $('#peInfo').innerHTML = `<span class="bad">${esc(e.message)}</span>`; $('#peForm').hidden = true; }
   };
   el.addEventListener('click', async (e) => {
     const t = e.target.closest('button'); if (!t) return; const d = t.dataset;
+    if (d.peundo) {
+      if (!(await uiConfirm('ترجع القطعة كما كانت قبل هذا التعديل (الحالة والسعر والدفعات).', { title: 'التراجع عن التعديل؟', ok: 'تراجع' }))) return;
+      t.disabled = true;
+      try { await api('adm_plot_undo', { k: d.peundo, id: d.peid }); H.toast('تم التراجع ✓'); H.refreshData(); const [sl, nn] = d.peid.split(':'); if (cur && $('#peProj').value === sl && String(cur.n) === nn) load(); else history(cur ? $('#peProj').value + ':' + cur.n : ''); }
+      catch (ex) { H.toast(ex.message); t.disabled = false; }
+      return;
+    }
     if (d.peload !== undefined) { load(); return; }
     if (d.pst !== undefined) { stt = d.pst; el.querySelectorAll('[data-pst]').forEach((b) => b.classList.toggle('on', b === t)); return; }
     if (d.iadd !== undefined) { const last = inst.length ? inst[inst.length - 1][0] : ''; inst.push([last ? addMonths(last, 3) : addMonths(ymd(new Date()), 1), 0]); drawInst(); return; }
@@ -104,5 +125,5 @@ export function initPlotEditPage(pg, id = '') {
     if (t.id === 'peFt') { const a = area(); if (a && n0($('#pePpf').value)) { $('#peTotal').value = money(Math.round(n0($('#pePpf').value) * a)); drawSum(); } }
   });
   el.addEventListener('keydown', (e) => { if (e.target.id === 'peN' && e.key === 'Enter') load(); });
-  if (n0s) load();
+  if (n0s) load(); else history('');
 }
