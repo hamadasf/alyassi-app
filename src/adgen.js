@@ -1161,6 +1161,7 @@ export function adgenPage(l, projects) {
       <ol class="adg-steps"><li>اختر المشروع</li><li>اختر القطعة من المخطط أو من القائمة</li><li>عدّل الكتابة إن أردت، ثم شارك البوست أو احفظه</li></ol>
       <label class="fld">١. المشروع<select id="adgProj">${projects.filter((p) => p.map).map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join('')}</select></label>
       ${H.ownerOf && H.ownerOf('*') ? '<label class="fld">المالك<select id="adgOwn"><option value="">كل الملاك</option></select></label>' : ''}
+      <button class="btn gold block wt-go" data-adwant="">${ei('image')} بوست عام: مطلوب شراء ووساطة</button>
       <button class="btn primary block" id="adgPlan">${ei('map')} اختر القطعة من المخطط</button>
       <div class="adg-or"><span>أو</span></div>
       <label class="fld">٢. رقم القطعة<input id="adgN" inputmode="numeric" placeholder="اكتب الرقم أو اختر من القائمة"></label>
@@ -1597,3 +1598,242 @@ export async function initAdgen2(pg, l, proj) {
 }
 /** the page was closed */
 export function closeAdgen(pg) { if (PG === pg) { PG = null; ad = null; pzc = null; } }
+
+/* =====================================================================================================================
+   «مطلوب شراء ووساطة»: one general post (no plot) — a big title, the areas as dark chips over a large piece of a real
+   plan, and the advertiser (her / his photo or the template's logo, the name and the WhatsApp number). Each account draws
+   it in its own template's colours, 4:3 (WhatsApp) or 4:5 (Instagram). Everything is centred by measuring the text.
+   ===================================================================================================================== */
+const WT_AREAS = ['المطرق', 'السحمة', 'روضة القرط', 'مزيرعة', 'القاسمية', 'بساتين الزبير', 'البليدة', 'الحوشي', 'الطي شرق', 'الرقيبة', 'الصجعة', 'الطي غرب'];
+const WT_FEM = { wr: 1, wi: 1, pk: 1, aya: 1, ayk: 1 };
+const WT_PLOT = { yellow: '#F5DE70', gold: '#EBBC4E', blue: '#A9CBF2', green: '#A6DA8F', pink: '#F7BFC9', magenta: '#E6A9EA', red: '#F2A59C', orange: '#F6C27A', purple: '#CDB3F0', brown: '#D9B48C' };
+let wt = null;
+const wtHex = (h) => { h = String(h || '#B25858').replace('#', ''); if (h.length === 3) h = h.split('').map((x) => x + x).join(''); const n = parseInt(h.slice(0, 6), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const wtMix = (a, b, k) => { const x = wtHex(a), y = wtHex(b); return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * k).toString(16).padStart(2, '0')).join(''); };
+function wtPal(k) {
+  const t = PZ_THEMES[k] || PZ_THEMES.co; const A = /^#/.test(t.bar || '') ? t.bar : '#B25858';
+  return { A, deep: wtMix(A, '#000000', 0.22), soft: wtMix(A, '#FFFFFF', 0.82), bg: wtMix(A, '#F7F1EA', 0.94), ink: wtMix(A, '#2A1A14', 0.72), chip: wtMix(A, '#1E1714', 0.82), gold: '#D9B06A', ivory: '#FBF5EE' };
+}
+function wtStore() { try { return JSON.parse(localStorage.getItem('oay:want') || '{}') || {}; } catch { return {}; } }
+function wtKeep() { try { const s = wtStore(); s.theme = wt.v.theme; s.size = wt.v.size; s.proj = wt.v.proj; s.areas = wt.v.areas; s.per = s.per || {}; s.per[wt.v.theme] = { name: wt.v.name, sub: wt.v.sub, phone: wt.v.phone, photo: wt.v.photo || '' }; localStorage.setItem('oay:want', JSON.stringify(s)); } catch { /* full or private */ } }
+function wtDefaults(k) {
+  const s = wtStore(), per = (s.per || {})[k] || {}, f = WT_FEM[k];
+  return { name: per.name || (f ? 'مستشارتك العقارية' : 'مستشارك العقاري'), sub: per.sub || 'للتواصل والاستفسار عبر واتساب', phone: per.phone || pzPhone(k) || (k === 'wr' || k === 'wi' ? '056 500 0069' : '0568080655'), photo: per.photo || '' };
+}
+function wtFace(k) {   // [image, isPhoto]: the account's own photo, the template's portrait, else its logo
+  if (wt.photoImg) return [wt.photoImg, true];
+  if ((k === 'wr' || k === 'wi') && ayaArt.wrAv) return [ayaArt.wrAv, true];
+  if (k === 'ar' && ayaArt.arAv) return [ayaArt.arAv, true];
+  const t = PZ_THEMES[k] || {}; const lg = t.logo || (k === 'aya' || k === 'ayk' ? PZ_THEMES.pk.logo : PZ_THEMES.co.logo);
+  return [lg && lg.complete && lg.naturalWidth ? lg : null, false];
+}
+function wtPortrait(c, P, cx, cy, r, k) {
+  const [im, photo] = wtFace(k);
+  c.save(); c.shadowColor = 'rgba(40,15,15,.35)'; c.shadowBlur = 30; c.shadowOffsetY = 10; c.fillStyle = P.gold; c.beginPath(); c.arc(cx, cy, r + 22, 0, 7); c.fill(); c.restore();
+  c.fillStyle = P.ivory; c.beginPath(); c.arc(cx, cy, r + 10, 0, 7); c.fill();
+  c.save(); c.beginPath(); c.arc(cx, cy, r, 0, 7); c.clip(); c.fillStyle = '#FFFFFF'; c.fillRect(cx - r, cy - r, 2 * r, 2 * r);
+  if (im) {
+    const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height;
+    if (photo) { const s = Math.max(2 * r / iw, 2 * r / ih); c.drawImage(im, cx - iw * s / 2, cy - ih * s / 2, iw * s, ih * s); }
+    else { const s = Math.min(1.5 * r / iw, 1.5 * r / ih); c.drawImage(im, cx - iw * s / 2, cy - ih * s / 2, iw * s, ih * s); }
+  }
+  c.restore();
+  wrDiamond(c, cx, cy - r - 34, 12, P.gold); wrDiamond(c, cx, cy + r + 34, 12, P.gold);
+}
+function wtPill(c, cx, top, h, s, px, fill, col, padX, minW) {   // a pill sized to its text, centred on cx
+  c.font = FD(800, px); let w = c.measureText(s).width + 2 * padX; w = Math.max(minW || 0, w);
+  c.fillStyle = fill; box(c, cx - w / 2, top, w, h, h / 2); c.fill(); return w;
+}
+function wtPhone(c, P, cx, top, w, phone) {
+  const h = 100, x = cx - w / 2;
+  c.save(); c.shadowColor = 'rgba(40,15,15,.28)'; c.shadowBlur = 16; c.shadowOffsetY = 6; c.fillStyle = P.ivory; box(c, x, top, w, h, h / 2); c.fill(); c.restore();
+  c.fillStyle = P.A; c.beginPath(); c.arc(x + 50, top + 50, 40, 0, 7); c.fill();
+  if (WA_GLYPH) { c.save(); c.translate(x + 50 - 28, top + 50 - 28); c.scale(56 / 24, 56 / 24); c.fillStyle = '#FFFFFF'; c.fill(WA_GLYPH); c.restore(); }
+  c.direction = 'ltr'; adFitV(c, phone, x + 100 + (w - 100) / 2 - 10, top + 18, top + h - 18, w - 150, 52, 800, P.deep, 'center'); c.direction = 'rtl';
+}
+function wtLine(c, P, cx, y, s, px, w) {   // «في المناطق التالية» with gold lines and diamonds either side, all centred
+  c.font = FD(800, px); const tw = Math.min(c.measureText(s).width, w - 300);
+  adFitV(c, s, cx, y - px * 0.7, y + px * 0.5, w - 300, px, 800, P.deep, 'center');
+  const gap = 34, L = 130; c.fillStyle = P.gold;
+  [[-1], [1]].forEach(([d]) => { const x0 = cx + d * (tw / 2 + gap); wrDiamond(c, x0, y - px * 0.1, 8, P.gold); c.fillRect(d < 0 ? x0 - 22 - L : x0 + 22, y - px * 0.1 - 1.5, L, 3); });
+}
+function wtMapPick(slug, aspect) {   // the densest piece of the plan in the map's proportions, with plots big enough to read
+  const raw = rawPlots(slug);   // every plot of the plan; without it, the plots the app knows
+  const P = raw ? raw.filter((q) => q[6] && q[6].length > 2).map((q) => ({ n: String(q[0]), t: q[1], p: q[6], c: q[7] || centreOf(q[6]) }))
+    : ((H.landsOf && H.landsOf(slug)) || []).filter((l) => l.poly && l.poly.length > 2).map((l) => ({ n: String(l.n), t: l.t || 'yellow', p: l.poly, c: l.pc || centreOf(l.poly) }));
+  if (!P.length) return null;
+  const sz = P.map((q) => { const xs = q.p.map((a) => a[0]), ys = q.p.map((a) => a[1]); return Math.sqrt((Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys))); }).sort((a, b) => a - b);
+  const unit = sz[Math.floor(sz.length / 2)] || 10, Wn = unit * 15, Hn = Wn / aspect;
+  const xs = P.map((q) => q.c[0]), ys = P.map((q) => q.c[1]), mnx = Math.min(...xs), mxx = Math.max(...xs), mny = Math.min(...ys), mxy = Math.max(...ys);
+  let best = null; const st = unit;
+  for (let x0 = mnx - unit; x0 <= Math.max(mnx, mxx - Wn) + unit; x0 += st) {
+    for (let y0 = mny - unit; y0 <= Math.max(mny, mxy - Hn) + unit; y0 += st) {
+      let n = 0; for (const q of P) if (q.c[0] > x0 && q.c[0] < x0 + Wn && q.c[1] > y0 && q.c[1] < y0 + Hn) n++;
+      if (!best || n > best.n) best = { n, x0, y0 };
+    }
+  }
+  return { P, x0: best.x0, y0: best.y0, w: Wn, h: Hn, unit };
+}
+function wtMap(c, P, x, y, w, h, R) {
+  c.save(); box(c, x, y, w, h, R); c.clip();
+  c.fillStyle = '#ECDDC4'; c.fillRect(x, y, w, h);
+  const m = wt.map && wt.map.slug === wt.v.proj && Math.abs(wt.map.aspect - w / h) < 0.01 ? wt.map : (wt.map = Object.assign(wtMapPick(wt.v.proj, w / h) || {}, { slug: wt.v.proj, aspect: w / h }));
+  if (m.P) {
+    const s = w / m.w, X = (a) => x + (a - m.x0) * s, Y = (b) => y + (b - m.y0) * s;
+    c.lineJoin = 'round';
+    for (const q of m.P) {
+      if (q.c[0] < m.x0 - m.unit * 3 || q.c[0] > m.x0 + m.w + m.unit * 3 || q.c[1] < m.y0 - m.unit * 3 || q.c[1] > m.y0 + m.h + m.unit * 3) continue;
+      c.beginPath(); q.p.forEach((a, i) => (i ? c.lineTo(X(a[0]), Y(a[1])) : c.moveTo(X(a[0]), Y(a[1])))); c.closePath();
+      c.fillStyle = WT_PLOT[q.t] || '#EAD9A6'; c.fill(); c.strokeStyle = '#86A23A'; c.lineWidth = 1.6; c.stroke();
+    }
+    const fs = Math.max(11, Math.min(20, m.unit * s * 0.3)); c.direction = 'ltr';
+    for (const q of m.P) { const cx = X(q.c[0]), cy = Y(q.c[1]); if (cx < x - 40 || cx > x + w + 40 || cy < y - 40 || cy > y + h + 40) continue; txt(c, q.n, cx, cy + fs * 0.36, FD(700, fs), '#5B4A12', 'center'); }
+    c.direction = 'rtl';
+  }
+  const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, 'rgba(247,241,234,.10)'); g.addColorStop(1, 'rgba(247,241,234,.30)'); c.fillStyle = g; c.fillRect(x, y, w, h);
+  c.restore();
+  c.strokeStyle = '#FFFFFF'; c.lineWidth = 10; box(c, x, y, w, h, R); c.stroke();
+}
+function wtChips(c, P, x, y, w, h) {   // the areas: 3 a row, every row centred, the block centred in the map
+  const A = wt.v.areas.split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 18); if (!A.length) return;
+  const cols = A.length <= 4 ? 2 : 3, rows = Math.ceil(A.length / cols), pad = 36, gx = 26;
+  const cw = (w - 2 * pad - (cols - 1) * gx) / cols, avail = h - 2 * pad;
+  const ch = Math.min(100, avail / (rows * 1.5)), gy = rows > 1 ? Math.min(64, (avail - rows * ch) / (rows - 1) * 0.75) : 0;
+  const top = y + (h - (rows * ch + (rows - 1) * gy)) / 2;
+  for (let r = 0; r < rows; r++) {
+    const row = A.slice(r * cols, r * cols + cols), rw = row.length * cw + (row.length - 1) * gx, x0 = x + w / 2 + rw / 2;   // right to left
+    row.forEach((s, i) => {
+      const bx = x0 - (i + 1) * cw - i * gx, by = top + r * (ch + gy);
+      c.save(); c.shadowColor = 'rgba(25,15,10,.38)'; c.shadowBlur = 20; c.shadowOffsetY = 8; c.fillStyle = P.chip; box(c, bx, by, cw, ch, ch * 0.28); c.fill(); c.restore();
+      c.strokeStyle = 'rgba(217,176,106,.6)'; c.lineWidth = 2.5; box(c, bx + 1.5, by + 1.5, cw - 3, ch - 3, ch * 0.28); c.stroke();
+      adFitV(c, s, bx + cw / 2, by + ch * 0.2, by + ch * 0.8, cw - 34, ch * 0.5, 800, '#FFFFFF', 'center');
+    });
+  }
+}
+function wtDraw(cv) {
+  const v = wt.v, k = v.theme, P = wtPal(k), W = cv.width, H = cv.height, c = cv.getContext('2d');
+  PZS = 1; c.direction = 'rtl'; c.textBaseline = 'alphabetic';
+  c.fillStyle = P.bg; c.fillRect(0, 0, W, H);
+  let g = c.createRadialGradient(W, 0, 0, W, 0, W * 0.65); g.addColorStop(0, wtMix(P.A, '#FFFFFF', 0.8)); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const head = (cx, top, w, tPx) => {   // kicker · title · pill · «في المناطق التالية», each centred on cx; → the y under it
+    const kw = wtPill(c, cx, top, 72, v.kick, 34, P.soft, P.deep, 48);
+    adFitV(c, v.kick, cx, top + 14, top + 60, kw - 60, 34, 800, P.deep, 'center');
+    let y = top + 72 + 16;
+    adFitV(c, v.title, cx, y, y + tPx * 1.02, w, tPx, 800, P.ink, 'center'); y += tPx * 1.02 + 18;
+    const ph = 104, pw = Math.min(w, wtPill(c, cx, y, ph, v.pill, 72, P.A, '#FFF', 90));
+    c.save(); c.globalCompositeOperation = 'source-over'; const gg = c.createLinearGradient(0, y, 0, y + ph); gg.addColorStop(0, wtMix(P.A, '#FFFFFF', 0.08)); gg.addColorStop(1, P.deep); c.fillStyle = gg; box(c, cx - pw / 2, y, pw, ph, ph / 2); c.fill(); c.restore();
+    adFitV(c, v.pill, cx, y + 16, y + ph - 22, pw - 120, 72, 800, '#FFFFFF', 'center'); y += ph + 30;
+    wtLine(c, P, cx, y + 30, v.inl, 44, w); return y + 30 + 46;
+  };
+  if (W / H > 1.1) {   // 4:3 — the advertiser on the left, the post on the right
+    const sx = 40, sy = 40, sw = 560, sh = H - 80, scx = sx + sw / 2;
+    c.save(); c.shadowColor = 'rgba(80,30,30,.25)'; c.shadowBlur = 40; c.shadowOffsetY = 18; g = c.createLinearGradient(sx, sy, sx + sw * 0.4, sy + sh); g.addColorStop(0, wtMix(P.A, '#FFFFFF', 0.06)); g.addColorStop(1, P.deep); c.fillStyle = g; box(c, sx, sy, sw, sh, 44); c.fill(); c.restore();
+    c.strokeStyle = 'rgba(232,196,128,.55)'; c.lineWidth = 2; box(c, sx + 18, sy + 18, sw - 36, sh - 36, 32); c.stroke();
+    const r = 200, block = 2 * r + 44 + 60 + 66 + 50 + 100 + 60, t0 = sy + (sh - block) / 2, cy = t0 + r + 22;
+    wtPortrait(c, P, scx, cy, r, k);
+    let y = cy + r + 22 + 60;
+    adFitV(c, v.name, scx, y, y + 64, sw - 70, 54, 800, '#FFFFFF', 'center'); y += 72;
+    adFitV(c, v.sub, scx, y, y + 40, sw - 90, 30, 500, wtMix(P.A, '#FFFFFF', 0.82), 'center'); y += 40 + 46;
+    if (v.phone) wtPhone(c, P, scx, y, sw - 100, v.phone);
+    const mx = 640, mw = W - 40 - mx, mcx = mx + mw / 2, my = head(mcx, 46, mw, 176) + 18;
+    wtMap(c, P, mx, my, mw, H - 40 - my, 34); wtChips(c, P, mx, my, mw, H - 40 - my);
+  } else {   // 4:5 — the post on top, the advertiser in a band at the bottom
+    const mx = 60, mw = W - 120, cx = W / 2, bandH = 340, by = H - 60 - bandH, my = head(cx, 60, mw, 200) + 22;
+    wtMap(c, P, mx, my, mw, by - 36 - my, 36); wtChips(c, P, mx, my, mw, by - 36 - my);
+    c.save(); c.shadowColor = 'rgba(80,30,30,.25)'; c.shadowBlur = 36; c.shadowOffsetY = 14; g = c.createLinearGradient(mx, by, mx + mw, by + bandH); g.addColorStop(0, wtMix(P.A, '#FFFFFF', 0.06)); g.addColorStop(1, P.deep); c.fillStyle = g; box(c, mx, by, mw, bandH, 44); c.fill(); c.restore();
+    c.strokeStyle = 'rgba(232,196,128,.55)'; c.lineWidth = 2; box(c, mx + 16, by + 16, mw - 32, bandH - 32, 32); c.stroke();
+    const r = 100, pcx = mx + mw - 80 - r - 22, pcy = by + bandH / 2;
+    wtPortrait(c, P, pcx, pcy, r, k);
+    const tx0 = mx + 60, tw = pcx - r - 60 - tx0, tcx = tx0 + tw / 2;
+    adFitV(c, v.name, tcx, by + 50, by + 114, tw, 56, 800, '#FFFFFF', 'center');
+    adFitV(c, v.sub, tcx, by + 120, by + 158, tw - 40, 30, 500, wtMix(P.A, '#FFFFFF', 0.82), 'center');
+    if (v.phone) wtPhone(c, P, tcx, by + 190, Math.min(560, tw), v.phone);
+  }
+}
+const WT_SIZES = { wa: [1600, 1200], ig: [1600, 2000] };
+export function adwantPage(projects) {
+  const ok = allowed(), s = wtStore(), k = ok.includes(s.theme) ? s.theme : ok[0];
+  const ps = projects.filter((p) => p.map);
+  return `<div class="adg wt">
+    <div class="adg-prev"><canvas id="wtCv" width="1600" height="1200"></canvas><div class="adg-load" id="wtLoad"><i class="spin"></i><span>جارِ تجهيز التصميم…</span></div></div>
+    <div class="adg-form">
+      ${ok.length > 1 ? `<h3>القالب</h3><div class="wt-th">${ok.map((t) => `<button type="button" data-wtth="${t}" class="${t === k ? 'on' : ''}"><i style="background:${wtPal(t).A}"></i>${esc(PZ_THEMES[t].name)}</button>`).join('')}</div>` : ''}
+      <h3>المقاس</h3><div class="seg"><button type="button" data-wtsz="wa">واتساب 4:3</button><button type="button" data-wtsz="ig">إنستجرام 4:5</button></div>
+      <label class="fld">المناطق (كل منطقة في سطر)<textarea id="wtAreas" rows="6"></textarea></label>
+      <label class="fld">المخطط في الخلفية<select id="wtProj">${ps.map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join('')}</select></label>
+      <div class="wt-who"><button type="button" class="btn ghost sm" id="wtPhoto">${ei('image')} صورتك</button><button type="button" class="btn ghost sm" id="wtPhotoX" hidden>إزالة الصورة</button></div>
+      <label class="fld">الاسم تحت الصورة<input type="text" data-wt="name"></label>
+      <label class="fld">السطر الصغير<input type="text" data-wt="sub"></label>
+      <label class="fld">رقم الواتساب<input type="text" data-wt="phone" dir="ltr" inputmode="tel"></label>
+      <details class="wt-more"><summary>نصوص العنوان</summary>
+        <label class="fld">السطر العلوي<input type="text" data-wt="kick"></label><label class="fld">العنوان<input type="text" data-wt="title"></label>
+        <label class="fld">الشريط<input type="text" data-wt="pill"></label><label class="fld">فوق المناطق<input type="text" data-wt="inl"></label></details>
+    </div>
+    <input type="file" id="wtFile" accept="image/*" hidden>
+    <div class="adg-bar"><button class="btn primary" id="wtShare">${ei('share')} مشاركة</button><button class="btn" id="wtSave">${ei('pdf')} حفظ الصورة</button></div>
+  </div>`;
+}
+async function wtOut(share) {
+  const cv = $('wtCv'), b = await new Promise((ok) => cv.toBlob(ok, 'image/jpeg', 0.93));
+  if (!b) { H.toast('تعذّر تجهيز الصورة'); return; }
+  if (H.teamEv) H.teamEv(share ? 'share_design' : 'save_img', 'wanted', wt.v.theme);
+  const name = `wanted-${PZ_FILE[wt.v.theme] || wt.v.theme}-${wt.v.size}.jpg`, title = 'مطلوب شراء ووساطة';
+  try {
+    if (native) {
+      const u8 = new Uint8Array(await b.arrayBuffer());
+      if (!share) { try { await Filesystem.writeFile({ path: 'عمر الياسي/' + name.replace('.jpg', '-' + Date.now().toString(36) + '.jpg'), data: b64(u8), directory: Directory.Documents, recursive: true }); H.toast('تم حفظ البوست في: المستندات ← عمر الياسي'); return; } catch { /* the share sheet has «حفظ» */ } }
+      const w = await Filesystem.writeFile({ path: name, data: b64(u8), directory: Directory.Cache });
+      await Share.share({ title, files: [w.uri], dialogTitle: share ? 'مشاركة البوست' : 'حفظ البوست' }); return;
+    }
+    const file = new File([b], name, { type: 'image/jpeg' });
+    if (share && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title }); return; }
+    const a = document.createElement('a'), u = URL.createObjectURL(b); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000); H.toast('تم تجهيز البوست');
+  } catch (e) { if (!/cancel/i.test(String(e && (e.message || e)))) H.toast('تعذّر الحفظ: ' + String((e && e.message) || e).slice(0, 80)); }
+}
+export async function initAdwant(pg, projects) {
+  PG = pg; const s = wtStore(), ok = allowed();
+  const k = ok.includes(s.theme) ? s.theme : ok[0];
+  const ps = projects.filter((p) => p.map), proj = ps.some((p) => p.slug === s.proj) ? s.proj : (ps.find((p) => p.slug === 'al-mutraq') || ps[0] || {}).slug;
+  wt = { v: Object.assign({ theme: k, size: s.size || (PZ_THEMES[k].size && PZ_THEMES[k].size[1] < 1500 ? 'wa' : 'wa'), proj, areas: s.areas || WT_AREAS.join('\n'), kick: 'مطلوب شراء • بيع • وساطة', title: 'مطلوب', pill: 'شراء ووساطة', inl: 'في المناطق التالية' }, wtDefaults(k)), map: null, photoImg: null };
+  const cv = $('wtCv'), form = pg.querySelector('.adg-form');
+  const loadPhoto = () => new Promise((r) => { if (!wt.v.photo) { wt.photoImg = null; r(); return; } const im = new Image(); im.onload = () => { wt.photoImg = im; r(); }; im.onerror = () => { wt.photoImg = null; r(); }; im.src = wt.v.photo; });
+  const fill = () => {
+    form.querySelectorAll('[data-wt]').forEach((i) => { i.value = wt.v[i.dataset.wt] || ''; });
+    $('wtAreas').value = wt.v.areas; $('wtProj').value = wt.v.proj;
+    form.querySelectorAll('[data-wtsz]').forEach((b) => b.classList.toggle('on', b.dataset.wtsz === wt.v.size));
+    form.querySelectorAll('[data-wtth]').forEach((b) => b.classList.toggle('on', b.dataset.wtth === wt.v.theme));
+    $('wtPhotoX').hidden = !wt.v.photo;
+  };
+  let raf = 0;
+  const draw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const [w, h] = WT_SIZES[wt.v.size] || WT_SIZES.wa; if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; } wtDraw(cv); }); };
+  await Promise.all([ayaLoad(), document.fonts.load('800 40px Tajawal', 'مطلوب 0123').catch(() => {}), document.fonts.load('500 40px Tajawal', 'مطلوب').catch(() => {}),
+    Promise.all(Object.values(PZ_THEMES).map((t) => (t.logo && !t.logo.complete ? new Promise((r) => { t.logo.onload = t.logo.onerror = r; }) : null))), loadPhoto()]);
+  if (PG !== pg) return;
+  $('wtLoad').remove(); fill(); draw();
+  let kt = 0; const keep = () => { clearTimeout(kt); kt = setTimeout(wtKeep, 500); };
+  form.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.dataset.wt) wt.v[t.dataset.wt] = t.value; else if (t.id === 'wtAreas') wt.v.areas = t.value; else if (t.id === 'wtProj') { wt.v.proj = t.value; wt.map = null; } else return;
+    draw(); keep();
+  });
+  form.addEventListener('change', (e) => { if (e.target.id === 'wtProj') { wt.v.proj = e.target.value; wt.map = null; draw(); keep(); } });
+  form.addEventListener('click', async (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.wtsz) { wt.v.size = b.dataset.wtsz; wt.map = null; fill(); draw(); keep(); return; }
+    if (b.dataset.wtth) { wtKeep(); wt.v.theme = b.dataset.wtth; Object.assign(wt.v, wtDefaults(wt.v.theme)); await loadPhoto(); fill(); draw(); keep(); return; }
+    if (b.id === 'wtPhoto') { $('wtFile').click(); return; }
+    if (b.id === 'wtPhotoX') { wt.v.photo = ''; wt.photoImg = null; fill(); draw(); wtKeep(); }
+  });
+  $('wtFile').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
+    const im = new Image(), u = URL.createObjectURL(f);
+    im.onload = () => {   // square, 640 px, kept on this phone for this template
+      const n = Math.min(im.width, im.height), z = document.createElement('canvas'); z.width = z.height = 640;
+      z.getContext('2d').drawImage(im, (im.width - n) / 2, (im.height - n) / 2, n, n, 0, 0, 640, 640); URL.revokeObjectURL(u);
+      wt.v.photo = z.toDataURL('image/jpeg', 0.86); loadPhoto().then(() => { fill(); draw(); wtKeep(); });
+    };
+    im.onerror = () => { URL.revokeObjectURL(u); H.toast('تعذّر فتح الصورة'); }; im.src = u;
+  });
+  $('wtShare').onclick = () => wtOut(true); $('wtSave').onclick = () => wtOut(false);
+}
+export function closeAdwant(pg) { if (PG === pg) { PG = null; wt = null; } }

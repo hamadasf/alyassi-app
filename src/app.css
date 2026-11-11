@@ -1646,3 +1646,8 @@ body.guest #sheet .memf { display: none; }
 
 .bk-tfa { display: flex; align-items: center; gap: 12px; justify-content: space-between; margin-top: 14px; cursor: pointer; } .bk-tfa span { display: flex; flex-direction: column; gap: 3px; } .bk-tfa b { color: var(--navy); } .bk-tfa small { color: #7a7466; font-size: 12px; } .bk-tfa input { width: 22px; height: 22px; accent-color: var(--gold, #c9a14a); flex: none; }
 .opill.infra { background: #fff4e0; color: #9a5b00; }
+.wt-th { display: flex; flex-wrap: wrap; gap: 8px; } .wt-th button { display: inline-flex; align-items: center; gap: 7px; border: 1.5px solid #e2dccf; background: #fff; border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 13px; font-weight: 700; color: var(--navy); }
+.wt-th button i { width: 14px; height: 14px; border-radius: 50%; } .wt-th button.on { border-color: var(--gold, #c9a14a); background: #fbf3e2; }
+.wt-who { display: flex; gap: 8px; margin: 10px 0 4px; } .wt-more { margin-top: 10px; } .wt-more summary { font-weight: 800; color: var(--navy); cursor: pointer; padding: 6px 0; }
+.wt-go { margin-bottom: 14px; }
+.wt .adg-prev canvas { aspect-ratio: auto; height: auto; max-height: 42vh; width: auto; max-width: 100%; }

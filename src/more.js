@@ -292,6 +292,7 @@ export function toolsPage() {
     ])}
     ${sec('التسويق', [
       t(can('design'), I.image, 'تصميم البوستات', 'data-adgen=""'),
+      t(can('design'), I.image, 'بوست مطلوب شراء ووساطة', 'data-adwant=""'),
       t(can('push'), I.bell, 'إشعار موجّه', 'data-pushc'),
       t(!!u.admin, I.mail, 'النشرة البريدية', 'data-mailadm'),
       t(can('news'), I.trend, 'الأخبار العقارية', 'data-news'),

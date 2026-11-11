@@ -13,7 +13,7 @@ import { initNotifs, notifsPage } from './notifs.js';
 import { initNews, loadNews, renderTicker, newsPage, initNewsPage } from './news.js';
 import { initCalc, calcPage, initCalc2 } from './calc.js';
 import { initPlanView, planViewPage, initPlanView2 } from './planview.js';
-import { initAdgen, adgenPage, initAdgen2, initAdgenPick, closeAdgen, adgenWant } from './adgen.js';
+import { initAdgen, adgenPage, initAdgen2, initAdgenPick, closeAdgen, adgenWant, adwantPage, initAdwant, closeAdwant } from './adgen.js';
 import { initTeam, teamPage, initTeamPage } from './team.js';
 import { initSafety, backupsPage, initBackups, errsPage, initErrs, startErrorReports } from './safety.js';
 import { track, deviceId } from './track.js';
@@ -1062,6 +1062,7 @@ function pushPage(kind, id) {
   else if (kind === 'mystats') { html = myStatsPage(); }
   else if (kind === 'advmine') { html = advMinePage(); }
   else if (kind === 'adgen') { if (id) { l = findLand(id); p = l && d.projects.find((x) => x.slug === l.project); if (!l || !p || !(l.poly || l.pc)) return; } html = adgenPage(id ? l : null, d.projects); }
+  else if (kind === 'adwant') { if (!can('design')) return; html = adwantPage(d.projects); }
   else if (kind === 'mychat') { html = myChatPage(); }
   else if (kind === 'group') { html = groupPage(); }
   else if (kind === 'blocked') { html = blockedPage(); }
@@ -1070,7 +1071,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = glock() ? guestLandPage(l) : landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { backups: 'النسخ الاحتياطية', errs: 'أعطال التطبيق', team: 'نشاط الفريق', tools: 'لوحة العمل', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', plotedit: 'إضافة / تعديل قطعة', limport: 'استيراد ملف الأراضي', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', blocked: 'المحظورون', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { adwant: 'بوست مطلوب شراء ووساطة', backups: 'النسخ الاحتياطية', errs: 'أعطال التطبيق', team: 'نشاط الفريق', tools: 'لوحة العمل', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', plotedit: 'إضافة / تعديل قطعة', limport: 'استيراد ملف الأراضي', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', blocked: 'المحظورون', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -1113,6 +1114,7 @@ function pushPage(kind, id) {
   if (kind === 'mystats') initMyStats(pg);
   if (kind === 'advmine') initAdvMine(pg);
   if (kind === 'adgen') { pg.classList.add('adgpg'); if (id) initAdgen2(pg, l, p); else initAdgenPick(pg, d.projects, (lid) => pushPage('adgen', lid)); }
+  if (kind === 'adwant') { pg.classList.add('adgpg', 'wtpg'); initAdwant(pg, d.projects); }
   if (kind === 'report') initReportPage(pg, 0);
   if (kind === 'wanted') initWanted(pg);
   if (kind === 'wantedadd') initWantedAdd(pg);
@@ -1144,7 +1146,7 @@ function pushPage(kind, id) {
 function popPage() {
   const pg = stack.pop(); if (!pg) return false;
   if (native) { const top = stack[stack.length - 1]; SystemBars.setStyle({ style: top && top.querySelector(':scope > .wahead') ? SystemBarsStyle.Light : SystemBarsStyle.Dark }).catch(() => {}); }
-  if (pg.classList.contains('adgpg')) closeAdgen(pg);
+  if (pg.classList.contains('wtpg')) closeAdwant(pg); else if (pg.classList.contains('adgpg')) closeAdgen(pg);
   pg.classList.remove('in'); pg.classList.add('out');
   setTimeout(() => pg.remove(), 260);
   return true;
@@ -1241,6 +1243,7 @@ document.addEventListener('click', (e) => {
   if (ds.profile !== undefined) { pushPage('profile'); return; }
   if (ds.news !== undefined) { pushPage('news'); return; }
   if (ds.report !== undefined) { pushPage('report'); return; }
+  if (ds.adwant !== undefined && can('design')) { e.stopPropagation(); pushPage('adwant'); return; }
   if (ds.adgen !== undefined && can('design')) { e.stopPropagation(); pushPage('adgen', ds.adgen); return; }
   if (ds.wanted !== undefined) { pushPage('wanted'); return; }
   if (ds.alerts !== undefined) { pushPage('alerts', ds.alerts); return; }
