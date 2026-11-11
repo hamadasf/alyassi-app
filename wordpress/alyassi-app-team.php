@@ -87,8 +87,8 @@ function oay_acc_team_report() {
 	$me = oay_acc_need_user(); if ( ! oay_team_lead( $me ) ) { oay_acc_err( 'غير مسموح', 403 ); }
 	$uid = absint( oay_acc_arg( 'user', 12 ) ); $days = max( 1, min( 90, absint( oay_acc_arg( 'days', 3 ) ) ?: 7 ) ); $since = oay_team_ms() - $days * 86400000;
 	$log = get_option( 'oay_team_log', array() ); $log = is_array( $log ) ? $log : array();
-	$boss = oay_acc_is_admin( $me );   // the management's own activity is seen by the management only
-	$hide = array(); if ( ! $boss ) { foreach ( oay_admin_ids() as $id ) { $x = get_userdata( $id ); if ( $x && oay_acc_is_admin( $x ) ) { $hide[ (int) $id ] = 1; } } }
+	$boss = oay_acc_is_admin( $me );   // the admin sees everyone; a manager sees only the staff and the marketing managers (not the admins, not managers)
+	$hide = array(); if ( ! $boss ) { foreach ( oay_admin_ids() as $id ) { $x = get_userdata( $id ); if ( $x && in_array( oay_role( $x ), array( 'admin', 'mgr' ), true ) ) { $hide[ (int) $id ] = 1; } } }
 	if ( $hide ) { $log = array_values( array_filter( $log, function ( $e ) use ( $hide ) { return empty( $hide[ (int) $e['u'] ] ); } ) ); }
 	if ( isset( $hide[ $uid ] ) ) { $uid = 0; }
 	$team = array(); $cnt = array(); $lastLogin = array();
