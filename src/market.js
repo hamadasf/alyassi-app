@@ -24,10 +24,10 @@ function load(force) {
 const allLands = () => (H.projects() || []).flatMap((p) => p.lands || []);
 
 /** how a company land stands against the market */
-export function compare(l, list) {
+export function compare(l, list, near) {
   if (!l || !(l.total > 0) || !(l.ft > 0)) return null;
-  const ours = l.total / l.ft;
-  let pool = list.filter((c) => c.slug === l.project && c.ref !== l.id && c.ft > 0 && c.price > 0 && daysAgo(c.seen) <= 240);
+  const ours = l.total / l.ft, more = near === undefined ? nearOf(l.project) : near;
+  let pool = list.filter((c) => (c.slug === l.project || more.includes(c.slug)) && c.ref !== l.id && c.ft > 0 && c.price > 0 && daysAgo(c.seen) <= 240);
   const sameCat = pool.filter((c) => c.cat === l.cat); if (sameCat.length >= 2) pool = sameCat;
   const similar = pool.filter((c) => c.ft >= l.ft * 0.6 && c.ft <= l.ft * 1.6); if (similar.length >= 2) pool = similar;
   const side = l.side || 'عادية', sameSide = pool.filter((c) => (c.side || 'عادية') === side);
@@ -37,6 +37,35 @@ export function compare(l, list) {
   const ppf = pool.map((c) => c.price / c.ft), lo = Math.min(...ppf), md = median(ppf), hi = Math.max(...ppf);
   const diff = (ours - md) / md * 100;
   return { n: pool.length, ours, lo, md, hi, diff, usedSide, side, cheapest: Math.floor(lo * l.ft * 0.99 / 1000) * 1000, level: Math.round(md * l.ft / 1000) * 1000, pool: pool.sort((a, b) => a.price / a.ft - b.price / b.ft) };
+}
+/* ---------- «مزامنة»: when a project has no comparables, look in the nearby areas (by the projects' real coordinates
+   and their names: بليدة 1 / 2 / 3, الحوشي / الحوشي طرح المروان, الدبدبة شمال / بساتين الزبير «الدبدبة جنوب») for
+   recorded listings and our own sales of the same use and a close size; the areas found are kept for that project ---------- */
+const NEAR_KEY = 'oay:mknear';
+const ALIAS = { 'basateen-al-zubair': 'الدبدبة', 'dabdaba-north': 'الدبدبة' };
+function nearOf(slug) { try { const m = JSON.parse(localStorage.getItem(NEAR_KEY) || '{}'); return Array.isArray(m[slug]) ? m[slug] : []; } catch { return []; } }
+function setNear(slug, list) { try { const m = JSON.parse(localStorage.getItem(NEAR_KEY) || '{}'); if (list.length) m[slug] = list; else delete m[slug]; localStorage.setItem(NEAR_KEY, JSON.stringify(m)); } catch { /* private mode */ } }
+let geo = null;
+async function projGeo() {
+  if (geo) return geo;
+  const ps = H.projects() || [];
+  try { const j = await api('proj_geo', { items: ps.slice(0, 60).map((p) => ({ slug: p.slug, loc: p.loc || '' })) }); geo = j.items || {}; } catch { geo = {}; }
+  return geo;
+}
+const km = (a, b) => { const R = 6371, r = Math.PI / 180, dl = (b[0] - a[0]) * r, dn = (b[1] - a[1]) * r; const h = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
+const stem = (p) => ALIAS[p.slug] || String(p.name || '').replace(/[()0-9٠-٩]/g, ' ').replace(/\s+(طرح|المرحلة|مرحلة|شمال|جنوب|شرق|غرب|A-B).*$/, '').trim().split(/\s+/).slice(0, 2).join(' ');
+/** → [{ slug, name, km, n }] the nearby areas with listings like this land (closest first) */
+async function syncFind(l) {
+  const list = await load(true), ps = H.projects() || [], me = ps.find((p) => p.slug === l.project) || { slug: l.project, name: l.projectName };
+  const g = await projGeo(), c0 = g[l.project];
+  const like = (c) => c.slug !== l.project && c.ft > 0 && c.price > 0 && daysAgo(c.seen) <= 240 && c.ft >= l.ft * 0.6 && c.ft <= l.ft * 1.6 && (!l.cat || !c.cat || c.cat === l.cat);
+  const by = {}; list.filter(like).forEach((c) => { (by[c.slug] = by[c.slug] || []).push(c); });
+  const out = Object.keys(by).map((slug) => {
+    const p = ps.find((x) => x.slug === slug) || { slug, name: slug }; const c1 = g[slug];
+    const d = c0 && c1 ? km(c0, c1) : null, kin = stem(p) && stem(p) === stem(me);
+    return { slug, name: p.name || slug, km: d, n: by[slug].length, ok: kin || (d !== null && d <= 12) };
+  }).filter((x) => x.ok).sort((a, b) => (a.km ?? 0) - (b.km ?? 0));
+  return out.slice(0, 4);
 }
 const tone = (d) => (d > 3 ? 'hi' : d < -3 ? 'lo' : 'ok');
 const verdict = (r) => (r.diff > 3 ? `أغلى من السوق بـ ${Math.round(r.diff)}%` : r.diff < -3 ? `أرخص من السوق بـ ${Math.round(-r.diff)}%` : 'في مستوى السوق');
@@ -48,13 +77,31 @@ export async function fillMarketCard(root, l) {
   try {
     const r = compare(l, await load());
     if (!r) { el.remove(); return; }
-    if (!r.n) { el.innerHTML = `<b>${H.I.trend} مقارنة بالسوق</b><p class="muted">لا توجد إعلانات مشابهة مسجّلة لهذا المشروع بعد.</p><button class="btn sm" data-mkadd="${esc(l.project)}">＋ أضف إعلاناً مشابهاً</button>`; return; }
+    if (!r.n) {
+      el.className = 'mkcard';
+      el.innerHTML = `<b>${H.I.trend} مقارنة بالسوق</b><p class="muted">لا توجد إعلانات مشابهة مسجّلة لهذا المشروع بعد.</p>
+        <button class="btn primary sm mksync" data-mksync>${ei('refresh')} مزامنة — ابحث عن أراضٍ مشابهة في المناطق القريبة</button>
+        <button class="btn sm" data-mkadd="${esc(l.project)}">＋ أضف إعلاناً مشابهاً</button>`;
+      el.querySelector('[data-mksync]').onclick = async (e) => {
+        e.stopPropagation(); const b = e.currentTarget; b.disabled = true; b.innerHTML = '<i class="spin"></i> جارِ البحث…';
+        try {
+          const found = await syncFind(l);
+          if (!found.length) { b.outerHTML = `<p class="mknone">لم نجد إعلانات مسجّلة لأراضٍ ${esc(l.cat || '')} بمساحة قريبة (${m(l.ft * 0.6)}–${m(l.ft * 1.6)} قدم) في المناطق القريبة. أضف إعلاناً من بيوت أو بروبرتي فايندر لتظهر المقارنة.</p>`; return; }
+          setNear(l.project, found.map((x) => x.slug)); H.toast(`تمت المزامنة ✓ ${found.reduce((a, x) => a + x.n, 0)} إعلان من ${found.length === 1 ? found[0].name : found.length + ' مناطق'}`);
+          fillMarketCard(root, l);
+        } catch (ex) { b.disabled = false; b.textContent = 'تعذّر البحث — حاول مرة أخرى'; H.toast(ex.message); }
+      };
+      return;
+    }
+    const fromNear = r.pool.filter((c) => c.slug !== l.project);
     el.className = 'mkcard ' + tone(r.diff);
     el.innerHTML = `<div class="mk1"><b>${H.I.trend} مقارنة بالسوق</b><span>${r.n} ${r.n > 10 ? 'إعلاناً' : 'إعلانات'} مشابهة${r.usedSide ? ` · ${esc(r.side)}` : ''}</span></div>
       <div class="mk2"><div><small>أرخص</small><b>${m(r.lo)}</b></div><div><small>متوسط السوق</small><b>${m(r.md)}</b></div><div class="us"><small>سعرنا</small><b>${m(r.ours)}</b></div></div>
       <p class="mkv">${verdict(r)} <small>(درهم / قدم)</small></p>
       <p class="mks">لتكون الأرخص: <b>${m(r.cheapest)} درهم</b> · مستوى السوق: ${m(r.level)} درهم</p>
+      ${fromNear.length ? `<p class="mknear">${ei('pin')} ${fromNear.length === r.n ? 'كل المقارنات' : fromNear.length + ' منها'} من مناطق قريبة: ${esc([...new Set(fromNear.map((c) => ((H.projects() || []).find((p) => p.slug === c.slug) || {}).name || c.slug))].join('، '))} <button class="linkbtn" data-mkunsync>إلغاء</button></p>` : ''}
       <button class="btn sm" data-mkopen="${esc(l.id)}">عرض الإعلانات المقارنة</button>`;
+    const un = el.querySelector('[data-mkunsync]'); if (un) un.onclick = (e) => { e.stopPropagation(); setNear(l.project, []); fillMarketCard(root, l); };
   } catch { el.remove(); }
 }
 
