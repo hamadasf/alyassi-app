@@ -39,7 +39,7 @@ export function initPlotEditPage(pg, id = '') {
   const form = () => {
     const c = cur;
     $('#peForm').hidden = false;
-    $('#peForm').innerHTML = `<div class="ccard">
+    $('#peForm').innerHTML = `<div id="peCopy" class="pe-copy"></div><div class="ccard">
         <h3>الحالة</h3><div class="pe-st">${ST.map(([k, l, cls]) => `<button class="${cls}${k === stt ? ' on' : ''}" data-pst="${k}">${l}</button>`).join('')}</div>
         <h3>السعر والمساحة</h3>
         <div class="cgrid"><label>سعر الأرض (د.إ)<input id="peTotal" inputmode="numeric" value="${c.total ? money(c.total) : ''}"></label>
@@ -58,7 +58,49 @@ export function initPlotEditPage(pg, id = '') {
         <button class="btn ghost block" data-iadd>+ إضافة قسط</button></div>
       <button class="btn primary block pe-save" data-pesave>${I.check || ''} حفظ القطعة على المخطط</button>
       <p class="muted cnote">يظهر التعديل في الموقع والتطبيق خلال دقائق، ويصل إشعار للعملاء عند إضافة أرض متاحة أو تغيّر الحالة أو السعر.</p>`;
-    drawInst();
+    drawInst(); drawCopy();
+  };
+  /* ---- «نسخ من قطعة»: a plot of the same size in the project is offered; any plot can be copied by its number ---- */
+  const RK = 'oay:pe_recent';
+  const recent = () => { try { return JSON.parse(localStorage.getItem(RK) || '[]'); } catch { return []; } };
+  const remember = (slug, n) => { try { localStorage.setItem(RK, JSON.stringify([slug + ':' + n, ...recent().filter((x) => x !== slug + ':' + n)].slice(0, 8))); } catch { /* private */ } };
+  const twins = () => {   // listed plots of this project with the same area (±1%), same kind first, nearest number first
+    const slug = $('#peProj').value, ft = (cur && (cur.ft || cur.planFt)) || 0; if (!ft) return [];
+    const p = projects.find((x) => x.slug === slug); const me = H.findLand(slug + ':' + cur.n) || {};
+    return ((p && p.lands) || []).filter((l) => String(l.n) !== String(cur.n) && l.total > 0 && l.ft && Math.abs(l.ft - ft) <= ft * 0.01 && l.status !== 'sold')
+      .sort((a, b) => ((a.t === (cur.type || me.t) ? 0 : 1) - (b.t === (cur.type || me.t) ? 0 : 1)) || ((b.inst || []).length - (a.inst || []).length) || (Math.abs(+a.n - +cur.n) - Math.abs(+b.n - +cur.n)))
+      .slice(0, 3);
+  };
+  const instTxt = (k, first, total) => (k ? `${total ? Math.round(first / total * 100) + '% مقدم + ' : ''}${k} قسط` : 'دفعة واحدة');
+  const drawCopy = () => {
+    const box = $('#peCopy'); if (!box || !cur) return;
+    const slug = $('#peProj').value, T = twins();
+    const rec = recent().filter((x) => x.startsWith(slug + ':') && x !== slug + ':' + cur.n).slice(0, 4);
+    box.innerHTML = `${T.length ? `<div class="pe-twin"><b>${I.copy || '⧉'} قطع بنفس المساحة (${money(T[0].ft)} قدم²)</b>${T.map((l) => {
+        const k = (l.inst || []).length, first = l.total - (l.inst || []).reduce((a, x) => a + (+x[1] || 0), 0);
+        return `<button class="pe-tw" data-pecopy="${esc(l.n)}"><span><b>قطعة ${esc(l.n)}</b><small>${money(l.total)} د.إ · ${instTxt(k, first, l.total)}${l.status === 'res' ? ' · محجوزة' : ''}</small></span><em>نسخ بياناتها</em></button>`;
+      }).join('')}</div>` : ''}
+      <div class="pe-cpbar"><button class="btn ghost sm" data-pecopyask>${I.copy || '⧉'} نسخ من قطعة أخرى</button>${rec.length ? `<span class="pe-rec">آخر القطع: ${rec.map((x) => `<button class="linkbtn" data-pecopy="${esc(x.split(':')[1])}">${esc(x.split(':')[1])}</button>`).join(' · ')}</span>` : ''}</div>`;
+  };
+  const copyFrom = async (n, btn) => {
+    const slug = $('#peProj').value; n = String(n || '').trim(); if (!n || !cur) return;
+    if (n === String(cur.n)) { H.toast('هذه نفس القطعة'); return; }
+    if (btn) btn.disabled = true;
+    try {
+      const j = await api('adm_plot_get', { project: slug, n }); const src = j.plot;
+      if (!src.listed && !src.total && !(src.inst || []).length) { H.toast(`القطعة ${n} ليس لها بيانات لنسخها`); return; }
+      const myFt = (cur.ft || cur.planFt) || 0, srcFt = (src.ft || src.planFt) || 0, same = !myFt || !srcFt || Math.abs(myFt - srcFt) <= myFt * 0.01;
+      let total = src.total || 0; const ppf = src.ppf || (total && srcFt ? Math.round(total / srcFt) : 0);
+      if (!same && ppf && myFt) total = Math.round(ppf * myFt / 1000) * 1000;   // another size: the same price per sq ft
+      const scale = same || !src.total ? 1 : total / src.total;
+      inst = (src.inst || []).map((x) => [x[0], Math.round((+x[1] || 0) * scale / 100) * 100]);
+      stt = src.listed && src.s !== 'sold' ? src.s : 'av';
+      cur = Object.assign({}, cur, { total, ppf, fe: !!src.fe });
+      form();
+      H.toast(same ? `تم نسخ بيانات القطعة ${n} ✓ راجعها ثم احفظ` : `تم النسخ بنفس سعر القدم (المساحة مختلفة) ✓ راجعها ثم احفظ`);
+      const f = $('#peForm'); if (f) f.classList.add('pe-flash'), setTimeout(() => f.classList.remove('pe-flash'), 1200);
+    } catch (ex) { H.toast(ex.message); }
+    finally { if (btn && btn.isConnected) btn.disabled = false; }
   };
   const SL = { av: 'متاحة', res: 'محجوزة', sold: 'مباعة', '': 'غير معروضة' };
   const brief = (x) => (x ? `<i class="ph-s ${x.s || 'off'}">${SL[x.s] || x.s}</i>${x.s && x.s !== 'sold' && x.total ? ` ${money(x.total)} د.إ` : ''}${x.inst ? ` · ${x.inst} قسط` : ''}` : '—');
@@ -95,6 +137,8 @@ export function initPlotEditPage(pg, id = '') {
       return;
     }
     if (d.peload !== undefined) { load(); return; }
+    if (d.pecopy) { copyFrom(d.pecopy, t); return; }
+    if (d.pecopyask !== undefined) { const n = await uiPrompt('اكتب رقم القطعة في نفس المشروع لتُنسخ بياناتها (السعر، الدفعات، الحالة) إلى هذه القطعة.', '', { title: 'نسخ من قطعة أخرى', placeholder: 'مثال: 14500', inputmode: 'numeric', ok: 'نسخ', icon: 'edit' }); if (n) copyFrom(n); return; }
     if (d.pst !== undefined) { stt = d.pst; el.querySelectorAll('[data-pst]').forEach((b) => b.classList.toggle('on', b === t)); return; }
     if (d.iadd !== undefined) { const last = inst.length ? inst[inst.length - 1][0] : ''; inst.push([last ? addMonths(last, 3) : addMonths(ymd(new Date()), 1), 0]); drawInst(); return; }
     if (d.idel !== undefined) { inst.splice(+d.idel, 1); drawInst(); return; }
@@ -111,7 +155,7 @@ export function initPlotEditPage(pg, id = '') {
       if (stt && stt !== 'sold' && !body.total && !body.ppf && !(await uiConfirm('ستظهر القطعة بعبارة «السعر عند الاستفسار».', { title: 'لم تكتب سعراً', ok: 'حفظ بدون سعر' }))) return;
       if (!stt && !(await uiConfirm('ستختفي من الموقع والتطبيق حتى تعرضها مرة أخرى.', { danger: true, title: 'إزالة القطعة من العرض؟', ok: 'إزالة من العرض' }))) return;
       t.disabled = true; const old = t.innerHTML; t.innerHTML = '<i class="spin"></i> جارِ الحفظ…';
-      try { const j = await api('adm_plot_save', body); cur = j.plot; H.toast('تم حفظ القطعة على المخطط ✓'); H.refreshData(); load(); }
+      try { const j = await api('adm_plot_save', body); cur = j.plot; remember(body.project, body.n); H.toast('تم حفظ القطعة على المخطط ✓'); H.refreshData(); load(); }
       catch (ex) { H.toast(ex.message); }
       finally { t.disabled = false; t.innerHTML = old; }
     }
