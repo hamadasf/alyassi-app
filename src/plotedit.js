@@ -135,7 +135,7 @@ export function initPlotEditPage(pg, id = '') {
     if (d.peundo) {
       if (!(await uiConfirm('ترجع القطعة كما كانت قبل هذا التعديل (الحالة والسعر والدفعات).', { title: 'التراجع عن التعديل؟', ok: 'تراجع' }))) return;
       t.disabled = true;
-      try { await api('adm_plot_undo', { k: d.peundo, id: d.peid }); H.toast('تم التراجع ✓'); H.refreshData(); const [sl, nn] = d.peid.split(':'); if (cur && $('#peProj').value === sl && String(cur.n) === nn) load(); else history(cur ? $('#peProj').value + ':' + cur.n : ''); }
+      try { await api('adm_plot_undo', { k: d.peundo, id: d.peid }); H.toast('تم التراجع ✓'); try { const [s1, n1] = d.peid.split(':'); const g = await api('adm_plot_get', { project: s1, n: n1 }); if (H.saved) H.saved(s1, g.plot); } catch { /* the next refresh shows it */ } H.refreshData(); const [sl, nn] = d.peid.split(':'); if (cur && $('#peProj').value === sl && String(cur.n) === nn) load(); else history(cur ? $('#peProj').value + ':' + cur.n : ''); }
       catch (ex) { H.toast(ex.message); t.disabled = false; }
       return;
     }
@@ -158,7 +158,7 @@ export function initPlotEditPage(pg, id = '') {
       if (stt && stt !== 'sold' && !body.total && !body.ppf && !(await uiConfirm('ستظهر القطعة بعبارة «السعر عند الاستفسار».', { title: 'لم تكتب سعراً', ok: 'حفظ بدون سعر' }))) return;
       if (!stt && !(await uiConfirm('ستختفي من الموقع والتطبيق حتى تعرضها مرة أخرى.', { danger: true, title: 'إزالة القطعة من العرض؟', ok: 'إزالة من العرض' }))) return;
       t.disabled = true; const old = t.innerHTML; t.innerHTML = '<i class="spin"></i> جارِ الحفظ…';
-      try { const j = await api('adm_plot_save', body); cur = j.plot; remember(body.project, body.n); H.toast(quiet ? 'تم الحفظ بدون إشعار ✓' : 'تم حفظ القطعة على المخطط ✓'); H.refreshData(); load(); }
+      try { const j = await api('adm_plot_save', body); cur = j.plot; remember(body.project, body.n); H.toast(quiet ? 'تم الحفظ بدون إشعار ✓' : 'تم حفظ القطعة على المخطط ✓'); if (H.saved) H.saved(body.project, j.plot); else H.refreshData(); load(); }
       catch (ex) { H.toast(ex.message); }
       finally { t.disabled = false; t.innerHTML = old; }
     }
@@ -166,7 +166,11 @@ export function initPlotEditPage(pg, id = '') {
   el.addEventListener('input', (e) => {
     const t = e.target;
     if (t.dataset.id !== undefined) { inst[+t.dataset.id][0] = t.value; return; }
-    if (t.dataset.ia !== undefined) { inst[+t.dataset.ia][1] = n0(t.value); drawSum(); return; }
+    if (t.dataset.ia !== undefined) {   // one instalment typed → the ones after it take the same amount
+      const i = +t.dataset.ia, v = n0(t.value); inst[i][1] = v;
+      for (let j = i + 1; j < inst.length; j++) { inst[j][1] = v; const f = el.querySelector(`[data-ia="${j}"]`); if (f) f.value = v ? money(v) : ''; }
+      drawSum(); return;
+    }
     if (t.id === 'peTotal') { const a = area(); if (a && total()) $('#pePpf').value = Math.round(total() / a); drawSum(); }
     if (t.id === 'pePpf') { const a = area(); if (a && n0(t.value)) $('#peTotal').value = money(Math.round(n0(t.value) * a)); drawSum(); }
     if (t.id === 'peFt') { const a = area(); if (a && n0($('#pePpf').value)) { $('#peTotal').value = money(Math.round(n0($('#pePpf').value) * a)); drawSum(); } }

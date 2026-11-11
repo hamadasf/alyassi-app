@@ -94,7 +94,7 @@ async function getPlan(p, force) {
 async function getState(p) {
   const key = 'state:' + p.slug;
   try {
-    const r = await fetch(`${SITE}/wp-admin/admin-ajax.php?action=dn_state&project=${encodeURIComponent(p.slug)}`, { cache: 'no-store' });
+    const r = await fetch(`${SITE}/wp-admin/admin-ajax.php?action=dn_state&project=${encodeURIComponent(p.slug)}&_=${Math.floor(now() / 5000)}`, { cache: 'no-store' });
     const j = await r.json();
     if (j && j.success) { cacheSet(key, j.data.state); return j.data.state; }
     throw new Error('state');
@@ -171,6 +171,56 @@ function buildProject(p, plan, state) {
 let memo = null;
 export function cached() { return memo; }
 
+/* ---------- a plot just listed / changed, shown at once (before the website's data catches up) ---------- */
+function landFromPlot(p, n, st) {   // a listed plot that this data does not have yet: from the plan row, or the «not listed» entry
+  const row = (RAW.get(p.slug) || []).find((r) => String(r[0]) === String(n));
+  const na = (p.na || []).find((x) => String(x[0]) === String(n));
+  if (!row && !na) return null;
+  const t = row ? row[1] : na[1], ft0 = row ? row[2] : na[2];
+  const ty = (p.types && p.types[t]) || DEFAULT_TYPES[t] || { use: 'أرض' };
+  const like = p.lands.find((x) => x.t === t && !x.ownImg && x.img && x.img !== p.poster);
+  const pc = row ? (row[7] || null) : na[3];
+  return typeImage({
+    id: p.slug + ':' + n, n: String(n), t, project: p.slug, projectName: p.name, status: st.s, featured: !!st.fe, use: ty.use || '', tag: ty.tag || '', loc: ty.loc || '',
+    floors: ty.floors || '', color: ty.c || [200, 200, 200], cat: category(ty.use), ft: Math.round(st.ft || ft0 || 0), m2: Math.round((st.ft || ft0 || 0) / 10.7639), approx: !st.ft,
+    ppf: 0, total: 0, inst: [], first: 0, img: like ? like.img : p.poster, sketch: '', ownImg: false, doc: '', docId: 0, docTitle: '',
+    dims: row ? row[5] || null : null, poly: row ? row[6] || null : null, pc, pr: row ? row[8] || 0 : 0, lo: '', projectLoc: p.loc || '',
+  });
+}
+function applyState(p, n, st) {   // st: { s, total, ppf, ft, inst, fe, lo } — '' status takes the plot off the lists
+  n = String(n); let l = p.lands.find((x) => x.n === n);
+  if (!st.s) {
+    if (l) { p.lands = p.lands.filter((x) => x !== l); p.na = [...(p.na || []), [n, l.t, l.ft, l.pc]]; }
+    return;
+  }
+  if (!l) { l = landFromPlot(p, n, st); if (!l) return; p.lands = [...p.lands, l]; p.na = (p.na || []).filter((x) => String(x[0]) !== n); l._new = Date.now(); }
+  l.status = st.s; l.featured = !!st.fe;
+  if (st.ft) { l.ft = Math.round(st.ft); l.m2 = Math.round(st.ft / 10.7639); l.approx = false; }
+  l.ppf = st.ppf || 0; l.total = st.total || (st.ppf && l.ft ? Math.round(st.ppf * l.ft) : 0);
+  l.inst = Array.isArray(st.inst) ? st.inst : [];
+  const sum = l.inst.reduce((a, x) => a + (+x[1] || 0), 0); l.first = l.inst.length && l.total ? Math.max(0, l.total - sum) : 0;
+  if (st.lo !== undefined) l.lo = /^https:\/\//.test(st.lo || '') ? st.lo : '';
+}
+const recount = (p) => { const c = (k) => p.lands.filter((l) => l.status === k).length; p.available = c('av'); p.reserved = c('res'); p.sold = c('sold'); };
+const LOCAL = new Map();   // id → { slug, n, st, t } saved on this phone — kept over reloads until the website's data shows it (≤ 30 min)
+function relocal(m) {
+  if (!m) return m;
+  for (const [id, x] of LOCAL) {
+    if (Date.now() - x.t > 12 * 60e3) { LOCAL.delete(id); continue; }
+    const p = m.projects.find((q) => q.slug === x.slug); if (!p) continue;
+    const l = p.lands.find((q) => q.n === String(x.n));
+    if (l && l.status === x.st.s && (l.total || 0) === (x.st.total || l.total || 0) && Date.now() - x.t > 60e3) { LOCAL.delete(id); continue; }   // the website has it now
+    applyState(p, x.n, x.st); recount(p);
+  }
+  return { ...m, lands: m.projects.flatMap((p) => p.lands) };
+}
+/** after «حفظ القطعة»: the plot appears / changes everywhere in the app straight away */
+export function patchPlot(slug, plot) {
+  if (!memo || !plot) return null;
+  LOCAL.set(slug + ':' + plot.n, { slug, n: plot.n, st: { s: plot.s, total: plot.total, ppf: plot.ppf, ft: plot.ft, inst: plot.inst, fe: plot.fe, lo: plot.lo }, t: Date.now() });
+  memo = relocal(memo); return memo;
+}
+
 /** Loads everything. onPartial is called with each finished project so the UI can paint early. */
 /* Web (iPhone) version: the website data is collected every few minutes into data.json next to the app. */
 const SNAPSHOT = typeof __SNAPSHOT__ !== 'undefined' ? __SNAPSHOT__ : '';
@@ -187,6 +237,9 @@ async function loadSnapshot() {
     try {
       const st = await getState(p);
       const sp = (st && st.plots) || {};
+      const have = new Set(p.lands.map((l) => l.n));
+      for (const n of Object.keys(sp)) if (sp[n] && sp[n].s && !have.has(String(n))) { const l = landFromPlot(p, n, sp[n]); if (l) { p.lands.push(l); p.na = (p.na || []).filter((x) => String(x[0]) !== String(n)); } }
+      if (Object.keys(sp).length) p.lands = p.lands.filter((l) => sp[l.n] && sp[l.n].s);   // taken off the lists since the snapshot
       p.lands.forEach((l) => {
         const s = sp[l.n]; if (!s || !s.s) return;
         l.status = s.s; l.featured = !!s.fe;
@@ -202,7 +255,7 @@ async function loadSnapshot() {
     } catch { /* keep snapshot values */ }
   }));
   cacheSet('snap', j);
-  memo = fromSnapshot(j);
+  memo = relocal(fromSnapshot(j));
   return memo;
 }
 
@@ -218,7 +271,7 @@ export async function loadAll({ force = false, onPartial } = {}) {
       if (onPartial) { memo = { projects: sorted(out), lands: sorted(out).flatMap((x) => x.lands), at: now(), partial: true }; onPartial(); }
     } catch { /* skip a project that failed */ }
   }));
-  memo = { projects: sorted(out), lands: sorted(out).flatMap((p) => p.lands), at: now() };
+  memo = relocal({ projects: sorted(out), lands: sorted(out).flatMap((p) => p.lands), at: now() });
   return memo;
 }
 const sorted = (a) => [...a].sort((x, y) => x.order - y.order);

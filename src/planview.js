@@ -21,7 +21,7 @@ export async function initPlanView2(pg, p, focusN) {
   const { esc, money } = H;
   pg.classList.add('pvpg');
   const box = pg.querySelector('.pview'), cv = pg.querySelector('.pvcv'), card = pg.querySelector('.pvcard');
-  const ctx = cv.getContext('2d'), map = p.map, lands = p.lands;
+  const ctx = cv.getContext('2d'), map = p.map; let lands = p.lands;
   const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
   let W = 0, Hh = 0, P = null;
   const view = { x0: 0, y0: 0, ppu: 1 };
@@ -57,6 +57,11 @@ export async function initPlanView2(pg, p, focusN) {
     drawPlanView(ctx, P, lands, map, { w: W, h: Hh, ...view, sel });
     snap = snap || document.createElement('canvas'); snap.width = W; snap.height = Hh; snap.getContext('2d').drawImage(cv, 0, 0); snapView = { ...view };
   };
+  // a plot saved meanwhile (here or by «إضافة / تعديل قطعة»): the plan shows it at once
+  pg.addEventListener('oay:refresh', () => {
+    const np = H.project && H.project(p.slug); if (!np || !cv.width) return;
+    p = np; lands = p.lands; if (sel && sel.n) sel = lands.find((l) => l.n === sel.n) || sel; full();
+  });
   let raf = 0;
   const quick = () => {
     cancelAnimationFrame(raf);

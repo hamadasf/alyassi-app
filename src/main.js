@@ -41,7 +41,7 @@ import { initWallet, walletPage, initWalletPage, dealFromLand, dealFromOwn, home
 import { initStats, statsPage, initStatsPage, myStatsPage, initMyStats } from './stats.js';
 import { initAdvUI, brandPage, initBrand, advMinePage, initAdvMine } from './advui.js';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
-import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen, offerFor } from './data.js';
+import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen, offerFor, patchPlot } from './data.js';
 import { I } from './icons.js';
 import { mountRange } from './range.js';
 import { initProjMap, mapPage, initMapPage } from './projmap.js';
@@ -688,10 +688,28 @@ function recentHTML() {
 }
 function skeleton(n = 3) { return Array.from({ length: n }, () => '<div class="card sk"><div class="ph"></div><div class="body"><i></i><i></i><i></i><div class="skb"><b></b><b></b></div></div></div>').join(''); }
 
+/* ---- home: variety — the projects come in a new order each time the app is opened (steady while it stays open) ---- */
+const MIX = Math.random().toString(36).slice(2);
+const mixKey = (s) => { let h = 2166136261; for (const c of MIX + s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+const mixed = (a, key = (x) => x.slug || x.id) => [...a].sort((x, y) => mixKey(key(x)) - mixKey(key(y)));
+/** lands added lately: the website's «new» changes (30 days) and the ones saved on this phone, newest first */
+function newLands(av) {
+  const at = new Map(); const lim = Date.now() - 30 * 864e5;
+  for (const c of getChanges()) if (c.kind === 'new' && c.t > lim && !at.has(c.id)) at.set(c.id, c.t);
+  return av.filter((l) => at.has(l.id) || l._new).sort((a, b) => (b._new || at.get(b.id) || 0) - (a._new || at.get(a.id) || 0)).slice(0, 12);
+}
+/** «مميزة وبسعر حلو»: the featured lands and those priced well under their project's usual price per sq ft for their kind */
+function goodLands(av) {
+  const grp = {}; av.forEach((l) => { if (l.total && l.ft) (grp[l.project + '|' + l.cat] = grp[l.project + '|' + l.cat] || []).push(l.total / l.ft); });
+  const med = (a) => { const s = [...a].sort((x, y) => x - y), k = s.length >> 1; return s.length % 2 ? s[k] : (s[k - 1] + s[k]) / 2; };
+  const deal = (l) => { const g = grp[l.project + '|' + l.cat]; if (!g || g.length < 3 || !l.total || !l.ft) return 0; const m = med(g); return m ? (m - l.total / l.ft) / m : 0; };
+  const out = av.filter((l) => l.featured || deal(l) >= 0.06);
+  return mixed(out, (l) => l.id).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0)).slice(0, 14);
+}
 function renderHome() {
-  const { projects, lands } = DATA();
+  const { lands } = DATA(); const projects = mixed(DATA().projects);
   const av = lands.filter((l) => l.status === 'av');
-  const featured = av.filter((l) => l.featured);
+  const featured = goodLands(av), fresh = newLands(av);
   const ofr = offerLands();
   const best = av.filter((l) => l.total).sort((a, b) => a.total - b.total).slice(0, 10);
   const cats = [...new Set(av.map((l) => l.cat))];
@@ -743,11 +761,13 @@ function renderHome() {
     ${notifCard()}
     ${ofr.length ? `<div class="sec-h ofr-h"><h2>${I.flame} عروض لفترة محدودة</h2><button data-go="lands" data-offers="1">عرض الكل</button></div>
       <div class="hscroll lands">${ofr.map(landCard).join('')}</div>` : ''}
+    ${fresh.length ? `<div class="sec-h"><h2>${I.plus || ''} أُضيفت حديثاً</h2><button data-go="lands" data-sort="new">عرض الكل</button></div>
+      <div class="hscroll lands">${fresh.map(landCard).join('')}</div>` : ''}
     <div id="recentBox">${recentHTML()}</div>
     ${cats.length ? `<div class="chips scroll">${cats.map((c) => `<button class="chip" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}
     <div class="sec-h"><h2>مشاريعنا</h2><button data-go="projects">عرض الكل</button></div>
     <div class="hscroll">${projects.length ? projects.map((p) => projectCard(p)).join('') : skeleton(2)}</div>
-    ${featured.length ? `<div class="sec-h"><h2>أراضٍ مميزة</h2><button data-go="lands" data-feat="1">عرض الكل</button></div>
+    ${featured.length ? `<div class="sec-h"><h2>${I.star || ''} مميزة وبسعر حلو</h2><button data-go="lands" data-feat="1">عرض الكل</button></div>
       <div class="hscroll lands">${featured.map(landCard).join('')}</div>` : ''}
     ${ownerLands().length ? `<div class="sec-h"><h2>أراضٍ معروضة للبيع</h2><button data-olands>عرض الكل</button></div>
       <div class="hscroll lands">${ownerLands().slice(0, 10).map(oLandCard).join('')}</div>` : ''}
@@ -842,6 +862,7 @@ function filtered() {
   else if (s === 'price-desc') a.sort((x, y) => (y.total || 0) - (x.total || 0));
   else if (s === 'area-desc') a.sort((x, y) => y.ft - x.ft);
   else if (s === 'area-asc') a.sort((x, y) => x.ft - y.ft);
+  else if (s === 'new') { const at = new Map(getChanges().filter((c) => c.kind === 'new').map((c) => [c.id, c.t])); a.sort((x, y) => (y._new || at.get(y.id) || 0) - (x._new || at.get(x.id) || 0)); }
   else if (q) { const R = { av: 0, res: 1, sold: 2, na: 3 }; a.sort((x, y) => ((y.n === q) - (x.n === q)) || (R[x.status] - R[y.status]) || (!!offerFor(y) - !!offerFor(x)) || (y.featured - x.featured)); }
   else a.sort((x, y) => (!!offerFor(y) - !!offerFor(x)) || (y.featured - x.featured) || (!!y.total - !!x.total));
   return a;
@@ -888,7 +909,7 @@ function renderLands() {
 }
 
 function renderProjects() {
-  const { projects } = DATA();
+  const projects = mixed(DATA().projects);
   $('#projects .list').innerHTML = projects.length ? projects.map((p) => projectCard(p, true)).join('') : skeleton(3);
 }
 
@@ -1415,7 +1436,7 @@ initNews({ esc, toast, I });
 initCalc({ esc, toast, I, money, waLink });
 initContact({ esc, toast, I, waLink, CONTACT });
 initViews({ esc, toast, I, money });
-initPlanView({ esc, toast, I, money, canDesign: () => can('design'), canPlots: () => !!session.token() && can('plots'), guest: () => glock() });
+initPlanView({ project: (slug) => DATA().projects.find((x) => x.slug === slug), esc, toast, I, money, canDesign: () => can('design'), canPlots: () => !!session.token() && can('plots'), guest: () => glock() });
 initAdgen({ teamEv: (k, id, th) => teamEv(k, id, th), ownerOf: (id) => ownerOf(id), toast, api: accApi, myName: () => (session.user() || {}).name || '', landsOf: (slug) => DATA().lands.concat(naLands()).filter((x) => x.project === slug), openPlan: (slug) => pushPage('plan', slug), isAdmin: () => !!(session.user() || {}).admin, tpls: () => (session.user() || {}).tpl || [] });
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
 initTeam({ esc, I, openLand: (id) => openLandId(id) });
@@ -1426,7 +1447,9 @@ initSafety({ esc, I, toast, refreshData: () => refresh(true), saveFile: async (b
   catch { await shareFile({ bytes: u8, name, type: 'application/json' }, name, name); }
 } });
 startErrorReports(typeof __VERSION__ !== 'undefined' ? __VERSION__ : '', native ? Capacitor.getPlatform() : 'web');
-initPlotEdit({ esc, toast, I, money, DATA: () => DATA(), findLand: (id) => findLand(id), refreshData: () => refresh(true) });
+const everywhere = () => { renderAll(); refreshOpenPrices(); document.querySelectorAll('.page').forEach((x) => x.dispatchEvent(new Event('oay:refresh'))); };
+initPlotEdit({ esc, toast, I, money, DATA: () => DATA(), findLand: (id) => findLand(id), refreshData: () => refresh(true),
+  saved: (slug, plot) => { if (patchPlot(slug, plot)) everywhere(); setTimeout(() => refresh(true).then(everywhere).catch(() => {}), 1500); } });
 initLandImport({ esc, toast, I, money, DATA: () => DATA(), refreshData: () => refresh(true), reloadOwners: () => reloadOwners() });
 initGrowth({ esc, toast, I, money, waLink, APP_URL, findLand: (id) => findLand(id), openExternal: (u) => openExternal(u), quoteToOffice: (t) => quoteToOffice(t), pushPage: (k, id) => pushPage(k, id) });
 initCrm({ esc, toast, I, money, waLink, DATA: () => DATA(), pushPage: (k, id) => pushPage(k, id), closeTop: () => closeTop() });
