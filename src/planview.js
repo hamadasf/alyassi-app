@@ -117,6 +117,10 @@ export async function initPlanView2(pg, p, focusN) {
     if (pts.size === 1 && !moved && start) {
       const px = view.x0 + (e.clientX - r.left) * dpr / view.ppu, py = view.y0 + (e.clientY - r.top) * dpr / view.ppu;
       let hit = plotAt(lands, px, py);
+      if (!hit) {   // a plot just listed whose outline is not in this data yet: the nearest centre
+        let bd = Infinity, b = null; for (const l of lands) { if (l.poly || !l.pc) continue; const d = Math.hypot(l.pc[0] - px, l.pc[1] - py); if (d < bd) { bd = d; b = l; } }
+        if (b && bd <= Math.max(plotR, 26 * dpr / view.ppu)) hit = b;
+      }
       if (!hit && H.canPlots && H.canPlots()) hit = naAt(px, py);   // the office: any plot of the plan, offered or not
       sel = hit; showCard(); full();
     }

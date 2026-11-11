@@ -173,6 +173,9 @@ export function drawPlanView(c, P, lands, map, { x = 0, y = 0, w, h, radius = 0,
   if (P && P.V) drawVec(c, P.V, P.VS, x0, y0, x1, y1, ppu);
   const showText = labels && ppu * 4.5 >= 5;
   for (const l of lands) {
+    if (!l.poly && l.pc && COL[l.status] && !(sel && (l === sel || l.id === sel.id))) {   // just listed, its outline not in this data yet: a dot at its centre
+      c.beginPath(); c.arc(l.pc[0], l.pc[1], Math.max(5, 9 / ppu), 0, Math.PI * 2); c.fillStyle = COL[l.status]; c.fill(); c.lineWidth = Math.max(1.5, 2 / ppu); c.strokeStyle = WHITE; c.stroke(); continue;
+    }
     if (!l.poly || !COL[l.status] || (sel && (l === sel || l.id === sel.id))) continue;
     const xs = l.poly.map((q) => q[0]), ys = l.poly.map((q) => q[1]);
     if (Math.max(...xs) < x0 || Math.min(...xs) > x1 || Math.max(...ys) < y0 || Math.min(...ys) > y1) continue;

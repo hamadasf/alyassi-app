@@ -712,9 +712,12 @@ function miniCard(l) {
   const st = STATUS[l.status] || STATUS.av, o = offerFor(l), c = recentChange(l.id);
   const pr = l.status === 'sold' ? 'تم البيع' : o && offerPrice(l, o) ? money(offerPrice(l, o)) + ' د.إ' : l.total ? money(l.total) + ' د.إ' : 'السعر عند الاستفسار';
   const tag = o ? `<i class="mc-t ofr">${I.flame} عرض</i>` : c && c.kind === 'new' || l._new ? '<i class="mc-t new">جديدة</i>' : l.featured ? `<i class="mc-t star">${I.star} مميزة</i>` : '';
-  return `<button class="mcard" data-land="${esc(l.id)}"><span class="mc-ph">${l.poly || l.pc ? `<canvas class="cardloc" data-loc="${esc(l.id)}"></canvas>` : `<img loading="lazy" src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">`}<i class="mc-s ${st.cls}">${st.label}</i></span>
-    <span class="mc-b"><span class="mc-top"><b>قطعة ${esc(l.n)}</b>${tag}</span><small>${esc(l.projectName)} · ${esc(l.use || '')}</small>
-      <span class="mc-sp">${I.area}${money(l.ft)} قدم²${l.first && l.status !== 'sold' ? ` · ${l.inst.length} أقساط` : ''}</span><em>${pr}</em></span></button>`;
+  return `<article class="hcard" data-land="${esc(l.id)}"><div class="hc-ph">${l.poly || l.pc ? `<canvas class="cardloc" data-loc="${esc(l.id)}"></canvas>` : `<img loading="lazy" src="${esc(l.img)}" alt="" onerror="this.style.opacity=0">`}
+      <i class="hc-s ${st.cls}">${st.label}</i>${tag}<button class="fav${favs.has(l.id) ? ' on' : ''}" data-fav="${esc(l.id)}" aria-label="مفضلة">${I.heart}</button></div>
+    <div class="hc-b"><div class="hc-r"><b>قطعة ${esc(l.n)}</b><em>${pr}</em></div>
+      <div class="hc-u">${dot(l.color)}${esc(l.use || '')}</div>
+      <div class="hc-m"><span>${I.pin}${esc(l.projectName)}</span><span>${I.area}${money(l.ft)} قدم²</span></div>
+      ${l.first && l.status !== 'sold' ? `<div class="hc-p">${I.wallet} دفعة أولى ${money(l.first)} + ${l.inst.length} أقساط</div>` : ''}</div></article>`;
 }
 function oMiniCard(x) {
   return `<button class="mcard" data-oland="${esc(x.id)}"><span class="mc-ph"><img loading="lazy" src="${esc((x.photos || [])[0] || 'assets/villa-invest.jpg')}" alt="" onerror="this.style.opacity=0"></span>
@@ -732,7 +735,7 @@ function homeLandsHTML(av, fresh, featured, best) {
   const more = { new: 'data-go="lands" data-sort="new"', feat: 'data-go="lands" data-feat="1"', best: 'data-go="lands" data-sort="price-asc"', own: 'data-olands' }[homeTab];
   return `<div class="sec-h sm"><h2>الأراضي</h2><button ${more}>عرض الكل</button></div>
     <div class="htabs">${T.map(([k, l]) => `<button class="${k === homeTab ? 'on' : ''}" data-htab="${k}">${l}</button>`).join('')}</div>
-    <div class="mlist">${cur[2].slice(0, 5).map(homeTab === 'own' ? oMiniCard : miniCard).join('')}</div>`;
+    <div class="${homeTab === 'own' ? 'mlist' : 'hscroll hlands'}">${cur[2].slice(0, homeTab === 'own' ? 5 : 10).map(homeTab === 'own' ? oMiniCard : miniCard).join('')}</div>`;
 }
 function renderHome() {
   const { lands } = DATA(); const projects = mixed(DATA().projects);

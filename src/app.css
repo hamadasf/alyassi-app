@@ -1709,3 +1709,16 @@ body.guest #sheet .memf { display: none; }
 .mc-b small { font-size: 13.5px; } .mc-sp { font-size: 13.5px; } .mc-sp svg { width: 15px; height: 15px; } .mcard em { font-size: 17px; }
 .nav .navplus span svg { stroke-width: 2; width: 27px; height: 27px; }
 .tk-sep { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); margin: 0 4px; flex: none; }
+/* home: the lands as upright cards (picture on top), side by side */
+.hlands { gap: 12px; padding-bottom: 6px; }
+.hcard { flex: 0 0 78%; max-width: 330px; background: #fff; border-radius: 18px; overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 6px 18px rgba(15,23,42,.07); cursor: pointer; scroll-snap-align: start; }
+.hc-ph { position: relative; height: 178px; background: #ece6d8; } .hc-ph canvas, .hc-ph img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.hc-s { position: absolute; top: 10px; right: 10px; font-style: normal; font-size: 12.5px; font-weight: 800; color: #fff; border-radius: 999px; padding: 3px 11px; background: #16a34a; } .hc-s.res { background: #d97706; } .hc-s.sold { background: #dc2626; }
+.hc-ph .mc-t { position: absolute; bottom: 10px; right: 10px; font-size: 12px; padding: 3px 10px; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.hc-ph .fav { position: absolute; top: 8px; left: 8px; }
+.hc-b { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+.hc-r { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .hc-r b { color: var(--navy); font-size: 17px; } .hc-r em { font-style: normal; color: var(--navy); font-weight: 800; font-size: 16.5px; white-space: nowrap; }
+.hc-u { display: flex; align-items: center; gap: 6px; color: #334155; font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hc-m { display: flex; gap: 14px; color: #64748b; font-size: 13px; } .hc-m span { display: flex; align-items: center; gap: 4px; white-space: nowrap; } .hc-m svg { width: 14px; height: 14px; color: #b0883a; }
+.hc-p { background: #faf5ea; color: #8a6420; border-radius: 10px; padding: 6px 10px; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; } .hc-p svg { width: 15px; height: 15px; }
+.hscroll.hlands { scroll-padding-inline: 16px; }
