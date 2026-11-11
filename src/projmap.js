@@ -92,12 +92,12 @@ export async function initMapPage(pg) {
     L.tileLayer(ESRI + 'World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles © Esri' }),
     L.tileLayer(ESRI + 'Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
   ]);
-  let isSat = lsGet('pmapSat', false);
+  let isSat = lsGet('pmapSat2', true);   // opens on the satellite view
   (isSat ? sat : street).addTo(map);
   const tg = document.createElement('button'); tg.className = 'pmap-tg';
   const tgLbl = () => { tg.innerHTML = isSat ? `${I.map}<span>خريطة</span>` : `${I.globe || I.map}<span>قمر صناعي</span>`; };
   tgLbl(); pg.querySelector('.pmap').appendChild(tg);
-  tg.addEventListener('click', () => { map.removeLayer(isSat ? sat : street); isSat = !isSat; (isSat ? sat : street).addTo(map); lsSet('pmapSat', isSat); tgLbl(); });
+  tg.addEventListener('click', () => { map.removeLayer(isSat ? sat : street); isSat = !isSat; (isSat ? sat : street).addTo(map); lsSet('pmapSat2', isSat); tgLbl(); });
   const fromP = (p) => { const v = (p.lands || []).filter((l) => l.status === 'av' && l.total > 0).map((l) => l.total); return v.length ? Math.min(...v) : 0; };
   const shortP = (n) => (n >= 1e6 ? (Math.round(n / 1e5) / 10) + ' مليون' : Math.round(n / 1e3) + ' ألف');
   const show = (p) => {

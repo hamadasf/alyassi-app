@@ -145,7 +145,7 @@ export async function doLogout() { await logout(); H.toast('تم تسجيل ال
 /* ================= notifications ================= */
 
 /* ================= «من نحن» — inside the app; the text under «عن الشركة» comes from the website's About page ================= */
-const ABOUT_DEF = '<p>عمر الياسي للعقارات شركة عقارية في الشارقة، نساعد عملاءنا في اختيار الأرض المناسبة للسكن أو التطوير أو الاستثمار في الشارقة وعجمان، بخيارات تنافسية وخطط سداد مرنة، مع متابعة كاملة من أول استفسار حتى تسجيل الأرض.</p>';
+const ABOUT_DEF = '<p>عمر الياسي للعقارات شركة عقارية في الشارقة، نساعد عملاءنا في اختيار الأرض المناسبة للسكن أو التطوير أو الاستثمار في الشارقة، بخيارات تنافسية وخطط سداد مرنة، مع متابعة كاملة من أول استفسار حتى تسجيل الأرض.</p>';
 const aboutGet = () => { try { return JSON.parse(localStorage.getItem('oay:about')) || null; } catch { return null; } };
 export function aboutPage() {
   const { I, CONTACT, waLink, LOGO, DATA } = H; const d = DATA();
@@ -153,7 +153,7 @@ export function aboutPage() {
   const c = aboutGet();
   return `<div class="aboutpg">
     <section class="ab-hero"><div class="ab-logo"><img src="${LOGO}" alt="عمر الياسي للعقارات"></div>
-      <p>شريكك الموثوق في أراضي الشارقة وعجمان</p></section>
+      <p>شريكك الموثوق في أراضي الشارقة</p></section>
     <div class="ab-stats"><div><b>${d.projects.length || '—'}</b><span>مشروع</span></div><div><b>${av || '—'}</b><span>أرض متاحة</span></div><div><b>${sold || '—'}</b><span>تم بيعها</span></div></div>
     <section class="ab-sec"><h3>${I.building} عن الشركة</h3><div class="ab-body" id="abBody">${c && c.html ? c.html : ABOUT_DEF}</div></section>
     <section class="ab-sec"><h3>${I.star} لماذا عمر الياسي؟</h3><div class="ab-why">

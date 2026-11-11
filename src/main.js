@@ -1446,7 +1446,7 @@ function welcome() {
   const el = document.createElement('div'); el.className = 'wlc';
   el.innerHTML = `<img class="wlc-bg" src="${esc(img)}" alt="" onerror="this.src='assets/villa-invest.jpg'"><span class="wlc-shade"></span>
     <div class="wlc-top"><img src="assets/mark.png" alt="" onerror="this.remove()"><b>عمر الياسي للعقارات</b></div>
-    <div class="wlc-body"><h1>أرضك في الشارقة<br>وعجمان… بين يديك</h1><p>تصفّح المشاريع والمخططات التفاعلية، قارن الأسعار وخطط السداد، واحجز معاينتك — كله من مكان واحد.</p>
+    <div class="wlc-body"><h1>أرضك في الشارقة…<br>بين يديك</h1><p>تصفّح المشاريع والمخططات التفاعلية، قارن الأسعار وخطط السداد، واحجز معاينتك — كله من مكان واحد.</p>
       <button class="wlc-go" data-wgo>ابدأ <svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button><button class="wlc-in" data-wsign>لديك حساب؟ <b>تسجيل الدخول</b></button></div>`;
   const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 350); };
   el.addEventListener('click', (e) => { if (e.target.closest('[data-wgo]')) close(); else if (e.target.closest('[data-wsign]')) { close(); pushPage('account'); } });

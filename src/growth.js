@@ -60,7 +60,7 @@ export async function initInvite(pg) {
   if (!session.token()) { el.innerHTML = `<div class="empty">${ei('plusc')}<p>سجّل الدخول للحصول على كود الدعوة الخاص بك</p><button class="btn primary" data-account="">تسجيل الدخول</button></div>`; return; }
   let j; try { j = await api('ref_me'); } catch (e) { el.innerHTML = `<p class="muted">${esc(e.message)}</p>`; return; }
   const link = `${APP_URL}?ref=${j.code}`;
-  const msg = `أنصحك بتطبيق عمر الياسي للعقارات 🏡\nأراضي الشارقة وعجمان بالمخططات التفاعلية والأسعار وخطط السداد في مكان واحد.\n\nحمّل التطبيق: ${link}\nكود الدعوة عند التسجيل: ${j.code}`;
+  const msg = `أنصحك بتطبيق عمر الياسي للعقارات 🏡\nأراضي الشارقة بالمخططات التفاعلية والأسعار وخطط السداد في مكان واحد.\n\nحمّل التطبيق: ${link}\nكود الدعوة عند التسجيل: ${j.code}`;
   el.innerHTML = `<section class="invhero">${ei('plusc')}<h2>ادعُ أصدقاءك</h2><p>شارك التطبيق مع من يبحث عن أرض — وعند تسجيلهم بكودك يظهرون في حسابك ويعرف المكتب أنهم جاؤوا عن طريقك.</p>
       <div class="invcode" dir="ltr"><b>${esc(j.code)}</b><button data-invcopy aria-label="نسخ">${ei('doc')}</button></div></section>
     <div class="invbtns"><a class="btn wa" data-ext href="https://wa.me/?text=${encodeURIComponent(msg)}">${I.wa} مشاركة عبر واتساب</a><button class="btn ghost" data-invshare>${I.share} مشاركة</button></div>
