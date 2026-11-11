@@ -1574,7 +1574,7 @@ body.guest #sheet .memf { display: none; }
 .cbar4 .btn.ic { width: 52px; height: 52px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
 .cbar4 .btn.ic svg { width: 22px; height: 22px; }
 .cbar4 .btn.call { background: var(--navy); color: #fff; } .cbar4 .btn.call svg { stroke: #fff; }
-.cbinline { margin: 4px 16px 12px; width: calc(100% - 32px); }
+.cbinline { margin: 4px 0 12px; width: 100%; max-width: 100%; }
 
 /* «احجز معاينة»: month calendar */
 .vdays:has(.vcal) { display: block; overflow: visible; }
@@ -1654,3 +1654,4 @@ body.guest #sheet .memf { display: none; }
 .mksync { display: inline-flex; align-items: center; justify-content: center; gap: 8px; } .mksync svg { width: 16px; height: 16px; } .mksync .spin { width: 14px; height: 14px; }
 .mknear { margin: 0; font-size: 12.5px; color: #475569; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; } .mknear svg { width: 14px; height: 14px; color: var(--gold, #c9a14a); }
 .mknone { margin: 0; font-size: 13px; color: #92400e; background: #fff7e6; border-radius: 10px; padding: 9px 11px; line-height: 1.6; }
+.mkcard .btn { white-space: normal; height: auto; min-height: 40px; padding: 8px 14px; line-height: 1.5; text-align: center; max-width: 100%; }
