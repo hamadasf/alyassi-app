@@ -31,6 +31,14 @@ export async function initPlanView2(pg, p, focusN) {
     if (na && na[3]) sel = { id: p.slug + ':' + na[0], n: String(na[0]), ft: na[2], pc: na[3], poly: null, status: 'na', use: ((p.types || {})[na[1]] || {}).use || '' };
   }
   let snap = null, snapView = null, idleT = 0;
+  // a plot the company does not offer: only its centre is known → the nearest centre within about a plot's size
+  const plotR = (() => { const a = lands.filter((l) => l.poly && l.poly.length > 2).slice(0, 40).map((l) => { let s = 0; const q = l.poly; for (let i = 0, j = q.length - 1; i < q.length; j = i++) s += (q[j][0] + q[i][0]) * (q[j][1] - q[i][1]); return Math.abs(s / 2); }).sort((x, y) => x - y); return a.length ? Math.sqrt(a[a.length >> 1]) * 0.65 : 0; })();
+  const naAt = (px, py) => {
+    let best = null, bd = Infinity;
+    for (const x of p.na || []) { if (!x[3]) continue; const d = Math.hypot(x[3][0] - px, x[3][1] - py); if (d < bd) { bd = d; best = x; } }
+    const lim = Math.max(plotR, 26 * dpr / view.ppu);
+    return best && bd <= lim ? { id: p.slug + ':' + best[0], n: String(best[0]), ft: best[2], pc: best[3], poly: null, status: 'na', use: ((p.types || {})[best[1]] || {}).use || '' } : null;
+  };
 
   const resize = () => { const r = box.getBoundingClientRect(); W = Math.round(r.width * dpr); Hh = Math.round(r.height * dpr); cv.width = W; cv.height = Hh; };
   const minPpu = () => Math.min(W / map.w, Hh / map.h) * 0.9;
@@ -73,7 +81,8 @@ export async function initPlanView2(pg, p, focusN) {
       <div class="pvc1"><b>قطعة رقم ${esc(sel.n)}</b><span class="pvst ${sel.status}">${st}</span></div>
       ${H.guest && H.guest() ? `<button class="btn primary block" data-signin="land">${H.I.lock} سجّل لعرض تفاصيل القطعة</button>` : `<div class="pvc2"><span>${esc(sel.use || '')}</span><span>${sel.ft ? money(sel.ft) + ' قدم²' : ''}</span>${sel.status !== 'sold' && sel.total ? `<b>${money(sel.total)} د.إ</b>` : ''}</div>
       <button class="btn primary block" data-land="${esc(sel.id)}">تفاصيل الأرض</button>`}
-      ${H.canDesign && H.canDesign() && (sel.poly || sel.pc) ? `<button class="btn adgbtn block" data-adgen="${esc(sel.id)}">${H.I.image} تصميم بوست</button>` : ''}`;
+      ${H.canDesign && H.canDesign() && (sel.poly || sel.pc) ? `<button class="btn adgbtn block" data-adgen="${esc(sel.id)}">${H.I.image} تصميم بوست</button>` : ''}
+      ${H.canPlots && H.canPlots() ? `<button class="btn ${sel.status === 'na' ? 'primary' : 'ghost'} block pvedit" data-plotedit="${esc(p.slug + '|' + sel.n)}">${sel.status === 'na' ? (H.I.plusc || '') + ' إضافة القطعة للبيع' : (H.I.edit || '') + ' تعديل الحالة والسعر والدفعات'}</button>` : ''}`;
     card.querySelector('.pvx').onclick = (e) => { e.stopPropagation(); sel = null; showCard(); full(); };
   };
 
@@ -102,7 +111,8 @@ export async function initPlanView2(pg, p, focusN) {
     const r = cv.getBoundingClientRect();
     if (pts.size === 1 && !moved && start) {
       const px = view.x0 + (e.clientX - r.left) * dpr / view.ppu, py = view.y0 + (e.clientY - r.top) * dpr / view.ppu;
-      const hit = plotAt(lands, px, py);
+      let hit = plotAt(lands, px, py);
+      if (!hit && H.canPlots && H.canPlots()) hit = naAt(px, py);   // the office: any plot of the plan, offered or not
       sel = hit; showCard(); full();
     }
     pts.delete(e.pointerId);

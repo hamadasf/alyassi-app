@@ -29,7 +29,11 @@ export const session = {
   emit() { session.subs.forEach((f) => { try { f(session.user()); } catch { /* ignore */ } }); },
 };
 /** Office powers: the admin has all of them; staff only those the admin gave them. */
-export function can(perm) { const u = session.user(); return !!u && (!!u.admin || (Array.isArray(u.staff) && u.staff.includes(perm))); }
+export function can(perm) {
+  const u = session.user(); if (!u) return false; if (u.admin) return true;
+  const st = Array.isArray(u.staff) ? u.staff : [];
+  return st.includes(perm) || (perm === 'plots' && st.length > 0 && u.role === 'mgr');   // a manager (مدير) adds and edits plots on the plan
+}
 /** real-estate offices / brokers (and the company itself) have a wallet */
 export function isBroker(u = session.user()) { return !!u && (!!u.admin || !!u.verified || !!(u.adv && u.adv.kind === 'company')); }
 export function isOffice() { const u = session.user(); return !!u && (!!u.admin || (Array.isArray(u.staff) && u.staff.length > 0)); }

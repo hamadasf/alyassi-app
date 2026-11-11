@@ -1393,7 +1393,7 @@ initNews({ esc, toast, I });
 initCalc({ esc, toast, I, money, waLink });
 initContact({ esc, toast, I, waLink, CONTACT });
 initViews({ esc, toast, I, money });
-initPlanView({ esc, toast, I, money, canDesign: () => can('design'), guest: () => glock() });
+initPlanView({ esc, toast, I, money, canDesign: () => can('design'), canPlots: () => !!session.token() && can('plots'), guest: () => glock() });
 initAdgen({ teamEv: (k, id, th) => teamEv(k, id, th), ownerOf: (id) => ownerOf(id), toast, api: accApi, myName: () => (session.user() || {}).name || '', landsOf: (slug) => DATA().lands.concat(naLands()).filter((x) => x.project === slug), openPlan: (slug) => pushPage('plan', slug), isAdmin: () => !!(session.user() || {}).admin, tpls: () => (session.user() || {}).tpl || [] });
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
 initTeam({ esc, I, openLand: (id) => openLandId(id) });

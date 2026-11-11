@@ -103,7 +103,12 @@ const OAY_TPLS = array( 'co' => 'قالب الشركة', 'gr' => 'قالب عب�
 function oay_user_tpls( $uid ) { $t = get_user_meta( $uid, 'oay_tpl', true ); $t = is_array( $t ) ? array_values( array_intersect( $t, array_keys( OAY_TPLS ) ) ) : array(); return $t ? $t : array( 'oy' ); }
 function oay_staff_perms( $uid ) { $p = get_user_meta( $uid, 'oay_staff', true ); return is_array( $p ) ? array_values( array_intersect( $p, array_keys( OAY_STAFF_PERMS ) ) ) : array(); }
 /** Admins can do everything; staff only what they were given. */
-function oay_acc_can( $u, $perm ) { return $u && ( oay_acc_is_admin( $u ) || in_array( $perm, oay_staff_perms( $u->ID ), true ) ); }
+function oay_acc_can( $u, $perm ) {
+	if ( ! $u ) { return false; }
+	if ( oay_acc_is_admin( $u ) ) { return true; }
+	$p = oay_staff_perms( $u->ID ); if ( in_array( $perm, $p, true ) ) { return true; }
+	return 'plots' === $perm && $p && 'mgr' === get_user_meta( $u->ID, 'oay_role', true );   // a manager (مدير) adds and edits plots on the plan
+}
 function oay_is_office( $u ) { return $u && ( oay_acc_is_admin( $u ) || oay_staff_perms( $u->ID ) ); }
 function oay_acc_need_perm( $perm ) { $u = oay_acc_need_user(); if ( ! oay_acc_can( $u, $perm ) ) { oay_acc_err( 'غير مسموح', 403 ); } return $u; }
 function oay_acc_need_office() { $u = oay_acc_need_user(); if ( ! oay_is_office( $u ) ) { oay_acc_err( 'غير مسموح', 403 ); } return $u; }
