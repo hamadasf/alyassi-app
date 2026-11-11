@@ -12,7 +12,8 @@ import { initNotifs, notifsPage } from './notifs.js';
 import { initNews, loadNews, renderTicker, newsPage, initNewsPage } from './news.js';
 import { initCalc, calcPage, initCalc2 } from './calc.js';
 import { initPlanView, planViewPage, initPlanView2 } from './planview.js';
-import { initAdgen, adgenPage, initAdgen2, initAdgenPick, closeAdgen } from './adgen.js';
+import { initAdgen, adgenPage, initAdgen2, initAdgenPick, closeAdgen, adgenWant } from './adgen.js';
+import { initTeam, teamPage, initTeamPage } from './team.js';
 import { track, deviceId } from './track.js';
 import { buildCleanPlanPdf } from './cleanplan.js';
 import { initPlotEdit, plotEditPage, initPlotEditPage } from './plotedit.js';
@@ -261,6 +262,8 @@ function openLandId(id) {
 function openFromPush(ev) {
   const n = (ev && (ev.notification || ev.result && ev.result.notification)) || {};
   const data = n.additionalData || n.data || {};
+  if (data.open === 'design' && data.id) { closeAll(); if (data.theme) adgenWant(String(data.theme)); refresh(false); setTimeout(() => (can('design') ? pushPage('adgen', String(data.id)) : openLandId(String(data.id))), 300); return; }
+  if (data.open === 'team') { closeAll(); showTab('contact'); setTimeout(() => pushPage('team'), 300); return; }
   if (data.open === 'land' && data.id) { refresh(false); openLandId(String(data.id)); return; }
   if (data.open === 'chat') { closeAll(); showTab('chats'); setTimeout(() => (data.user && can('chats') ? pushPage('chat', String(data.user)) : pushPage('mychat')), 300); return; }
   if (data.open === 'reports') { closeAll(); setTimeout(() => { admTab('reports'); pushPage('admin'); }, 300); return; }
@@ -544,6 +547,11 @@ function toast(msg) {
 let OWNERS = {};
 const ownerOf = (id) => (id === '*' ? Object.keys(OWNERS).length > 0 : OWNERS[id] || '');
 let ownersAt = 0;
+/** the office team's activity: a team member's share / saved design is told to the website (the managers' «نشاط الفريق») */
+function teamEv(kind, id, theme = '') {
+  const u = session.user(); if (!session.token() || !u || !(u.admin || (u.staff || []).length)) return;
+  accApi('team_ev', { kind, id, theme }).catch(() => { /* never in the way */ });
+}
 async function reloadOwners() {
   if (!session.token() || !can('owners')) { OWNERS = {}; paintOwners(); return; }
   try { OWNERS = (await accApi('owners_get')).owners || {}; ownersAt = Date.now(); } catch { /* keep what we had */ }
@@ -1015,6 +1023,7 @@ function pushPage(kind, id) {
   else if (kind === 'invite') { html = invitePage(); }
   else if (kind === 'refs') { html = refsPage(); }
   else if (kind === 'plotedit') { html = plotEditPage(); }
+  else if (kind === 'team') { html = teamPage(); }
   else if (kind === 'limport') { html = importPage(); }
   else if (kind === 'saved') { html = savedPage(); }
   else if (kind === 'legal') { html = legalPage(id); }
@@ -1054,7 +1063,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = glock() ? guestLandPage(l) : landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { tools: 'لوحة العمل', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', plotedit: 'إضافة / تعديل قطعة', limport: 'استيراد ملف الأراضي', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', blocked: 'المحظورون', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { team: 'نشاط الفريق', tools: 'لوحة العمل', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', plotedit: 'إضافة / تعديل قطعة', limport: 'استيراد ملف الأراضي', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', blocked: 'المحظورون', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -1069,6 +1078,7 @@ function pushPage(kind, id) {
   if (kind === 'invite') initInvite(pg);
   if (kind === 'refs') initRefs(pg);
   if (kind === 'plotedit') initPlotEditPage(pg, id || '');
+  if (kind === 'team') initTeamPage(pg);
   if (kind === 'limport') initImportPage(pg);
   if (kind === 'rates') initRatesPage(pg);
   if (kind === 'prereg') initPreregPage(pg);
@@ -1201,7 +1211,7 @@ document.addEventListener('click', (e) => {
   if (ds.share) {
     e.stopPropagation(); track('share', ds.share.split(':').slice(1).join(':'));
     const [kind, ...rest] = ds.share.split(':'); const id = rest.join(':'); const d = DATA();
-    if (kind === 'land') { const l = findLand(id); if (l) openShareSheet(l); }
+    if (kind === 'land') { const l = findLand(id); if (l) { openShareSheet(l); teamEv('share_land', id); } }
     else { const p = d.projects.find((x) => x.slug === id); if (p) openProjectShare(p); }
     return;
   }
@@ -1234,6 +1244,7 @@ document.addEventListener('click', (e) => {
   if (ds.myviews !== undefined) { pushPage('myviews'); return; }
   if (ds.views !== undefined) { pushPage('views'); return; }
   if (ds.staff !== undefined) { pushPage('staff'); return; }
+  if (ds.team !== undefined) { pushPage('team'); return; }
   if (ds.calc !== undefined) { pushPage('calc', ds.calc); return; }
   if (ds.prof !== undefined) { if (session.token()) pushPage('uprof', ds.prof); return; }
   if (ds.chat) { pushPage('chat', ds.chat); return; }
@@ -1383,8 +1394,9 @@ initCalc({ esc, toast, I, money, waLink });
 initContact({ esc, toast, I, waLink, CONTACT });
 initViews({ esc, toast, I, money });
 initPlanView({ esc, toast, I, money, canDesign: () => can('design'), guest: () => glock() });
-initAdgen({ ownerOf: (id) => ownerOf(id), toast, api: accApi, myName: () => (session.user() || {}).name || '', landsOf: (slug) => DATA().lands.concat(naLands()).filter((x) => x.project === slug), openPlan: (slug) => pushPage('plan', slug), isAdmin: () => !!(session.user() || {}).admin, tpls: () => (session.user() || {}).tpl || [] });
+initAdgen({ teamEv: (k, id, th) => teamEv(k, id, th), ownerOf: (id) => ownerOf(id), toast, api: accApi, myName: () => (session.user() || {}).name || '', landsOf: (slug) => DATA().lands.concat(naLands()).filter((x) => x.project === slug), openPlan: (slug) => pushPage('plan', slug), isAdmin: () => !!(session.user() || {}).admin, tpls: () => (session.user() || {}).tpl || [] });
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
+initTeam({ esc, I, openLand: (id) => openLandId(id) });
 initPlotEdit({ esc, toast, I, money, DATA: () => DATA(), findLand: (id) => findLand(id), refreshData: () => refresh(true) });
 initLandImport({ esc, toast, I, money, DATA: () => DATA(), refreshData: () => refresh(true), reloadOwners: () => reloadOwners() });
 initGrowth({ esc, toast, I, money, waLink, APP_URL, findLand: (id) => findLand(id), openExternal: (u) => openExternal(u), quoteToOffice: (t) => quoteToOffice(t), pushPage: (k, id) => pushPage(k, id) });

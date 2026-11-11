@@ -443,6 +443,8 @@ const AYK_FIELDS = AYA_FIELDS.flatMap((f) => (f[0] === 'a_loc' ? [['down', 'بط
 const AD_KEEP = ['more', 'addr', 'a_tag', 'a_addr', 'a_city'];   // remembered on this phone from one ad to the next
 const store = () => { try { return JSON.parse(localStorage.getItem('dnp-ad') || '{}') || {}; } catch { return {}; } };
 function pzPhone(t) { const s = store(); return (s.phones && s.phones[t]) || PZ_THEMES[t].phone; }
+/** open the designer on a template (a team notification «تصميم جديد» → that design, when this account may use the template) */
+export function adgenWant(theme) { pzKeep((s) => { s.theme = theme; }); }
 function pzKeep(f) { try { const s = store(); f(s); localStorage.setItem('dnp-ad', JSON.stringify(s)); } catch { /* private mode */ } }
 function adEvery(m) { return m ? 'كل ' + (m === 1 ? 'شهر' : m === 2 ? 'شهرين' : m <= 10 ? m + ' شهور' : m + ' شهرًا') : ''; }
 
@@ -1162,6 +1164,7 @@ async function finish(share) {
   if (!ad) return;
   const b = await exportBlob().catch(() => null);
   if (!b) { H.toast('تعذّر تجهيز الصورة'); return; }
+  if (H.teamEv) H.teamEv(share ? 'share_design' : 'save_img', ad.p.l.id, ad.v.theme);   // the team's activity (and, for a manager, the team is told)
   const name = `post-${ad.p.l.project}-${ad.p.n}.jpg`, title = `قطعة رقم ${ad.p.n} · ${ad.p.l.projectName}`;
   try {
     if (native) {

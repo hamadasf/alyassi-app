@@ -37,6 +37,7 @@ function oay_acc_design_save() {
 		$m = array_slice( $m, 0, 800, true );
 	}
 	update_option( 'oay_designs', $m, false );
+	do_action( 'oay_design_saved', $u, $id, $t );   // team activity + «تصميم جديد» to the team (alyassi-app-team.php)
 	oay_acc_ok( array( 't' => $m[ $id ][ $t ]['t'] ) );
 }
 function oay_acc_design_del() {

@@ -60,6 +60,7 @@ function oay_acc_limit( $what, $max ) {
 
 /* ---------------- app tokens (stored hashed in user meta) ---------------- */
 function oay_acc_issue_token( $uid ) {
+	do_action( 'oay_signed_in', (int) $uid );   // «آخر دخول» in the team activity (alyassi-app-team.php)
 	$tok  = bin2hex( random_bytes( 24 ) );
 	$list = (array) get_user_meta( $uid, 'oay_app_tokens', true );
 	$list = array_slice( array_filter( $list, 'is_array' ), -9 );
@@ -111,6 +112,7 @@ function oay_acc_adm_staff() {
 	$perms = array_values( array_intersect( (array) ( $in['perms'] ?? array() ), array_keys( OAY_STAFF_PERMS ) ) );
 	if ( $perms ) { update_user_meta( $u->ID, 'oay_staff', $perms ); } else { delete_user_meta( $u->ID, 'oay_staff' ); }
 	if ( isset( $in['tpl'] ) ) { $tpl = array_values( array_intersect( (array) $in['tpl'], array_keys( OAY_TPLS ) ) ); if ( $tpl ) { update_user_meta( $u->ID, 'oay_tpl', $tpl ); } else { delete_user_meta( $u->ID, 'oay_tpl' ); } }
+	if ( isset( $in['role'] ) && function_exists( 'oay_role_set' ) ) { oay_role_set( $u->ID, (string) $in['role'] ); }
 	if ( function_exists( 'oay_push_to' ) && $perms ) { oay_push_to( array( $u->ID ), 'تمت إضافتك لفريق عمر الياسي للعقارات', 'افتح التطبيق ← المزيد لتجد أدوات العمل الخاصة بك', array( 'open' => 'account' ) ); }
 	oay_acc_ok( array( 'user' => oay_acc_adm_userrow( get_userdata( $u->ID ) ) ) );
 }
@@ -123,7 +125,7 @@ function oay_acc_userdata( $u ) {
 		'google' => (bool) get_user_meta( $u->ID, 'oay_google_sub', true ), 'points' => (int) get_user_meta( $u->ID, 'oay_points', true ),
 		'admin' => oay_acc_is_admin( $u ), 'banned' => (bool) get_user_meta( $u->ID, 'oay_banned', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ),
 		'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ),
-		'verify' => oay_verify_get( $u->ID ), 'staff' => oay_staff_perms( $u->ID ), 'tpl' => oay_user_tpls( $u->ID ), 'adv' => function_exists( 'oay_adv_state' ) ? oay_adv_state( $u->ID ) : null );
+		'verify' => oay_verify_get( $u->ID ), 'staff' => oay_staff_perms( $u->ID ), 'role' => function_exists( 'oay_role' ) ? oay_role( $u ) : '', 'tpl' => oay_user_tpls( $u->ID ), 'adv' => function_exists( 'oay_adv_state' ) ? oay_adv_state( $u->ID ) : null );
 }
 function oay_acc_need_admin() { $u = oay_acc_need_user(); if ( ! oay_acc_is_admin( $u ) ) { oay_acc_err( 'غير مسموح', 403 ); } return $u; }
 function oay_acc_new_user( $email, $name, $pass ) {
@@ -796,13 +798,13 @@ function oay_chat_unread_count( $tid, $side ) {   // messages from the other sid
 	return $n;
 }
 /** Push to particular people (the app links each signed-in phone to «oay-<user id>»). */
-function oay_push_to( $uids, $title, $body, $data = array() ) {
+function oay_push_to( $uids, $title, $body, $data = array(), $extra = array() ) {   // $extra: e.g. oay_push_img() for a picture
 	$key = trim( (string) get_option( 'oay_onesignal_key', '' ) ); $uids = array_values( array_filter( array_map( 'intval', (array) $uids ) ) );
 	if ( '' === $key || ! $uids ) { return; }
 	wp_remote_post( 'https://api.onesignal.com/notifications?c=push', array( 'timeout' => 8, 'blocking' => false,
 		'headers' => array( 'Content-Type' => 'application/json', 'Authorization' => 'Key ' . $key ),
 		'body' => wp_json_encode( array( 'app_id' => OAY_APP_ID, 'target_channel' => 'push', 'include_aliases' => array( 'external_id' => array_map( function ( $u ) { return 'oay-' . $u; }, $uids ) ),
-			'headings' => array( 'en' => $title, 'ar' => $title ), 'contents' => array( 'en' => $body, 'ar' => $body ), 'data' => $data + array( 'open' => 'chat' ), 'web_url' => OAY_APP_URL . '#chat', 'ttl' => 86400 ) ) ) );
+			'headings' => array( 'en' => $title, 'ar' => $title ), 'contents' => array( 'en' => $body, 'ar' => $body ), 'data' => $data + array( 'open' => 'chat' ), 'web_url' => OAY_APP_URL . '#chat', 'ttl' => 86400 ) + (array) $extra ) ) );
 }
 function oay_admin_ids() { return array_values( array_unique( array_merge( get_users( array( 'capability' => 'manage_options', 'fields' => 'ID' ) ), get_users( array( 'meta_key' => 'oay_staff', 'fields' => 'ID' ) ) ) ) ); }
 
@@ -847,6 +849,7 @@ function oay_acc_adm_chat_send() {
 	$lid = absint( oay_acc_arg( 'listing', 12 ) ); if ( $lid && 'lands' !== get_post_type( $lid ) ) { $lid = 0; }
 	$first = 0 === oay_chat_unread_count( $tid, 'user' );
 	oay_chat_add( $tid, $me->ID, 'admin', oay_acc_arg( 'text', 2000 ), $lid );
+	do_action( 'oay_office_reply', $me, $u );   // team activity
 	oay_push_to( oay_notif_filter( array( $u->ID ), $first ? 'chat_first' : 'chat_all' ), 'عمر الياسي للعقارات', mb_substr( oay_acc_arg( 'text', 2000 ) ?: 'رسالة جديدة', 0, 120 ) );
 	oay_acc_ok( array( 'items' => oay_chat_msgs( $tid, true ) ) + oay_chat_peer_user( $tid, $u->ID ) );
 }
@@ -857,7 +860,7 @@ add_action( 'pre_get_comments', function ( $q ) {
 
 /* ================= notification preferences ================= */
 function oay_notif_prefs( $uid ) {
-	$d = array( 'chat_first' => true, 'chat_all' => true, 'group' => false, 'reqs' => true, 'mail' => true );
+	$d = array( 'chat_first' => true, 'chat_all' => true, 'group' => false, 'reqs' => true, 'mail' => true, 'team' => true );
 	$p = get_user_meta( $uid, 'oay_notif', true );
 	return is_array( $p ) ? array_merge( $d, array_intersect_key( array_map( 'boolval', $p ), $d ) ) : $d;
 }

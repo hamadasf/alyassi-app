@@ -433,6 +433,7 @@ export function initAdmAd(pg, id) {
 }
 export const TPLS = { oy: 'قالب عمر الياسي', ar: 'قالب عبد الرحمن', co: 'قالب الشركة', gr: 'قالب عبادة', pk: 'قالب آية الجابري', aya: 'قالب آية الجديد', ayk: 'قالب آية كامل' };
 export const STAFF = { chats: 'الرد على المحادثات', leads: 'متابعة العملاء وسجل التواصل', viewings: 'مواعيد المعاينة', listings: 'مراجعة الإعلانات وطلبات الشراء', news: 'الأخبار والدليل', push: 'الإشعارات الموجّهة', report: 'التقرير الأسبوعي', payplan: 'إرسال خطة السداد', design: 'تصميم البوستات', owners: 'رؤية اسم مالك الأرض', plots: 'إضافة / تعديل القطع (الحالة والسعر والدفعات)' };
+export const ROLES = { staff: 'موظف', mgr: 'مدير', mkt: 'مدير تسويق' };
 /* ---------- the office team (admin only) ---------- */
 export function staffPage() { return '<div class="pad acc" id="staffl"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>'; }
 export async function initStaff(pg) {
@@ -441,7 +442,7 @@ export async function initStaff(pg) {
     const j = await api('adm_staff_list');
     box.innerHTML = `<div class="ccard"><b>فريق المكتب</b><p class="muted">لإضافة موظف: يسجّل حساباً في التطبيق، ثم افتح ملفه من «لوحة الإدارة ← المستخدمون» واختر صلاحياته.</p></div>
       ${j.items.length ? j.items.map((u) => `<div class="strow" data-auser="${u.id}">${u.avatar ? `<img class="stav" src="${esc(u.avatar)}" alt="">` : `<div class="stav">${esc((u.name || '?').charAt(0).toUpperCase())}</div>`}<div class="stinfo"><b>${esc(u.name)}</b><span class="stmail"><bdi>${esc(u.email)}</bdi></span>
-        <span class="stperms">${(u.staff || []).map((k) => `<i>${esc(STAFF[k] || k)}</i>`).join('')}</span>${(u.staff || []).includes('design') ? `<span class="sttpl">🖼️ ${(u.tpl && u.tpl.length ? u.tpl : ['oy']).map((k) => esc(TPLS[k] || k)).join(' · ')}</span>` : ''}</div><i class="chev">‹</i></div>`).join('') : '<p class="muted">لا يوجد موظفون بعد.</p>'}
+        <span class="stperms"><i class="role r-${esc(u.role || 'staff')}">${esc(ROLES[u.role] || 'موظف')}</i>${(u.staff || []).map((k) => `<i>${esc(STAFF[k] || k)}</i>`).join('')}</span>${(u.staff || []).includes('design') ? `<span class="sttpl">🖼️ ${(u.tpl && u.tpl.length ? u.tpl : ['oy']).map((k) => esc(TPLS[k] || k)).join(' · ')}</span>` : ''}</div><i class="chev">‹</i></div>`).join('') : '<p class="muted">لا يوجد موظفون بعد.</p>'}
       <button class="btn primary block" id="pickStaff">${ei('user')} اختيار موظف من المستخدمين</button>
       <div class="ccard invbox"><b>${ei('share')} رابط دعوة موظف</b><p class="muted">أرسل الرابط للموظف — يسجّل حساباً واحداً فقط عن طريقه ويحصل مباشرة على الصلاحيات التي تختارها هنا. كل رابط يُستخدم مرة واحدة.</p>
         ${Object.entries(STAFF).map(([k, v]) => `<label class="nrow"><span>${v}</span><input type="checkbox" class="nchk" data-iperm="${k}" ${k === 'payplan' ? 'checked' : ''}></label>`).join('')}
@@ -501,6 +502,8 @@ export async function initAdmUser(pg, id) {
         ${u.admin ? '' : `<button class="btn ghost ${u.banned ? '' : 'danger'}" data-ban="${u.banned ? '0' : '1'}">${u.banned ? 'رفع الإيقاف' : '⛔ إيقاف الحساب'}</button>`}
       </div>
       ${u.admin ? '' : `<div class="ccard staffbox"><h4 class="lh">🧑‍💼 موظف في فريق المكتب</h4><p class="muted">اختر ما يستطيع هذا الحساب فعله نيابةً عن الإدارة. الرسائل التي يرسلها للعملاء تظهر باسم «عمر الياسي للعقارات».</p>
+        <h4 class="lh">الصفة</h4><div class="seg rolepick">${Object.entries(ROLES).map(([k, v]) => `<button type="button" data-role="${k}" class="${(u.role && u.role !== 'admin' ? u.role : 'staff') === k ? 'on' : ''}">${v}</button>`).join('')}</div>
+        <p class="muted rolehint">المدير يرى «نشاط الفريق». تصاميم المدير ومدير التسويق تصل كإشعار لباقي الفريق.</p>
         ${Object.entries(STAFF).map(([k, v]) => `<label class="nrow"><span>${v}</span><input type="checkbox" class="nchk" data-perm="${k}" ${(u.staff || []).includes(k) ? 'checked' : ''}></label>`).join('')}
         <div class="tplbox"${(u.staff || []).includes('design') ? '' : ' hidden'}><h4 class="lh">🖼️ القوالب التي يصمم بها</h4><p class="muted">اختر قالباً أو أكثر — لا تظهر له إلا هذه القوالب.</p>
           ${Object.entries(TPLS).map(([k, v]) => `<label class="nrow"><span>${v}</span><input type="checkbox" class="nchk" data-tpl="${k}" ${(u.tpl && u.tpl.length ? u.tpl : ['oy']).includes(k) ? 'checked' : ''}></label>`).join('')}</div>
@@ -511,11 +514,12 @@ export async function initAdmUser(pg, id) {
   };
   const load = async () => { try { draw(await api('adm_user', { id })); } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; } };
   box.onclick = async (e) => {
+    const rp = e.target.closest('[data-role]'); if (rp) { box.querySelectorAll('[data-role]').forEach((b) => b.classList.toggle('on', b === rp)); return; }
     if (e.target.closest('[data-savestaff]')) {
       const perms = [...box.querySelectorAll('[data-perm]')].filter((c) => c.checked).map((c) => c.dataset.perm);
       const tpl = [...box.querySelectorAll('[data-tpl]')].filter((c) => c.checked).map((c) => c.dataset.tpl);
       if (perms.includes('design') && !tpl.length) { toast('اختر قالباً واحداً على الأقل لتصميم البوستات'); return; }
-      try { await api('adm_staff', { id, perms, tpl }); toast(perms.length ? 'تم حفظ صلاحيات الموظف ✓' : 'تمت إزالة صلاحيات الموظف'); load(); } catch (ex) { toast(ex.message); }
+      try { await api('adm_staff', { id, perms, tpl, role: (box.querySelector('[data-role].on') || {}).dataset?.role || 'staff' }); toast(perms.length ? 'تم حفظ صلاحيات الموظف ✓' : 'تمت إزالة صلاحيات الموظف'); load(); } catch (ex) { toast(ex.message); }
       return;
     }
     const vk = e.target.closest('[data-vok2]'), vn = e.target.closest('[data-vno2]');

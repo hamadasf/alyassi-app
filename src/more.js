@@ -275,7 +275,7 @@ export function toolsPage() {
     stat(can('viewings'), 'views', 'معاينات قادمة', 'data-views'),
   ].filter(Boolean).join('');
   return `<div class="pad mtools">
-    <div class="wkhead"><span class="wrole">${u.admin ? I.shield + ' مدير' : I.brief + ' موظف'}</span><b class="notr">${H.esc(u.name || '')}</b></div>
+    <div class="wkhead"><span class="wrole">${u.admin ? I.shield + ' الإدارة' : I.brief + ' ' + ({ mgr: 'مدير', mkt: 'مدير تسويق' }[u.role] || 'موظف')}</span><b class="notr">${H.esc(u.name || '')}</b></div>
     ${stats ? `<div class="wstats">${stats}</div>` : ''}
     ${sec('العملاء', [
       t(can('leads'), I.user, 'متابعة العملاء', 'data-leads'),
@@ -303,6 +303,7 @@ export function toolsPage() {
       t(can('report'), I.doc, 'التقرير الأسبوعي', 'data-report'),
       t(can('listings') || can('report'), I.chart, 'إحصائيات الإعلانات', 'data-mystats'),
       t(!!u.admin, I.verified, 'الموظفون والصلاحيات', 'data-staff'),
+      t(!!u.admin || u.role === 'mgr', I.users || I.user, 'نشاط الفريق', 'data-team'),
     ])}
   </div>`;
 }

@@ -1461,3 +1461,31 @@ body.guest #sheet .memf { display: none; }
 .wtile b { font-size: 12.5px; font-weight: 600; text-align: center; line-height: 1.35; }
 .mtools .wkhead { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 12px 14px; box-shadow: 0 4px 14px rgba(14,28,54,.05); margin: 0 0 12px; }
 .mtools .wkhead b { color: var(--navy); }
+
+/* team roles and «نشاط الفريق» */
+.stperms i.role { background: #0e1c36; color: #e6c77f; } .stperms i.role.r-mgr { background: #c9a14a; color: #0e1c36; } .stperms i.role.r-mkt { background: #6d2a8c; color: #fff; }
+.rolepick { margin-bottom: 6px; } .rolehint { font-size: 12px; margin: 0 2px 10px; }
+.team .tm-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; } .tm-days { flex: 0 0 auto; }
+.tm-list { display: grid; gap: 10px; }
+.tm-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: start; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 12px; font: inherit; color: inherit; }
+.tm-av { position: relative; flex: 0 0 auto; width: 48px; height: 48px; border-radius: 50%; background: #0e1c36; color: #e6c77f; display: flex; align-items: center; justify-content: center; font: 800 19px AJ, Tajawal, sans-serif; }
+.tm-av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; } .tm-av.big { width: 62px; height: 62px; font-size: 24px; }
+.tm-on { position: absolute; bottom: 1px; inset-inline-end: 1px; width: 13px; height: 13px; border-radius: 50%; background: #22a35a; border: 2px solid var(--card); }
+.tm-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; } .tm-info b { font-size: 15px; }
+.tm-info small, .tm-head small { color: var(--mute); font-size: 12px; } .tm-info small .ok { color: #22a35a; font-weight: 700; }
+.tm-role { display: inline-block; width: fit-content; font-style: normal; font: 700 11px AJ, Tajawal, sans-serif; padding: 1px 9px; border-radius: 20px; background: #eef1f6; color: #0e1c36; }
+.tm-role.r-admin { background: #0e1c36; color: #e6c77f; } .tm-role.r-mgr { background: #f3e7c8; color: #7a5a17; } .tm-role.r-mkt { background: #efe2f6; color: #6d2a8c; }
+.tm-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; } .tm-chips i { display: inline-flex; align-items: center; gap: 4px; font-style: normal; font-size: 11px; background: #f5f2ea; border-radius: 8px; padding: 2px 7px; }
+.tm-chips i svg { width: 12px; height: 12px; } .tm-chips i.none { background: none; color: var(--mute); padding: 0; }
+.tm-n { display: flex; flex-direction: column; align-items: center; min-width: 46px; } .tm-n b { font: 800 22px AJ, Tajawal, sans-serif; color: #0e1c36; } .tm-n small { font-size: 11px; color: var(--mute); }
+.tm-head { display: flex; align-items: center; gap: 14px; } .tm-head > div { display: flex; flex-direction: column; gap: 4px; }
+.tm-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 4px; } .tm-kpis div { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 6px; text-align: center; }
+.tm-kpis b { display: block; font: 800 20px AJ, Tajawal, sans-serif; color: #0e1c36; } .tm-kpis span { font-size: 11px; color: var(--mute); }
+.tm-feed { display: grid; gap: 2px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 6px 12px; }
+.tm-ev { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); } .tm-ev:last-child { border-bottom: 0; } .tm-ev[data-tland] { cursor: pointer; }
+.tm-ev > div { flex: 1; min-width: 0; display: flex; flex-direction: column; } .tm-ev b { font-size: 13px; } .tm-ev span { font-size: 12px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-ev small { font-size: 11px; color: var(--mute); white-space: nowrap; }
+.tm-ic { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #eef1f6; color: #0e1c36; } .tm-ic svg { width: 17px; height: 17px; }
+.tm-ev.k-design .tm-ic, .tm-ev.k-share_design .tm-ic, .tm-ev.k-save_img .tm-ic { background: #efe2f6; color: #6d2a8c; }
+.tm-ev.k-plot_new .tm-ic { background: #e3f4ea; color: #1f7a3f; } .tm-ev.k-plot_edit .tm-ic { background: #fdf1dc; color: #9a6a12; }
+.tm-ev.k-chat .tm-ic, .tm-ev.k-share_land .tm-ic { background: #e5eefb; color: #24407a; }
