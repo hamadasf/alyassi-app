@@ -1,3 +1,4 @@
+import { NEW_USER } from './firstrun.js';
 import { tr, startI18n, isEn, setLang } from './i18n.js';
 import { Capacitor, CapacitorHttp, SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { App } from '@capacitor/app';
@@ -1438,9 +1439,10 @@ function netState() {
 }
 window.addEventListener('online', () => { netState(); refresh(false); loadNews(); refreshUnread(); });
 window.addEventListener('offline', netState);
-/* the first time the app is opened: a welcome screen over a project photo (once per phone) */
+/* a fresh install: nothing of the app saved on this phone yet (read before anything is written at start-up) */
+/* the first time the app is opened: a welcome screen over a project photo (new users only) */
 function welcome() {
-  try { if (localStorage.getItem('oay:welcome1')) return; localStorage.setItem('oay:welcome1', '1'); } catch { return; }
+  try { if (!NEW_USER || session.token() || localStorage.getItem('oay:welcome1')) return; localStorage.setItem('oay:welcome1', '1'); } catch { return; }   // new users only: a fresh install, nobody signed in
   const ps = (DATA().projects || []).filter((p) => p.poster).sort((a, b) => b.available - a.available);
   const img = ps.length ? ps[0].poster : 'assets/villa-invest.jpg';
   const el = document.createElement('div'); el.className = 'wlc';
