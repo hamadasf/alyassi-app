@@ -1489,3 +1489,29 @@ body.guest #sheet .memf { display: none; }
 .tm-ev.k-design .tm-ic, .tm-ev.k-share_design .tm-ic, .tm-ev.k-save_img .tm-ic { background: #efe2f6; color: #6d2a8c; }
 .tm-ev.k-plot_new .tm-ic { background: #e3f4ea; color: #1f7a3f; } .tm-ev.k-plot_edit .tm-ic { background: #fdf1dc; color: #9a6a12; }
 .tm-ev.k-chat .tm-ic, .tm-ev.k-share_land .tm-ic { background: #e5eefb; color: #24407a; }
+
+/* profile header (own account · the admin's view of a member) */
+.prof { position: relative; background: var(--card); border-radius: 22px; overflow: hidden; box-shadow: 0 2px 14px rgba(15,23,42,.07); text-align: center; padding: 0 16px 16px; margin-bottom: 14px; }
+.prof-cover { height: 92px; margin: 0 -16px; background: radial-gradient(circle at 85% 0%, rgba(201,161,74,.45), transparent 55%), linear-gradient(135deg, #0e1c36, #24407a); }
+.prof-av { position: relative; width: 104px; height: 104px; margin: -52px auto 10px; border-radius: 50%; background: linear-gradient(135deg, #e6c77f, #c9a14a); color: #0e1c36; display: grid; place-items: center; font: 800 40px AJ, Tajawal, sans-serif; border: 4px solid var(--card); box-shadow: 0 6px 18px rgba(14,28,54,.25); }
+.prof-av.img { background: #eef1f6; }
+.prof-av > img:first-child { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+.prof-vf { position: absolute; bottom: 4px; inset-inline-end: 2px; width: 28px; height: 28px; border-radius: 50%; background: #1d9bf0; color: #fff; display: grid; place-items: center; border: 3px solid var(--card); font-style: normal; }
+.prof-vf svg { width: 14px; height: 14px; }
+.prof-logo { position: absolute; bottom: 0; inset-inline-start: -6px; width: 38px; height: 38px; border-radius: 10px; object-fit: contain; background: #fff; border: 2px solid var(--card); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.prof-name { font: 800 21px AJ, Tajawal, sans-serif; color: var(--navy, #0e1c36); margin: 0; line-height: 1.3; }
+.prof-co { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font: 700 14px AJ, Tajawal, sans-serif; color: #8a6a23; } .prof-co svg { width: 16px; height: 16px; }
+.prof-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 10px 0 4px; }
+.prof-tags .pt { font-style: normal; font: 700 12px AJ, Tajawal, sans-serif; padding: 3px 11px; border-radius: 20px; background: #eef1f6; color: #475569; }
+.pt.r-admin { background: #0e1c36; color: #e6c77f; } .pt.r-mgr { background: #f3e7c8; color: #7a5a17; } .pt.r-mkt { background: #efe2f6; color: #6d2a8c; } .pt.r-staff { background: #e5eefb; color: #24407a; }
+.pt.vf { background: #e3f1fd; color: #1677c8; } .pt.ok { background: #e3f4ea; color: #1f7a3f; } .pt.bad { background: #fde8e8; color: #c42f2b; }
+.prof-note { margin: 6px 0 0; font: 700 12px AJ, Tajawal, sans-serif; color: #b0883a; }
+.prof-stats { display: flex; justify-content: center; gap: 0; margin: 12px 0 4px; border: 1px solid #eef0f4; border-radius: 16px; overflow: hidden; }
+.prof-stats:empty { display: none; }
+.prof-stats div { flex: 1; padding: 10px 6px; display: flex; flex-direction: column; gap: 2px; } .prof-stats div + div { border-inline-start: 1px solid #eef0f4; }
+.prof-stats b { font: 800 17px AJ, Tajawal, sans-serif; color: var(--navy, #0e1c36); } .prof-stats span { font-size: 11.5px; color: #64748b; }
+.prof-contact { display: grid; gap: 8px; margin-top: 12px; text-align: start; }
+.prof-contact .pc { display: flex; align-items: center; gap: 10px; background: #f7f8fb; border-radius: 14px; padding: 9px 12px; color: inherit; text-decoration: none; min-width: 0; }
+.pci { flex: none; width: 34px; height: 34px; border-radius: 10px; background: #fff; display: grid; place-items: center; color: #b0883a; box-shadow: 0 1px 3px rgba(0,0,0,.06); } .pci svg { width: 17px; height: 17px; }
+.pcv { flex: 1; min-width: 0; font: 600 14px AJ, Tajawal, sans-serif; color: var(--navy, #0e1c36); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: end; }
+.pcb { flex: none; width: 36px; height: 36px; border-radius: 50%; background: #0e1c36; color: #fff; display: grid; place-items: center; } .pcb svg { width: 17px; height: 17px; } .pcb.wa { background: #25d366; }

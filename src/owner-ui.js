@@ -20,13 +20,44 @@ export function initOwnerUI(helpers) { H = helpers; }
 
 const REVIEW = { pending: ['بانتظار الموافقة', 'res'], approved: ['معروضة', 'av'], rejected: ['مرفوضة', 'sold'] };
 
+
+/* ---------- the profile header (own account and the admin's view of a member) ---------- */
+const ROLE_LB = { admin: 'الإدارة', mgr: 'مدير', mkt: 'مدير تسويق', staff: 'موظف' };
+function profileHead(u, o = {}) {
+  const { esc, I } = H; const adv = u.adv || {};
+  const pic = adv.photo || u.avatar || (o.pending && adv.pending && adv.pending.photo) || '';
+  const logo = adv.logo || '';
+  const ini = esc((u.name || u.email || '?').trim().charAt(0).toUpperCase());
+  const role = u.admin ? 'admin' : (u.staff || []).length ? (u.role && u.role !== 'admin' ? u.role : 'staff') : '';
+  const tel = String(u.phone || '').replace(/[^\d+]/g, ''), wa = tel.replace(/^\+/, '').replace(/^0/, '971');
+  const stat = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
+  const stats = [
+    o.status ? stat(u.admin ? '∞' : esc(String(u.points || 0)), 'نقطة') : '',
+    u.ads != null ? stat(esc(String(u.ads)), 'إعلان') : '',
+    u.joined ? stat(new Date(u.joined).toLocaleDateString('ar-AE', { month: 'short', year: 'numeric' }), 'عضو منذ') : '',
+  ].filter(Boolean).join('');
+  return `<section class="prof">
+    <div class="prof-cover"></div>
+    <div class="prof-av${pic ? ' img' : ''}">${pic ? `<img src="${esc(pic)}" alt="" referrerpolicy="no-referrer" onerror="this.parentNode.classList.remove('img');this.replaceWith(document.createTextNode('${ini}'))">` : ini}
+      ${u.verified ? `<i class="prof-vf" title="موثّق">${I.check || '✓'}</i>` : ''}${logo ? `<img class="prof-logo" src="${esc(logo)}" alt="">` : ''}</div>
+    <h2 class="prof-name">${esc(u.name || '—')}</h2>
+    ${u.verified && u.company ? `<div class="prof-co">${I.building || ''} ${esc(u.company)}</div>` : ''}
+    <div class="prof-tags">${role ? `<i class="pt r-${role}">${ROLE_LB[role]}</i>` : ''}${u.verified ? '<i class="pt vf">حساب موثّق</i>' : ''}${o.status ? (u.banned ? '<i class="pt bad">موقوف</i>' : '<i class="pt ok">نشط</i>') : ''}${u.google ? '<i class="pt">دخول بجوجل</i>' : ''}</div>
+    ${o.pending && adv.pending && adv.pending.photo && adv.pending.photo !== pic ? '<p class="prof-note">صورة جديدة بانتظار موافقتك</p>' : ''}
+    <div class="prof-stats">${stats}</div>
+    <div class="prof-contact">
+      ${u.email ? `<a class="pc" href="mailto:${esc(u.email)}"><span class="pci">${I.mail || '@'}</span><span class="pcv" dir="ltr">${esc(u.email)}</span></a>` : ''}
+      ${tel ? `<div class="pc"><span class="pci">${I.phone || ''}</span><span class="pcv" dir="ltr">${esc(u.phone)}</span>${o.actions ? `<a class="pcb" href="tel:${esc(tel)}" aria-label="اتصال">${I.phone || 'اتصال'}</a><a class="pcb wa" href="https://wa.me/${esc(wa)}" data-ext aria-label="واتساب">${I.wa || I.chat || 'واتساب'}</a>` : ''}</div>` : ''}
+    </div>
+  </section>`;
+}
+
 /* ================= account ================= */
 export function accountPage() {
   const { esc, I } = H; const u = session.user();
   if (session.token() && u) {
     return `<div class="pad acc">
-      <div class="acc-card"><div class="acc-av">${esc((u.name || u.email || '?').trim().charAt(0))}</div>
-        <div><b>${esc(u.name || '')}</b><span>${esc(u.email || '')}</span>${u.phone ? `<span dir="ltr">${esc(u.phone)}</span>` : ''}</div></div>
+      ${profileHead(u)}
       ${u.admin ? `<button class="btn primary block share-big" data-tools>${I.shield} لوحة الإدارة</button>` : ''}
       <div class="pts"><b>${u.admin ? '∞' : u.points || 0}</b><span>${u.admin ? 'نقاط غير محدودة للإدارة · تمييز الإعلان يجعله يظهر أولاً في الصفحة الرئيسية' : u.verified ? 'نقطة في رصيدك · تمييز الإعلان بـ 70 نقطة يجعله يظهر أولاً في الصفحة الرئيسية' : 'تمييز الإعلانات متاح للمكاتب الموثّقة — وثّق حسابك واحصل على 500 نقطة'}</span></div>
       ${advMissing(u) ? `<button class="advnote" data-advmine><b>${I.user} أضف صورتك الشخصية</b><span>تظهر على إعلاناتك (والشركات تضيف شعارها) — تعتمدها الإدارة</span></button>` : u.adv && u.adv.status === 'rejected' ? `<button class="advnote bad" data-advmine><b>لم تُعتمد صورتك</b><span>${esc(u.adv.note || 'اضغط لإرسال صورة أخرى')}</span></button>` : u.adv && u.adv.status === 'pending' ? `<button class="advnote wait" data-advmine><b>⏳ صورتك بانتظار اعتماد الإدارة</b></button>` : ''}
@@ -488,14 +519,10 @@ export async function initAdmUser(pg, id) {
   const me = session.user() || {};
   const draw = (j) => {
     const u = j.user;
-    box.innerHTML = `<div class="acc-card"><div class="acc-av">${esc((u.name || u.email || '?').charAt(0))}</div>
-        <div><b>${esc(u.name || '—')} ${u.verified ? H.I.verified : ''}</b>${u.verified && u.company ? `<span><b>${esc(u.company)}</b></span>` : ''}<span>${esc(u.email)}</span>${u.phone ? `<span dir="ltr">${esc(u.phone)}</span>` : ''}
-        <span>عضو منذ ${new Date(u.joined).toLocaleDateString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE')}${u.google ? ' · دخول بجوجل' : ''}</span>
-        <span class="pills">${u.banned ? '<i class="pill sold">موقوف</i>' : '<i class="pill av">نشط</i>'}${u.admin ? '<i class="pill plan">مدير</i>' : ''}</span></div></div>
+    box.innerHTML = `${profileHead(u, { status: true, actions: true, pending: true })}
       ${u.verify ? `<div class="vreq"><b>طلب التوثيق: ${u.verify.status === 'approved' ? 'موثّق ✓' : u.verify.status === 'pending' ? 'قيد المراجعة' : 'مرفوض'}</b>
         <span>${esc(u.verify.company)} · ${esc(u.verify.city)} · ${esc(u.verify.name)} · <a href="tel:${esc(u.verify.phone)}" dir="ltr">${esc(u.verify.phone)}</a></span>
         ${u.verify.status === 'pending' ? `<div class="admact"><button class="btn wa" data-vok2="1">✓ توثيق (+500 نقطة)</button><button class="btn ghost" data-vno2="1">✕ رفض</button></div>` : u.verify.status === 'approved' ? `<button class="btn ghost danger" data-vno2="1">إلغاء التوثيق</button>` : ''}</div>` : ''}
-      <div class="pts"><b>${u.admin ? '∞' : u.points}</b><span>نقطة · تمييز إعلان = 70 نقطة</span></div>
       ${me.admin ? `<div class="admact">
         <button class="btn gold" data-pts="70">＋ 70 نقطة (تمييز إعلان)</button>
         <button class="btn ghost" data-pts="custom">± نقاط بعدد آخر</button>
