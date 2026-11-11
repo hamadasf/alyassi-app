@@ -23,7 +23,7 @@ const REVIEW = { pending: ['بانتظار الموافقة', 'res'], approved: 
 
 /* ---------- the profile header (own account and the admin's view of a member) ---------- */
 const ROLE_LB = { admin: 'الإدارة', mgr: 'مدير', mkt: 'مدير تسويق', staff: 'موظف' };
-function profileHead(u, o = {}) {
+export function profileHead(u, o = {}) {
   const { esc, I } = H; const adv = u.adv || {};
   const pic = adv.photo || u.avatar || (o.pending && adv.pending && adv.pending.photo) || '';
   const logo = adv.logo || '';
@@ -32,16 +32,16 @@ function profileHead(u, o = {}) {
   const tel = String(u.phone || '').replace(/[^\d+]/g, ''), wa = tel.replace(/^\+/, '').replace(/^0/, '971');
   const stat = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
   const stats = [
-    o.status ? stat(u.admin ? '∞' : esc(String(u.points || 0)), 'نقطة') : '',
+    o.status || o.points ? stat(u.admin ? '∞' : esc(String(u.points || 0)), 'نقطة') : '',
     u.ads != null ? stat(esc(String(u.ads)), 'إعلان') : '',
     u.joined ? stat(new Date(u.joined).toLocaleDateString('ar-AE', { month: 'short', year: 'numeric' }), 'عضو منذ') : '',
   ].filter(Boolean).join('');
   return `<section class="prof">
     <div class="prof-cover"></div>
     <div class="prof-av${pic ? ' img' : ''}">${pic ? `<img src="${esc(pic)}" alt="" referrerpolicy="no-referrer" onerror="this.parentNode.classList.remove('img');this.replaceWith(document.createTextNode('${ini}'))">` : ini}
-      ${u.verified ? `<i class="prof-vf" title="موثّق">${I.check || '✓'}</i>` : ''}${logo ? `<img class="prof-logo" src="${esc(logo)}" alt="">` : ''}</div>
-    <h2 class="prof-name">${esc(u.name || '—')}</h2>
-    ${u.verified && u.company ? `<div class="prof-co">${I.building || ''} ${esc(u.company)}</div>` : ''}
+      ${u.verified ? '<i class="prof-vf" title="موثّق"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.2 4.2L19 7"/></svg></i>' : ''}${logo ? `<img class="prof-logo" src="${esc(logo)}" alt="">` : ''}</div>
+    <h2 class="prof-name"><span class="notr">${esc(u.verified && u.company ? u.company : u.name || '—')}</span></h2>
+    ${u.verified && u.company && u.name ? `<div class="prof-co"><span class="notr">${esc(u.name)}</span></div>` : ''}
     <div class="prof-tags">${role ? `<i class="pt r-${role}">${ROLE_LB[role]}</i>` : ''}${u.verified ? '<i class="pt vf">حساب موثّق</i>' : ''}${o.status ? (u.banned ? '<i class="pt bad">موقوف</i>' : '<i class="pt ok">نشط</i>') : ''}${u.google ? '<i class="pt">دخول بجوجل</i>' : ''}</div>
     ${o.pending && adv.pending && adv.pending.photo && adv.pending.photo !== pic ? '<p class="prof-note">صورة جديدة بانتظار موافقتك</p>' : ''}
     <div class="prof-stats">${stats}</div>

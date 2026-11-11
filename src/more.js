@@ -4,6 +4,7 @@ import { LEGAL, LEGAL_EN } from './legal.js';
 // «المزيد» tab: profile, my activity, account & settings, support, terms & privacy.
 import { api, session, refreshMe, logout, resizePhoto, can, isOffice, isBroker } from './owner.js';
 import { uiConfirm, uiPrompt } from './dialog.js';
+import { profileHead } from './owner-ui.js';
 
 let H = null;   // helpers from main.js
 export function initMore(h) { H = h; }
@@ -55,13 +56,9 @@ export function renderMore(el) {
 
 /* ================= profile ================= */
 export function profilePage() {
-  const { esc, I } = H; const u = session.user() || {};
-  return `<div class="pprof">${avatar(u, 'bav')}<h2><span class="notr">${esc(u.verified && u.company ? u.company : u.name || '')}</span> ${vb(u)}</h2>
-      ${u.verified && u.company ? `<p class="muted">${esc(u.name || '')}</p>` : ''}
-      <span class="role">${u.admin ? I.shield + ' مدير' : (u.staff || []).length ? I.brief + ' موظف' : u.verified ? I.office + ' مكتب عقاري موثّق' : I.user + ' عضو'}</span>
-      <div class="pinfo"><div><b>${u.admin ? '∞' : u.points || 0}</b><span>نقطة</span></div><div><b dir="ltr">${esc(u.phone || '—')}</b><span>الجوال</span></div></div>
-      <p class="muted">${esc(u.email || '')}${u.google ? ' · دخول بحساب جوجل' : ''}</p></div>
-    <div class="pad"><button class="btn primary block share-big" data-editprofile>تعديل الملف</button></div>`;
+  const { I } = H; const u = session.user() || {};
+  return `<div class="pad pprof2">${profileHead(u, { points: true })}
+      <button class="btn primary block share-big" data-editprofile>${I.edit || ''} تعديل الملف</button></div>`;
 }
 export function editProfilePage() {
   const { esc } = H; const u = session.user() || {};
