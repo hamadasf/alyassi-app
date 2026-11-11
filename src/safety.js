@@ -36,9 +36,11 @@ export function initBackups(pg) {
       <div class="bk-list">${items.map((x) => `<div class="bk-row"><span class="bk-d"><b>${esc(x.day.split('-').reverse().join('/'))}</b><small>${esc(x.time)}</small></span>
           <span class="bk-i"><i class="bk-w ${esc(x.why)}">${WHY[x.why] || esc(x.why)}</i><small>${kb(x.size)}</small></span>
           <button class="btn ghost sm" data-bkget="${esc(x.name)}" aria-label="تنزيل">${I.download || '⬇'}</button><button class="btn ghost sm danger" data-bkrest="${esc(x.name)}">استرجاع</button></div>`).join('') || '<p class="muted">ستظهر النسخ هنا.</p>'}</div>
+      <label class="ccard bk-tfa"><span><b>تأكيد الدخول بكود على الإيميل</b><small>للإدارة والمدير عند الدخول من جهاز جديد فقط — مقفول افتراضياً</small></span><input type="checkbox" id="bkTfa"></label>
       <details class="ccard bk-links"><summary>روابط تفتح التطبيق مباشرة (أندرويد)</summary><p class="muted">الصق بصمة SHA-256 لمفتاح التوقيع من Google Play Console ← App integrity ← App signing key certificate، ثم احفظ.</p>
         <textarea id="bkSha" rows="3" dir="ltr" placeholder="AB:CD:…"></textarea><button class="btn ghost block" data-bksha>حفظ البصمة</button></details>`;
-    api('adm_applinks').then((j) => { const t = el.querySelector('#bkSha'); if (t) t.value = (j.sha || '').split(',').filter(Boolean).join('\n'); }).catch(() => {});
+    api('adm_applinks').then((j) => { const t = el.querySelector('#bkSha'); if (t) t.value = (j.sha || '').split(',').filter(Boolean).join('\n'); const c = el.querySelector('#bkTfa'); if (c) c.checked = !!j.tfa; }).catch(() => {});
+    el.querySelector('#bkTfa').addEventListener('change', async (ev) => { const c = ev.target; try { const j = await api('adm_applinks', { tfa: c.checked ? 1 : 0 }); c.checked = !!j.tfa; toast(j.tfa ? 'تم تفعيل كود الدخول ✓' : 'تم إيقاف كود الدخول ✓'); } catch (ex) { c.checked = !c.checked; toast(ex.message); } });
   };
   const load = async () => { try { draw((await api('adm_backups')).items); } catch (e) { el.innerHTML = `<p class="muted">${esc(e.message)}</p>`; } };
   el.addEventListener('click', async (e) => {

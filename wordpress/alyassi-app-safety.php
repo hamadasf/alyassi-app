@@ -143,7 +143,9 @@ function oay_acc_adm_plot_undo() {
 
 /* =============================== 3) two-step sign-in =============================== */
 /** the management and the managers: a phone it has not seen asks for a code sent to the account's e-mail */
-function oay_2fa_needed( $u ) { return $u && ( oay_acc_is_admin( $u ) || ( function_exists( 'oay_role' ) && 'mgr' === oay_role( $u ) ) ); }
+/** off unless the management turns it on («النسخ الاحتياطية» ← تأكيد الدخول بكود) */
+function oay_2fa_on() { return '1' === (string) get_option( 'oay_2fa_on', '0' ); }
+function oay_2fa_needed( $u ) { return $u && oay_2fa_on() && ( oay_acc_is_admin( $u ) || ( function_exists( 'oay_role' ) && 'mgr' === oay_role( $u ) ) ); }
 function oay_2fa_dev() { $d = preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) oay_acc_arg( 'dev', 80 ) ); return strlen( $d ) >= 12 ? hash( 'sha256', $d ) : ''; }
 function oay_2fa_trusted( $uid, $h ) { $t = get_user_meta( $uid, 'oay_trust', true ); return $h && is_array( $t ) && isset( $t[ $h ] ); }
 function oay_2fa_mask( $e ) { list( $a, $b ) = array_pad( explode( '@', $e, 2 ), 2, '' ); return mb_substr( $a, 0, 2 ) . str_repeat( '•', max( 2, mb_strlen( $a ) - 2 ) ) . '@' . $b; }
@@ -223,5 +225,6 @@ function oay_acc_adm_applinks() {
 		$list = array_values( array_unique( array_filter( array_map( function ( $x ) { $x = strtoupper( preg_replace( '/[^0-9A-Fa-f]/', '', $x ) ); return 64 === strlen( $x ) ? implode( ':', str_split( $x, 2 ) ) : ''; }, preg_split( '/[\s,]+/', (string) $in['sha'] ) ) ) ) );
 		update_option( 'oay_android_sha256', implode( ',', $list ), false );
 	}
-	oay_acc_ok( array( 'sha' => (string) get_option( 'oay_android_sha256', '' ), 'upload' => OAY_ANDROID_UPLOAD_SHA256 ) );
+	if ( isset( $in['tfa'] ) ) { update_option( 'oay_2fa_on', $in['tfa'] ? '1' : '0', false ); }
+	oay_acc_ok( array( 'sha' => (string) get_option( 'oay_android_sha256', '' ), 'upload' => OAY_ANDROID_UPLOAD_SHA256, 'tfa' => oay_2fa_on() ) );
 }
