@@ -1702,3 +1702,10 @@ body.guest #sheet .memf { display: none; }
 .tk-sep { object-position: -99px 0; border-radius: 50%; margin: 0 2px; }
 #home .slide { height: 150px; }
 .qacts button { padding: 9px 2px 8px; gap: 5px; font-size: 11.5px; border-radius: 14px; } .qacts span { width: 36px; height: 36px; border-radius: 11px; box-shadow: none; } .qacts span svg { width: 19px; height: 19px; }
+/* small cards, a bit bigger */
+.mlist { gap: 10px; } .mcard { padding: 10px; gap: 13px; border-radius: 16px; }
+.mc-ph { width: 116px; height: 116px; border-radius: 13px; } .mc-s { font-size: 12px; padding: 2px 9px; bottom: 6px; right: 6px; }
+.mc-b { gap: 5px; } .mc-top b { font-size: 17px; } .mc-t { font-size: 11.5px; padding: 2px 9px; }
+.mc-b small { font-size: 13.5px; } .mc-sp { font-size: 13.5px; } .mc-sp svg { width: 15px; height: 15px; } .mcard em { font-size: 17px; }
+.nav .navplus span svg { stroke-width: 2; width: 27px; height: 27px; }
+.tk-sep { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); margin: 0 4px; flex: none; }

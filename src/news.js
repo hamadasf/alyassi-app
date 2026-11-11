@@ -18,7 +18,7 @@ const keep = (j) => {
 };
 function setDuration(track) { const w = parseFloat(track.style.getPropertyValue('--tk-w')) || 0; if (w) track.style.animationDuration = Math.max(4, w / speed) + 's'; }
 
-const SEP = '<img class="tk-sep" src="icons/icon-192.png" alt="">';
+const SEP = '<i class="tk-sep" aria-hidden="true"></i>';   // a small gold dot between the news
 export async function loadNews() {
   try { keep(await api('news')); } catch { /* keep cached */ }
   renderTicker();
