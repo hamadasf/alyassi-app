@@ -1663,7 +1663,7 @@ function wtMapPick(slug, aspect) {   // the densest piece of the plan in the map
     : ((H.landsOf && H.landsOf(slug)) || []).filter((l) => l.poly && l.poly.length > 2).map((l) => ({ n: String(l.n), t: l.t || 'yellow', p: l.poly, c: l.pc || centreOf(l.poly) }));
   if (!P.length) return null;
   const sz = P.map((q) => { const xs = q.p.map((a) => a[0]), ys = q.p.map((a) => a[1]); return Math.sqrt((Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys))); }).sort((a, b) => a - b);
-  const unit = sz[Math.floor(sz.length / 2)] || 10, Wn = unit * 15, Hn = Wn / aspect;
+  const unit = sz[Math.floor(sz.length / 2)] || 10, Wn = unit * 26, Hn = Wn / aspect;
   const xs = P.map((q) => q.c[0]), ys = P.map((q) => q.c[1]), mnx = Math.min(...xs), mxx = Math.max(...xs), mny = Math.min(...ys), mxy = Math.max(...ys);
   let best = null; const st = unit;
   for (let x0 = mnx - unit; x0 <= Math.max(mnx, mxx - Wn) + unit; x0 += st) {
@@ -1676,9 +1676,12 @@ function wtMapPick(slug, aspect) {   // the densest piece of the plan in the map
 }
 function wtMap(c, P, x, y, w, h, R) {
   c.save(); box(c, x, y, w, h, R); c.clip();
-  c.fillStyle = '#ECDDC4'; c.fillRect(x, y, w, h);
+  c.fillStyle = '#E9DCC3'; c.fillRect(x, y, w, h);
   const m = wt.map && wt.map.slug === wt.v.proj && Math.abs(wt.map.aspect - w / h) < 0.01 ? wt.map : (wt.map = Object.assign(wtMapPick(wt.v.proj, w / h) || {}, { slug: wt.v.proj, aspect: w / h }));
-  if (m.P) {
+  if (m.P && wt.P && (wt.P.img || wt.P.V)) {   // the official plan itself (its picture and drawing: plots, numbers, roads)
+    const k = w / m.w; c.save(); c.translate(x, y); c.scale(k, k); c.translate(-m.x0, -m.y0);
+    drawPlanBase(c, wt.P, wt.pmap, m.x0, m.y0, m.x0 + m.w, m.y0 + m.h, k); c.restore();
+  } else if (m.P) {
     const s = w / m.w, X = (a) => x + (a - m.x0) * s, Y = (b) => y + (b - m.y0) * s;
     c.lineJoin = 'round';
     for (const q of m.P) {
@@ -1690,7 +1693,6 @@ function wtMap(c, P, x, y, w, h, R) {
     for (const q of m.P) { const cx = X(q.c[0]), cy = Y(q.c[1]); if (cx < x - 40 || cx > x + w + 40 || cy < y - 40 || cy > y + h + 40) continue; txt(c, q.n, cx, cy + fs * 0.36, FD(700, fs), '#5B4A12', 'center'); }
     c.direction = 'rtl';
   }
-  const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, 'rgba(247,241,234,.10)'); g.addColorStop(1, 'rgba(247,241,234,.30)'); c.fillStyle = g; c.fillRect(x, y, w, h);
   c.restore();
   c.strokeStyle = '#FFFFFF'; c.lineWidth = 10; box(c, x, y, w, h, R); c.stroke();
 }
@@ -1704,8 +1706,7 @@ function wtChips(c, P, x, y, w, h) {   // the areas: 3 a row, every row centred,
     const row = A.slice(r * cols, r * cols + cols), rw = row.length * cw + (row.length - 1) * gx, x0 = x + w / 2 + rw / 2;   // right to left
     row.forEach((s, i) => {
       const bx = x0 - (i + 1) * cw - i * gx, by = top + r * (ch + gy);
-      c.save(); c.shadowColor = 'rgba(25,15,10,.38)'; c.shadowBlur = 20; c.shadowOffsetY = 8; c.fillStyle = P.chip; box(c, bx, by, cw, ch, ch * 0.28); c.fill(); c.restore();
-      c.strokeStyle = 'rgba(217,176,106,.6)'; c.lineWidth = 2.5; box(c, bx + 1.5, by + 1.5, cw - 3, ch - 3, ch * 0.28); c.stroke();
+      c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 18; c.shadowOffsetY = 6; c.fillStyle = '#0B0B0B'; box(c, bx, by, cw, ch, ch * 0.32); c.fill(); c.restore();
       adFitV(c, s, bx + cw / 2, by + ch * 0.2, by + ch * 0.8, cw - 34, ch * 0.5, 800, '#FFFFFF', 'center');
     });
   }
@@ -1753,14 +1754,13 @@ function wtDraw(cv) {
 const WT_SIZES = { wa: [1600, 1200], ig: [1600, 2000] };
 export function adwantPage(projects) {
   const ok = allowed(), s = wtStore(), k = ok.includes(s.theme) ? s.theme : ok[0];
-  const ps = projects.filter((p) => p.map);
+  void projects;
   return `<div class="adg wt">
     <div class="adg-prev"><canvas id="wtCv" width="1600" height="1200"></canvas><div class="adg-load" id="wtLoad"><i class="spin"></i><span>جارِ تجهيز التصميم…</span></div></div>
     <div class="adg-form">
       ${ok.length > 1 ? `<h3>القالب</h3><div class="wt-th">${ok.map((t) => `<button type="button" data-wtth="${t}" class="${t === k ? 'on' : ''}"><i style="background:${wtPal(t).A}"></i>${esc(PZ_THEMES[t].name)}</button>`).join('')}</div>` : ''}
       <h3>المقاس</h3><div class="seg"><button type="button" data-wtsz="wa">واتساب 4:3</button><button type="button" data-wtsz="ig">إنستجرام 4:5</button></div>
       <label class="fld">المناطق (كل منطقة في سطر)<textarea id="wtAreas" rows="6"></textarea></label>
-      <label class="fld">المخطط في الخلفية<select id="wtProj">${ps.map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join('')}</select></label>
       <div class="wt-who"><button type="button" class="btn ghost sm" id="wtPhoto">${ei('image')} صورتك</button><button type="button" class="btn ghost sm" id="wtPhotoX" hidden>إزالة الصورة</button></div>
       <label class="fld">الاسم تحت الصورة<input type="text" data-wt="name"></label>
       <label class="fld">السطر الصغير<input type="text" data-wt="sub"></label>
@@ -1793,13 +1793,13 @@ async function wtOut(share) {
 export async function initAdwant(pg, projects) {
   PG = pg; const s = wtStore(), ok = allowed();
   const k = ok.includes(s.theme) ? s.theme : ok[0];
-  const ps = projects.filter((p) => p.map), proj = ps.some((p) => p.slug === s.proj) ? s.proj : (ps.find((p) => p.slug === 'al-mutraq') || ps[0] || {}).slug;
+  const ps = projects.filter((p) => p.map), mp = ps.find((p) => p.slug === 'al-mutraq') || ps[0] || {}, proj = mp.slug;   // always Al Mutraq's plan
   wt = { v: Object.assign({ theme: k, size: s.size || (PZ_THEMES[k].size && PZ_THEMES[k].size[1] < 1500 ? 'wa' : 'wa'), proj, areas: s.areas || WT_AREAS.join('\n'), kick: 'مطلوب شراء • بيع • وساطة', title: 'مطلوب', pill: 'شراء ووساطة', inl: 'في المناطق التالية' }, wtDefaults(k)), map: null, photoImg: null };
   const cv = $('wtCv'), form = pg.querySelector('.adg-form');
   const loadPhoto = () => new Promise((r) => { if (!wt.v.photo) { wt.photoImg = null; r(); return; } const im = new Image(); im.onload = () => { wt.photoImg = im; r(); }; im.onerror = () => { wt.photoImg = null; r(); }; im.src = wt.v.photo; });
   const fill = () => {
     form.querySelectorAll('[data-wt]').forEach((i) => { i.value = wt.v[i.dataset.wt] || ''; });
-    $('wtAreas').value = wt.v.areas; $('wtProj').value = wt.v.proj;
+    $('wtAreas').value = wt.v.areas;
     form.querySelectorAll('[data-wtsz]').forEach((b) => b.classList.toggle('on', b.dataset.wtsz === wt.v.size));
     form.querySelectorAll('[data-wtth]').forEach((b) => b.classList.toggle('on', b.dataset.wtth === wt.v.theme));
     $('wtPhotoX').hidden = !wt.v.photo;
@@ -1807,16 +1807,16 @@ export async function initAdwant(pg, projects) {
   let raf = 0;
   const draw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const [w, h] = WT_SIZES[wt.v.size] || WT_SIZES.wa; if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; } wtDraw(cv); }); };
   await Promise.all([ayaLoad(), document.fonts.load('800 40px Tajawal', 'مطلوب 0123').catch(() => {}), document.fonts.load('500 40px Tajawal', 'مطلوب').catch(() => {}),
-    Promise.all(Object.values(PZ_THEMES).map((t) => (t.logo && !t.logo.complete ? new Promise((r) => { t.logo.onload = t.logo.onerror = r; }) : null))), loadPhoto()]);
+    Promise.all(Object.values(PZ_THEMES).map((t) => (t.logo && !t.logo.complete ? new Promise((r) => { t.logo.onload = t.logo.onerror = r; }) : null))), loadPhoto(),
+    loadPlan(mp.slug, mp.map).then((P) => { wt.P = P; wt.pmap = mp.map; }).catch(() => {})]);
   if (PG !== pg) return;
   $('wtLoad').remove(); fill(); draw();
   let kt = 0; const keep = () => { clearTimeout(kt); kt = setTimeout(wtKeep, 500); };
   form.addEventListener('input', (e) => {
     const t = e.target;
-    if (t.dataset.wt) wt.v[t.dataset.wt] = t.value; else if (t.id === 'wtAreas') wt.v.areas = t.value; else if (t.id === 'wtProj') { wt.v.proj = t.value; wt.map = null; } else return;
+    if (t.dataset.wt) wt.v[t.dataset.wt] = t.value; else if (t.id === 'wtAreas') wt.v.areas = t.value; else return;
     draw(); keep();
   });
-  form.addEventListener('change', (e) => { if (e.target.id === 'wtProj') { wt.v.proj = e.target.value; wt.map = null; draw(); keep(); } });
   form.addEventListener('click', async (e) => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.wtsz) { wt.v.size = b.dataset.wtsz; wt.map = null; fill(); draw(); keep(); return; }
