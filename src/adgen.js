@@ -187,6 +187,7 @@ function ayaDraw(c, v, p, at) {
 }
 /* «قالب عمر الياسي» (the website's): the plan across the whole picture, the facts in coloured boxes over it, an arrow and a ring on the plot */
 PZ_THEMES.oy = Object.assign({}, PZ_THEMES.co, { name: 'قالب عمر الياسي', layout: 'oy', bar: '#B535FE' });
+const OY_R = 1468, OY_PC = 1110;   // the boxes' common right edge; the centre of the two black lines
 const OY = { black: '#0B0B0B', blue: '#4033FC', red: '#FF3535', purple: '#B535FE', ring: '#E0040B' };
 const isLatin = (s) => !/[؀-ۿ]/.test(String(s || ''));
 const FO = (w, px) => w + ' ' + px + 'px OYF, ' + FAM;   // the Instagram-like lettering of «قالب عمر الياسي» (and the extra shapes)
@@ -219,44 +220,55 @@ function oyDraw(c, v, p, at) {
     oyArrow(c, sx + R * 0.74 + 12, sy - R * 0.74 - 12, K * 1.25);
   }
   PZS = v.fsT;
-  at('proj', 1000, 145, 508, 148, () => oyBox(c, v.o_proj, 1508, 145, 293, 486, 900, 112, OY.black, '#FFFFFF', 44));
-  at('area', 1000, 345, 508, 114, () => oyBox(c, v.o_area, 1508, 345, 459, 486, 900, 92, OY.blue, '#FFFFFF', 28));
-  at('use', 1000, 504, 508, 166, () => {
-    c.font = FO(800, 80); const w = Math.max(492, Math.min(900, Math.max(c.measureText(v.o_use1 || '').width, c.measureText(v.o_use2 || '').width) + 90));
-    c.fillStyle = OY.red; box(c, 1508 - w, 504, w, 166, 34); c.fill();
-    adFitV(c, v.o_use1, 1508 - w / 2, 512, 592, w - 50, 80, 800, '#FFFFFF', 'center', FO);
-    c.direction = isLatin(v.o_use2) ? 'ltr' : 'rtl'; adFitV(c, v.o_use2, 1508 - w / 2, 596, 662, w - 50, 72, 800, '#FFFFFF', 'center', FO); c.direction = 'rtl';
+  // the three boxes share one right edge (OY_R); each is as wide as its words, so it grows or shrinks to the left only
+  const bw = (b) => (b ? b.w : 300);
+  let wp = 300, wa = 300, wu = 300;
+  c.font = FO(800, Math.round(104 * PZS)); wp = Math.min(1000, c.measureText(v.o_proj || '').width + 80);
+  c.font = FO(800, Math.round(86 * PZS)); wa = Math.min(1000, c.measureText(v.o_area || '').width + 80);
+  c.font = FO(800, Math.round(74 * PZS)); wu = Math.min(1000, Math.max(c.measureText(v.o_use1 || '').width, c.measureText(v.o_use2 || '').width) + 90);
+  at('proj', OY_R - wp, 34, wp, 128, () => bw(oyBox(c, v.o_proj, OY_R, 34, 162, 0, 1000, 104, OY.black, '#FFFFFF', 40)));
+  at('area', OY_R - wa, 190, wa, 104, () => bw(oyBox(c, v.o_area, OY_R, 190, 294, 0, 1000, 86, OY.blue, '#FFFFFF', 30)));
+  at('use', OY_R - wu, 324, wu, 152, () => {
+    if (!v.o_use1 && !v.o_use2) return; const two = v.o_use1 && v.o_use2;
+    c.fillStyle = OY.red; box(c, OY_R - wu, 324, wu, 152, 30); c.fill();
+    if (two) {
+      adFitV(c, v.o_use1, OY_R - wu / 2, 332, 404, wu - 50, 74, 800, '#FFFFFF', 'center', FO);
+      c.direction = isLatin(v.o_use2) ? 'ltr' : 'rtl'; adFitV(c, v.o_use2, OY_R - wu / 2, 404, 468, wu - 50, 66, 800, '#FFFFFF', 'center', FO); c.direction = 'rtl';
+    } else { const t = v.o_use1 || v.o_use2; c.direction = isLatin(t) ? 'ltr' : 'rtl'; adFitV(c, t, OY_R - wu / 2, 350, 450, wu - 50, 78, 800, '#FFFFFF', 'center', FO); c.direction = 'rtl'; }
   });
   PZS = v.fsN;
-  at('price', 70, 1600, 1460, 190, () => {
-    const s = v.mode === 'inst' ? v.o_priceI : v.o_priceC; c.fillStyle = OY.purple; box(c, 70, 1600, 1460, 190, 64); c.fill();
-    c.direction = isLatin(s) ? 'ltr' : 'rtl'; adFitV(c, s, 800, 1622, 1768, 1360, 160, 800, '#FFFFFF', 'center', FO); c.direction = 'rtl';
+  at('price', 62, 1474, 1466, 176, () => {
+    const s = v.mode === 'inst' ? v.o_priceI : v.o_priceC; c.fillStyle = OY.purple; box(c, 62, 1474, 1466, 176, 64); c.fill();
+    c.direction = isLatin(s) ? 'ltr' : 'rtl'; adFitV(c, s, 795, 1494, 1630, 1370, 150, 800, '#FFFFFF', 'center', FO); c.direction = 'rtl';
   });
   PZS = v.fsL;
-  if (v.o_p3) at('pfeat', 120, 1512, 700, 72, () => {
-    c.font = FO(800, 50); const w = Math.min(1100, c.measureText(v.o_p3).width + 60);
-    c.save(); c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 10; c.shadowOffsetY = 3; c.fillStyle = '#FFFFFF'; box(c, 120, 1512, w, 72, 18); c.fill(); c.restore();
-    adFitV(c, v.o_p3, 120 + w / 2, 1519, 1577, w - 30, 50, 800, '#111111', 'center', FO);
+  if (v.o_p3) at('pfeat', 120, 1386, 700, 70, () => {
+    c.font = FO(800, 48); const w = Math.min(1100, c.measureText(v.o_p3).width + 60);
+    c.save(); c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 10; c.shadowOffsetY = 3; c.fillStyle = '#FFFFFF'; box(c, 120, 1386, w, 70, 18); c.fill(); c.restore();
+    adFitV(c, v.o_p3, 120 + w / 2, 1393, 1449, w - 30, 48, 800, '#111111', 'center', FO);
   });
-  at('pills', 200, 1812, 500, 160, () => {
-    [[v.o_p1, 1812, 1880], [v.o_p2, 1900, 1968]].forEach(([s, t, b]) => {
-      if (!s) return; c.font = FO(800, 54); const w = Math.min(760, c.measureText(s).width + 60);
-      c.save(); c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 10; c.shadowOffsetY = 3; c.fillStyle = '#FFFFFF'; box(c, 444 - w / 2, t, w, b - t, 16); c.fill(); c.restore();
-      adFitV(c, s, 444, t + 7, b - 7, w - 30, 54, 800, '#111111', 'center', FO);
+  // the two black lines under the price (ready to build · ownership): each shown only when ticked, centred under the right half
+  const PL = [[v.oP1 && v.o_p1, 1716, 1806], [v.oP2 && v.o_p2, 1846, 1936]].filter((x) => x[0]);
+  if (PL.length) at('pills', 760, 1716, 700, 220, () => {
+    PL.forEach(([s, t, b], i) => {
+      const top = PL.length === 1 ? 1760 : t, bot = top + (b - t);
+      c.font = FO(800, 58); const w = Math.min(820, c.measureText(s).width + 70);
+      c.fillStyle = OY.black; box(c, OY_PC - w / 2, top, w, bot - top, 22); c.fill();
+      adFitV(c, s, OY_PC, top + 10, bot - 12, w - 36, 58, 800, '#FFFFFF', 'center', FO); void i;
     });
   });
   PZS = 1;
-  if (v.oFlag && ayaArt.oyFlag) at('flag', 120, 170, 500, 392, () => c.drawImage(ayaArt.oyFlag, 120, 170, 500, 392));
+  if (v.oFlag && ayaArt.oyFlag) at('flag', 66, 70, 450, 353, () => c.drawImage(ayaArt.oyFlag, 66, 70, 450, 353));
   const lg = PZ_THEMES.co.logo;
-  if (v.oLogo && lg && lg.naturalWidth) at('logo', 1318, 1812, 240, 170, () => {
-    c.save(); c.shadowColor = 'rgba(0,0,0,.22)'; c.shadowBlur = 12; c.shadowOffsetY = 3; c.fillStyle = '#FFFFFF'; box(c, 1318, 1812, 240, 170, 22); c.fill(); c.restore();
-    const h = 152, w = h * lg.naturalWidth / lg.naturalHeight; c.drawImage(lg, 1318 + (240 - w) / 2, 1821, w, h);
+  if (v.oLogo && lg && lg.naturalWidth) at('logo', 70, 1740, 240, 170, () => {
+    c.save(); c.shadowColor = 'rgba(0,0,0,.22)'; c.shadowBlur = 12; c.shadowOffsetY = 3; c.fillStyle = '#FFFFFF'; box(c, 70, 1740, 240, 170, 22); c.fill(); c.restore();
+    const h = 152, w = h * lg.naturalWidth / lg.naturalHeight; c.drawImage(lg, 70 + (240 - w) / 2, 1749, w, h);
   });
 }
-const OY_PARTS = [['proj', 'اسم المشروع (المربع الأسود)'], ['area', 'المساحة (المربع الأزرق)'], ['use', 'الاستخدام (المربع الأحمر)'], ['price', 'السعر (الشريط البنفسجي)'], ['pills', 'السطران الأبيضان'], ['pfeat', 'مميزات الأرض'], ['flag', 'خريطة الإمارات'], ['logo', 'شعار الشركة']];
+const OY_PARTS = [['proj', 'اسم المشروع (المربع الأسود)'], ['area', 'المساحة (المربع الأزرق)'], ['use', 'الاستخدام (المربع الأحمر)'], ['price', 'السعر (الشريط البنفسجي)'], ['pills', 'السطران الأسودان'], ['pfeat', 'مميزات الأرض'], ['flag', 'خريطة الإمارات'], ['logo', 'شعار الشركة']];
 const OY_FIELDS = [
   ['o_proj', 'اسم المشروع (المربع الأسود)'], ['o_area', 'المساحة (المربع الأزرق)'], ['o_use1', 'الاستخدام · السطر الأول (المربع الأحمر)'], ['o_use2', 'الاستخدام · السطر الثاني (مثلًا: G + 2)'],
-  ['o_priceC', 'السعر (الشريط البنفسجي)', 'cash'], ['o_priceI', 'السعر (الشريط البنفسجي)', 'inst'], ['o_p1', 'السطر الأبيض الأول (جاهزة للبناء…)'], ['o_p2', 'السطر الأبيض الثاني (التملّك)'], ['o_p3', 'مميزات الأرض (فوق السعر)'],
+  ['o_priceC', 'السعر (الشريط البنفسجي)', 'cash'], ['o_priceI', 'السعر (الشريط البنفسجي)', 'inst'], ['o_p1', 'السطر الأسود الأول (جاهزة للبناء…) — يظهر عند تفعيله'], ['o_p2', 'السطر الأسود الثاني (التملّك) — يظهر عند تفعيله'], ['o_p3', 'مميزات الأرض (فوق السعر)'],
 ];
 /* «قالب واتس أب» (4:3, management only): kicker, the project in big letters, a ribbon, the plan with a ring and an arrow on the
    plot, three cards (area · permit · price) and the ownership line — in three colour sets */
@@ -683,7 +695,7 @@ function adDefaults(p) {
     a_cT: 'الدفعات', a_cV: 'كاش', a_cS: 'نقداً',
     o_proj: PROJECT, o_area: p.ft ? fmt(p.ft) + ' قدم' : '', o_use1: T.use + (v.side ? ' ' + v.side : ''), o_use2: String(code ? code[1] : fl).replace(/\s*\+\s*/g, '  +  '),
     o_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', o_priceI: pr ? fmt(pr.total) + ' Dhs, ' + (n ? n + ' Installments' : 'Installments') : 'للاستفسار',
-    o_p1: (ad && ad.pl && ad.pl.p1) || '', o_p2: (ad && ad.pl && ad.pl.p2) || '', o_p3: inst.length ? '' : adFeats(p).slice(0, 2).join(' · '), oFlag: true, oLogo: false,
+    o_p1: (ad && ad.pl && ad.pl.p1) || '', o_p2: (ad && ad.pl && ad.pl.p2) || '', o_p3: inst.length ? '' : adFeats(p).slice(0, 2).join(' · '), oFlag: true, oLogo: false, oP1: false, oP2: false,
     w_kick: 'أراضي ' + T.use + ' للبيع', w_proj: PROJECT, w_rib: (ad && ad.pl && ad.pl.p1) || 'موقع مميز في الشارقة',   // never «جاهزة للبناء» unless the project's own line says so
     w_c1t: 'المساحة', w_area: p.ft ? fmt(p.ft) : '', w_unit: 'قدم مربع', w_c2t: 'تصريح بناء ' + T.use, w_c2s: fl ? '( ' + fl + ' )' : '',
     w_c3t: 'السعر كاش', w_c3tI: n ? 'السعر · ' + (n === 1 ? 'قسط واحد' : n === 2 ? 'قسطان' : n + ' أقساط') : 'السعر بالتقسيط', w_price: pr ? fmt(pr.total) : 'للاستفسار', w_cur: 'درهم إماراتي',
@@ -1231,7 +1243,7 @@ function pzForm() {
     <label>تكبير الخريطة<input type="range" data-k="zoom" min="0.5" max="3" step="0.1" value="${v.zoom}"></label>
     <label>حجم الدبوس <b class="num" data-fsv="pinK">${Math.round((v.pinK || 1) * 100)}%</b><input type="range" data-k="pinK" min="0.4" max="2.5" step="0.05" value="${v.pinK || 1}"></label>
     <label class="chk"><input type="checkbox" data-k="pin"${v.pin ? ' checked' : ''}> الدبوس</label>
-    ${ar ? `<label class="chk"><input type="checkbox" data-k="rAv"${v.rAv ? ' checked' : ''}> صورة المعلن</label><label class="chk"><input type="checkbox" data-k="rLines"${v.rLines ? ' checked' : ''}> سطرا التملّك ومميزات الأرض</label>` : oy ? `<label class="chk"><input type="checkbox" data-k="oFlag"${v.oFlag ? ' checked' : ''}> خريطة الإمارات</label><label class="chk"><input type="checkbox" data-k="oLogo"${v.oLogo ? ' checked' : ''}> شعار الشركة</label>` : `<label class="chk"><input type="checkbox" data-k="lab"${v.lab ? ' checked' : ''}> بطاقة الموقع على الخريطة</label>`}
+    ${ar ? `<label class="chk"><input type="checkbox" data-k="rAv"${v.rAv ? ' checked' : ''}> صورة المعلن</label><label class="chk"><input type="checkbox" data-k="rLines"${v.rLines ? ' checked' : ''}> سطرا التملّك ومميزات الأرض</label>` : oy ? `<label class="chk"><input type="checkbox" data-k="oFlag"${v.oFlag ? ' checked' : ''}> خريطة الإمارات</label><label class="chk"><input type="checkbox" data-k="oLogo"${v.oLogo ? ' checked' : ''}> شعار الشركة</label><label class="chk"><input type="checkbox" data-k="oP1"${v.oP1 ? ' checked' : ''}> السطر الأسود الأول (جاهزة للبناء…)</label><label class="chk"><input type="checkbox" data-k="oP2"${v.oP2 ? ' checked' : ''}> السطر الأسود الثاني (التملّك)</label>` : `<label class="chk"><input type="checkbox" data-k="lab"${v.lab ? ' checked' : ''}> بطاقة الموقع على الخريطة</label>`}
     <button type="button" class="btn sm" data-mapcenter>إرجاع الخريطة إلى القطعة</button>`, false))
     + sec('ex', '＋ أشكال إضافية' + (v.ex && v.ex.length ? ` (${v.ex.length})` : ''), exForm(v), !!(v.ex && v.ex.length))
     + sec('fs', (wg ? '٣' : aya || oy || ar || wa || wr ? '٤' : '٥') + '. حجم الخط وأماكن العناصر', `<h3>حجم الخط</h3>
