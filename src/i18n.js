@@ -939,6 +939,11 @@ const EN = {
   'سجّلوا ·': 'signed up ·',
   'اشترى': 'bought',
   'تعديل قطعة على المخطط': 'Edit a plot on the plan', 'لدي أرض للبيع': 'I have land for sale',
+  'التسجيل مجاني ويأخذ ثوانٍ.': 'Signing up is free and takes seconds.',
+  'مجاناً ويأخذ ثوانٍ': 'Free — takes seconds',
+  'سجّل بياناتك — مجاناً': 'Enter your details — free',
+  'رصيد نقاطك لا يكفي لهذه الباقة': 'You don\'t have enough points for this package',
+  'الأسعار وخطط السداد متاحة للأعضاء — التسجيل مجاني ويأخذ ثوانٍ.': 'Prices and payment plans are for members — signing up is free and takes seconds.',
 };
 
 let re = null;

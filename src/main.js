@@ -575,7 +575,7 @@ const glock = () => GUEST_LOCK && guest();
 const LOCKED = `<span class="price lock" data-signin="price">${I.lock} سجّل لعرض السعر</span>`;
 function askSignIn(why = 'price') {
   document.querySelector('.ssheet')?.remove();
-  const T = { price: ['سجّل دخولك لعرض السعر', 'الأسعار وخطط السداد متاحة للأعضاء — التسجيل مجاني ويأخذ ثوانٍ بحساب جوجل أو بالإيميل.'],
+  const T = { price: ['سجّل دخولك لعرض السعر', 'الأسعار وخطط السداد متاحة للأعضاء — التسجيل مجاني ويأخذ ثوانٍ.'],
     fav: ['سجّل دخولك لحفظ الأراضي', 'احفظ الأراضي التي تعجبك ويصلك تنبيه عند نزول سعرها أو عليها عرض.'],
     tools: ['سجّل دخولك لاستخدام هذه الميزة', 'الحاسبة والمقارنة والتنبيهات والمحادثات متاحة للأعضاء — التسجيل مجاني.'],
     lands: ['سجّل دخولك لعرض الأراضي', 'قوائم الأراضي وأرقامها ومساحاتها وأسعارها متاحة للأعضاء — التسجيل مجاني ويأخذ ثوانٍ.'],
@@ -757,7 +757,7 @@ function renderHome() {
         <div><b>${lands.filter((l) => l.status === 'sold').length || '—'}</b><span>تم بيعها</span></div>
       </div>
     </section>
-    <button class="guestjoin" data-account="">${I.user}<span><b>سجّل دخولك لعرض الأراضي والأسعار</b><small>مجاناً — بحساب جوجل أو بالإيميل</small></span>${I.back}</button>
+    <button class="guestjoin" data-account="">${I.user}<span><b>سجّل دخولك لعرض الأراضي والأسعار</b><small>مجاناً ويأخذ ثوانٍ</small></span>${I.back}</button>
     <div class="sec-h"><h2>مشاريعنا</h2><button data-pmap="">${I.map} على الخريطة</button></div>
     <div class="list gproj">${projects.length ? projects.map((p) => projectCard(p, true)).join('') : skeleton(2)}</div>
     <section class="cta">

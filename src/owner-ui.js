@@ -146,7 +146,7 @@ export async function initAccount(pg, next) {
     form.querySelectorAll('[data-only]').forEach((el) => { el.hidden = el.dataset.only !== m; });
     form.password.autocomplete = m === 'login' ? 'current-password' : 'new-password';
     go.textContent = m === 'login' ? 'دخول' : 'إنشاء الحساب'; err.hidden = true;
-    { const T = pg.querySelector('#accT'), S = pg.querySelector('#accS'); if (T) T.textContent = m === 'login' ? 'تسجيل الدخول' : 'إنشاء حساب'; if (S) S.textContent = m === 'login' ? 'أهلاً بعودتك — تابع أراضيك ومفضلتك وإعلاناتك' : 'سجّل بياناتك أو استخدم حساب جوجل — مجاناً'; }
+    { const T = pg.querySelector('#accT'), S = pg.querySelector('#accS'); if (T) T.textContent = m === 'login' ? 'تسجيل الدخول' : 'إنشاء حساب'; if (S) S.textContent = m === 'login' ? 'أهلاً بعودتك — تابع أراضيك ومفضلتك وإعلاناتك' : 'سجّل بياناتك — مجاناً'; }
   };
   pg.querySelectorAll('[data-accmode]').forEach((b) => { b.onclick = () => setMode(b.dataset.accmode); });
   pg.querySelector('#forgot').onclick = async () => {
@@ -599,7 +599,7 @@ export async function pickPackage(x) {
     el.onclick = (e) => {
       if (e.target === el) return close(null);
       const b = e.target.closest('[data-pkg]'); if (!b) return;
-      if (b.dataset.low) { H.toast(`رصيدك لا يكفي لهذه الباقة — تواصل مع الإدارة لإضافة نقاط`); return; }
+      if (b.dataset.low) { H.toast(`رصيد نقاطك لا يكفي لهذه الباقة`); return; }
       close(b.dataset.pkg || null);
     };
     document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('in'));

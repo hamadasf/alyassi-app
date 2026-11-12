@@ -25,7 +25,7 @@ export function renderMore(el) {
   const nSaved = saved.all().length;
   el.innerHTML = `
     ${u ? `<button class="mprof" data-profile>${avatar(u, 'mav')}<div><b><span class="notr">${esc(u.verified && u.company ? u.company : u.name || '')}</span>${u.verified && u.company || u.name ? '' : 'حسابي'} ${vb(u)}</b><span>${esc(u.email || '')}</span></div><i class="chev">‹</i></button>`
-      : `<button class="mprof" data-account>${avatar(null, 'mav')}<div><b>تسجيل الدخول / حساب جديد</b><span>بالبريد الإلكتروني أو حساب جوجل</span></div><i class="chev">‹</i></button>`}
+      : `<button class="mprof" data-account>${avatar(null, 'mav')}<div><b>تسجيل الدخول / حساب جديد</b><span>مجاناً ويأخذ ثوانٍ</span></div><i class="chev">‹</i></button>`}
     <div class="mtiles">
       ${tile(I.heart, 'المفضلة', 'data-tab="favs"')}
       ${tile(I.building, 'إعلاناتي', 'data-account')}
