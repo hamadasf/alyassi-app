@@ -1726,6 +1726,7 @@ function wtChips(c, P, x, y, w, h) {   // the areas: 3 a row, every row centred,
 }
 function wtDraw(cv) {
   const v = wt.v, k = v.theme, P = wtPal(k), W = cv.width, H = cv.height, c = cv.getContext('2d');
+  if (k === 'wg') { const im = ayaArt['wg' + (v.gSt || '1')] || ayaArt.wg1; c.fillStyle = '#F5EEE7'; c.fillRect(0, 0, W, H); if (im && im.naturalWidth) c.drawImage(im, 0, 0, W, H); return; }   // «لين واتس أب · إعلان عام»: the office's own designs as they are
   PZS = 1; c.direction = 'rtl'; c.textBaseline = 'alphabetic';
   c.fillStyle = P.bg; c.fillRect(0, 0, W, H);
   let g = c.createRadialGradient(W, 0, 0, W, 0, W * 0.65); g.addColorStop(0, wtMix(P.A, '#FFFFFF', 0.8)); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
@@ -1772,6 +1773,7 @@ export function adwantPage(projects) {
     <div class="adg-prev"><canvas id="wtCv" width="1600" height="1200"></canvas><div class="adg-load" id="wtLoad"><i class="spin"></i><span>جارِ تجهيز التصميم…</span></div></div>
     <div class="adg-form">
       ${ok.length > 1 ? `<h3>القالب</h3><div class="wt-th">${ok.map((t) => `<button type="button" data-wtth="${t}" class="${t === k ? 'on' : ''}"><i style="background:${wtPal(t).A}"></i>${esc(PZ_THEMES[t].name)}</button>`).join('')}</div>` : ''}
+      <h3 data-wg>شكل التصميم</h3><div class="seg pz-wacol" data-wg>${WG_STYLES.map(([n, l]) => `<button type="button" data-wtgs="${n}">${l}</button>`).join('')}</div><p class="help" data-wg>تصاميم لين الخمسة كما هي، بأسماء المناطق مصحّحة.</p>
       <h3>المقاس</h3><div class="seg"><button type="button" data-wtsz="wa">واتساب 4:3</button><button type="button" data-wtsz="ig">إنستجرام 4:5</button></div>
       <label class="fld">المناطق (كل منطقة في سطر)<textarea id="wtAreas" rows="6"></textarea></label>
       <div class="wt-who"><button type="button" class="btn ghost sm" id="wtPhoto">${ei('image')} صورتك</button><button type="button" class="btn ghost sm" id="wtPhotoX" hidden>إزالة الصورة</button></div>
@@ -1816,9 +1818,12 @@ export async function initAdwant(pg, projects) {
     form.querySelectorAll('[data-wtsz]').forEach((b) => b.classList.toggle('on', b.dataset.wtsz === wt.v.size));
     form.querySelectorAll('[data-wtth]').forEach((b) => b.classList.toggle('on', b.dataset.wtth === wt.v.theme));
     $('wtPhotoX').hidden = !wt.v.photo;
+    const g = wt.v.theme === 'wg';   // the general ad is a finished picture: only the design choice shows
+    [...form.children].forEach((el) => { if (el.hasAttribute('data-wg')) el.hidden = !g; else if (!el.classList.contains('wt-th') && !(el.tagName === 'H3' && el.nextElementSibling && el.nextElementSibling.classList.contains('wt-th'))) el.hidden = g; });
+    form.querySelectorAll('[data-wtgs]').forEach((b) => b.classList.toggle('on', b.dataset.wtgs === (wt.v.gSt || '1')));
   };
   let raf = 0;
-  const draw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const [w, h] = WT_SIZES[wt.v.size] || WT_SIZES.wa; if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; } wtDraw(cv); }); };
+  const draw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const [w, h] = wt.v.theme === 'wg' ? [1448, 1086] : WT_SIZES[wt.v.size] || WT_SIZES.wa; if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; } wtDraw(cv); }); };
   await Promise.all([ayaLoad(), document.fonts.load('800 40px Tajawal', 'مطلوب 0123').catch(() => {}), document.fonts.load('500 40px Tajawal', 'مطلوب').catch(() => {}),
     Promise.all(Object.values(PZ_THEMES).map((t) => (t.logo && !t.logo.complete ? new Promise((r) => { t.logo.onload = t.logo.onerror = r; }) : null))), loadPhoto(),
     loadPlan(mp.slug, mp.map).then((P) => { wt.P = P; wt.pmap = mp.map; }).catch(() => {})]);
@@ -1832,6 +1837,7 @@ export async function initAdwant(pg, projects) {
   });
   form.addEventListener('click', async (e) => {
     const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.wtgs) { wt.v.gSt = b.dataset.wtgs; fill(); draw(); keep(); return; }
     if (b.dataset.wtsz) { wt.v.size = b.dataset.wtsz; wt.map = null; fill(); draw(); keep(); return; }
     if (b.dataset.wtth) { wtKeep(); wt.v.theme = b.dataset.wtth; Object.assign(wt.v, wtDefaults(wt.v.theme)); await loadPhoto(); fill(); draw(); keep(); return; }
     if (b.id === 'wtPhoto') { $('wtFile').click(); return; }
