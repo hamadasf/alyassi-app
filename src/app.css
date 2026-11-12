@@ -252,7 +252,7 @@ img { -webkit-user-drag: none; }
   .nav button { font-size: 10.5px; }
 }
 /* larger screens (tablet / desktop browser): keep the phone layout, centred */
-@media (min-width: 560px) {
+@media (min-width: 560px) and (min-height: 560px) {   /* not a phone turned sideways — that one uses the whole screen */
   html { background: #dfe3ea; }
   body { background: #dfe3ea; }
   .tab, .page, .nav, #sheet, .bar, .a2hs { left: calc(50% - 240px) !important; right: calc(50% - 240px) !important; }
@@ -1722,3 +1722,14 @@ body.guest #sheet .memf { display: none; }
 .hc-m { display: flex; gap: 14px; color: #64748b; font-size: 13px; } .hc-m span { display: flex; align-items: center; gap: 4px; white-space: nowrap; } .hc-m svg { width: 14px; height: 14px; color: #b0883a; }
 .hc-p { background: #faf5ea; color: #8a6420; border-radius: 10px; padding: 6px 10px; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; } .hc-p svg { width: 15px; height: 15px; }
 .hscroll.hlands { scroll-padding-inline: 16px; }
+
+/* a phone turned sideways: the whole width, clear of the notch, lists in two columns */
+@media (orientation: landscape) and (max-height: 559px) {
+  .tab .scroller, .page .scroller, .page .pad { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+  .nav { padding-left: calc(env(safe-area-inset-left) + 8px); padding-right: calc(env(safe-area-inset-right) + 8px); }
+  .list { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+  .hscroll > .card, .hscroll.lands > .card { width: 340px; }
+  .hcard { flex-basis: 330px; }
+  #home .slide { flex-basis: 420px; }
+  .qacts, .hsearch2, .hs-chips, .mlist { max-width: 900px; }
+}
