@@ -1036,7 +1036,7 @@ function showTab(name, opts = {}) {
   if (!tabs.includes(name)) name = 'home';
   current = name;
   tabs.forEach((t) => { $('#' + t).hidden = t !== name; });
-  document.querySelectorAll('.nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === (name === 'projects' ? 'lands' : name)));   // «المشاريع» sits under «الأراضي»
+  document.querySelectorAll('.nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === (name === 'lands' ? 'projects' : name)));   // «الأراضي» sits under «المشاريع» (the switch at the top of both)
   if (name === 'favs') renderFavs();
   if (name === 'chats') renderChatsTab($('#chats .content'));
   if (name === 'lands' && opts.focus) setTimeout(() => $('#q').focus(), 60);
