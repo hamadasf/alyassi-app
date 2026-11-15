@@ -28,7 +28,7 @@ import { initCrm, wantedPage, initWanted, wantedAddPage, initWantedAdd, alertsPa
 import { initReport, reportPage, initReportPage } from './report.js';
 import { initTools, verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle, toolsPage, aboutPage, initAbout } from './more.js';
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser, reportAd, blockAdv, blockedPage, initBlocked, admTab } from './owner-ui.js';
-import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
+import { InAppBrowser, DefaultWebViewOptions, DefaultSystemBrowserOptions, ToolbarPosition } from '@capacitor/inappbrowser';
 import { advStrip, loadBrand } from './adv.js';
 import { checkUpdate } from './update.js';
 import { buildPayPlan } from './payplan.js';
@@ -79,6 +79,15 @@ async function openWeb(url, title) {
       },
     });
   } catch { window.open(url, '_blank'); }
+}
+/** «استوديو الفيديو» (management only): the website's motion studio, signed in with a one-time link, in the phone's browser
+ *  (the browser has the video encoder and saves / shares the finished video) */
+async function openStudio() {
+  toast('جاري فتح الاستوديو…');
+  let url;
+  try { url = (await accApi('studio_link')).url; } catch (e) { toast(e.message); return; }
+  if (!native) { window.open(url, '_blank'); return; }
+  try { await InAppBrowser.openInSystemBrowser({ url, options: DefaultSystemBrowserOptions }); } catch { openExternal(url); }
 }
 async function openExternal(url) {
   if (!native) { window.open(url, '_blank'); return; }
@@ -1318,6 +1327,7 @@ document.addEventListener('click', (e) => {
   if (ds.stats) { pushPage('stats', ds.stats); return; }
   if (ds.mystats !== undefined) { pushPage('mystats'); return; }
   if (ds.mailadm !== undefined) { pushPage('mailadm'); return; }
+  if (ds.studio !== undefined) { openStudio(); return; }
   if (ds.owndeal) { const ox = ownerLands().find((x) => String(x.id) === ds.owndeal); if (ox) { dealFromOwn(ox); pushPage('wallet'); } return; }
   if (ds.mkopen) { pushPage('market', ds.mkopen); return; }
   if (ds.mkadd !== undefined) { const top = stack[stack.length - 1]; editComp(null, ds.mkadd, () => { const lid = top && top._id; const ll = lid && findLand(lid); if (ll && top.querySelector('.mkcard')) fillMarketCard(top, ll); }); return; }
