@@ -28,7 +28,8 @@ import { initCrm, wantedPage, initWanted, wantedAddPage, initWantedAdd, alertsPa
 import { initReport, reportPage, initReportPage } from './report.js';
 import { initTools, verifyPage, initVerify, initMore, renderMore, profilePage, editProfilePage, initEditProfile, settingsPage, deleteAccount, doLogout, contactPage, savedPage, saved, legalPage, legalTitle, toolsPage, aboutPage, initAbout } from './more.js';
 import { initOwnerUI, accountPage, initAccount, addLandPage, initAddLand, oLandsPage, oLandPage, oLandCard, adminPage, initAdmin, admAdPage, initAdmAd, admUserPage, initAdmUser, reportAd, blockAdv, blockedPage, initBlocked, admTab } from './owner-ui.js';
-import { InAppBrowser, DefaultWebViewOptions, DefaultSystemBrowserOptions, ToolbarPosition } from '@capacitor/inappbrowser';
+import { InAppBrowser, DefaultWebViewOptions, ToolbarPosition } from '@capacitor/inappbrowser';
+import { openStudio as openStudioIn, closeStudio, studioOpen } from './studio.js';
 import { advStrip, loadBrand } from './adv.js';
 import { checkUpdate } from './update.js';
 import { buildPayPlan } from './payplan.js';
@@ -80,15 +81,8 @@ async function openWeb(url, title) {
     });
   } catch { window.open(url, '_blank'); }
 }
-/** «استوديو الفيديو» (management only): the website's motion studio, signed in with a one-time link, in the phone's browser
- *  (the browser has the video encoder and saves / shares the finished video) */
-async function openStudio() {
-  toast('جاري فتح الاستوديو…');
-  let url;
-  try { url = (await accApi('studio_link')).url; } catch (e) { toast(e.message); return; }
-  if (!native) { window.open(url, '_blank'); return; }
-  try { await InAppBrowser.openInSystemBrowser({ url, options: DefaultSystemBrowserOptions }); } catch { openExternal(url); }
-}
+/** «استوديو الفيديو» (management only): the website's motion studio on its own screen inside the app (src/studio.js) */
+function openStudio() { openStudioIn({ api: accApi, toast }); }
 async function openExternal(url) {
   if (!native) { window.open(url, '_blank'); return; }
   try { await InAppBrowser.openInExternalBrowser({ url }); } catch { location.href = url; }
@@ -1222,6 +1216,7 @@ function askExit() {
   document.body.appendChild(d); requestAnimationFrame(() => d.classList.add('in'));
 }
 function goBack() {
+  if (studioOpen()) { const b = document.getElementById('ezClose') || document.getElementById('stClose'); if (b) b.click(); else closeStudio(); return; }
   if (closeOverlay()) return;
   if (stack.length) { history.back(); return; }
   if (current !== 'home') { showTab('home'); return; }

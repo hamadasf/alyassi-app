@@ -1734,3 +1734,9 @@ body.guest #sheet .memf { display: none; }
   .qacts, .hsearch2, .hs-chips, .mlist { max-width: 900px; }
 }
 .pplan.cut { box-shadow: none; border-radius: 0; filter: drop-shadow(0 2px 3px rgba(0,0,0,.45)); }
+
+/* «استوديو الفيديو» inside the app (src/studio.js): the studio draws its own full screen; this is only the loading cover */
+html.oay-studio-on, html.oay-studio-on body { overflow: hidden; }
+.oay-studio-boot { position: fixed; inset: 0; z-index: 2147483001; background: #000; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; font-weight: 700; }
+.oay-studio-spin { width: 42px; height: 42px; border-radius: 50%; border: 4px solid rgba(255,255,255,.18); border-top-color: #C9A14A; animation: oaySpin .9s linear infinite; }
+@keyframes oaySpin { to { transform: rotate(360deg); } }
