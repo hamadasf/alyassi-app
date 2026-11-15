@@ -53,7 +53,7 @@ const ayaArt = {}; let ayaReady = null;
 function ayaLoad() {
   if (ayaReady) return ayaReady;
   const ld = (n) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = './assets/ad/' + n; });
-  return (ayaReady = Promise.all([ld('aya-base.jpg'), ld('aya-icons.png'), ld('oy-flag.png'), ld('ar-icons.png'), ld('ar-avatar.jpg'), ld('ayk-base.jpg'), ld('ayk-icons.png'), ld('wr-avatar.jpg'), ...[1, 2, 3, 4, 5].map((n) => ld('wg-' + n + '.jpg'))]).then(([b, i, f, ai, av, kb, ki, wr, ...wg]) => { ayaArt.wrAv = wr; wg.forEach((im, k) => { ayaArt['wg' + (k + 1)] = im; }); ayaArt.pbase = ayaArt.base = b; ayaArt.picons = ayaArt.icons = i; ayaArt.oyFlag = f; ayaArt.arIcons = ai; ayaArt.arAv = av; ayaArt.kbase = kb; ayaArt.kicons = ki; }));
+  return (ayaReady = Promise.all([ld('aya-base.jpg'), ld('aya-icons.png'), ld('oy-flag.png'), ld('ar-icons.png'), ld('ar-avatar.jpg'), ld('ayk-base.jpg'), ld('ayk-icons.png'), ld('wr-avatar.jpg'), ...[1, 2, 3, 4, 5, 6, 7].map((n) => ld('wg-' + n + '.jpg'))]).then(([b, i, f, ai, av, kb, ki, wr, ...wg]) => { ayaArt.wrAv = wr; wg.forEach((im, k) => { ayaArt['wg' + (k + 1)] = im; }); ayaArt.pbase = ayaArt.base = b; ayaArt.picons = ayaArt.icons = i; ayaArt.oyFlag = f; ayaArt.arIcons = ai; ayaArt.arAv = av; ayaArt.kbase = kb; ayaArt.kicons = ki; }));
 }
 const AYA_PINK = { kick: '#A85E5E', title: '#655454', proj: '#A3504D', sub: '#605050', card: '#F0E5E1', cTitle: '#3E3330', cVal: '#A85E5D', tag: '#46372F', phone: '#A95F5E', addr: '#6A4E4A', plot: '#A2474F',
   ground: '#EFE3DC', wash: 'rgba(250,232,228,0.32)', pinA: '#E7A3A8', pinB: '#B4525C', labBg: 'rgba(180,82,92,.94)', shadow: 'rgba(120,70,70,.14)', cardLine: '' };
@@ -515,7 +515,7 @@ const WR_FIELDS = [
 ];
 /* «لين واتس أب · إعلان عام» (management only): the office's own five designs (مطلوب — the areas we buy and sell in), shipped
    with the app as they are, only the area names corrected; picked with «شكل التصميم» — every other tool (text boxes, arrows…) still works on top */
-const WG_STYLES = [['1', 'بطاقات بأيقونة'], ['2', 'إطار وردي'], ['3', 'مائلة بلونين'], ['4', 'إطار ذهبي'], ['5', 'وردي كامل']];
+const WG_STYLES = [['1', 'بطاقات بأيقونة'], ['2', 'إطار وردي'], ['3', 'مائلة بلونين'], ['4', 'إطار ذهبي'], ['5', 'وردي كامل'], ['6', 'مائلة · الاسم بالإنجليزي'], ['7', 'مائلة · عربي وإنجليزي']];
 function wgDraw(c, v) {
   const im = ayaArt['wg' + (v.gSt || '1')] || ayaArt.wg1;
   if (im && im.naturalWidth) c.drawImage(im, 0, 0, AD_W, AD_H);
