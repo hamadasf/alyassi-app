@@ -67,6 +67,15 @@ async function planPicture(p) {
     const pts = []; for (const [, , f] of O) for (let i = 0; i < f.length; i += 2) pts.push([f[i], f[i + 1]]);
     const H0 = hull(pts), cx = H0.reduce((a, q) => a + q[0], 0) / H0.length, cy = H0.reduce((a, q) => a + q[1], 0) / H0.length;
     const pad = Math.max(m.w, m.h) * 0.025, clip = H0.map(([x, y]) => { const d = Math.hypot(x - cx, y - cy) || 1; return [x + (x - cx) / d * pad, y + (y - cy) / d * pad]; });
+    // the plan hatches its plots (the solid colour is in the plan picture we leave out): fill each plot solid first, so
+    // the satellite photo does not show through them
+    c.save(); c.scale(s, s);
+    for (const [, t, f] of O) {
+      const k = (p.types && p.types[t] && p.types[t].c) || [242, 205, 70];
+      c.beginPath(); c.moveTo(f[0], f[1]); for (let i = 2; i < f.length; i += 2) c.lineTo(f[i], f[i + 1]); c.closePath();
+      c.fillStyle = `rgb(${k[0]},${k[1]},${k[2]})`; c.fill();
+    }
+    c.restore();
     drawPlanView(c, { V: P.V, VS: P.VS }, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false, bg: false, clip });
     return { src: cv.toDataURL('image/png'), cut: true };
   }
