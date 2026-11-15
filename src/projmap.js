@@ -2,6 +2,7 @@
 // project's coordinates once from its Google Maps link (proj_geo) and the phone keeps them.
 import { api } from './owner.js';
 import { loadPlan, drawPlanView } from './planloc.js';
+import { rawPlots } from './data.js';
 
 let H = null;
 export function initProjMap(h) { H = h; }
@@ -41,12 +42,33 @@ function planMpp(p) {   // metres per plan unit, from the plots whose area is kn
   }
   if (!r.length) return 0; r.sort((a, b) => a - b); return r[r.length >> 1];
 }
+/* the project on the map: its plots alone (no plan picture, no rectangle) — each in its kind's colour, the listed ones in
+   their status colour, on a see-through picture */
+const SCOL = { av: [22, 163, 74], res: [217, 119, 6], sold: [220, 38, 38] };
+async function plotOutlines(p) {
+  const raw = rawPlots(p.slug);
+  if (raw && raw.length) return raw.filter((q) => Array.isArray(q[6]) && q[6].length > 2).map((q) => [String(q[0]), q[1], q[6].flat()]);
+  const r = await fetch(`outlines/${encodeURIComponent(p.slug)}.json`, { cache: 'no-cache' }); if (!r.ok) throw new Error('outlines');
+  return r.json();
+}
 async function planPicture(p) {
-  const P = await loadPlan(p.slug, p.map); const m = p.map;
-  const s = Math.min(1, 2000 / Math.max(m.w, m.h)), cv = document.createElement('canvas');
-  cv.width = Math.round(m.w * s); cv.height = Math.round(m.h * s);
-  drawPlanView(cv.getContext('2d'), P, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false });
-  return cv.toDataURL('image/jpeg', 0.82);
+  const m = p.map, s = Math.min(1, 2400 / Math.max(m.w, m.h)), cv = document.createElement('canvas');
+  cv.width = Math.round(m.w * s); cv.height = Math.round(m.h * s); const c = cv.getContext('2d');
+  let O = null; try { O = await plotOutlines(p); } catch { O = null; }
+  if (!O || !O.length) {   // no outlines to be had: the plan as before
+    const P = await loadPlan(p.slug, m);
+    drawPlanView(c, P, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false });
+    return { src: cv.toDataURL('image/jpeg', 0.82), cut: false };
+  }
+  const st = {}; (p.lands || []).forEach((l) => { st[l.n] = l.status; });
+  c.scale(s, s); c.lineJoin = 'round'; c.lineWidth = Math.max(0.6, 1.1 / s);
+  for (const [n, t, f] of O) {
+    c.beginPath(); c.moveTo(f[0], f[1]); for (let i = 2; i < f.length; i += 2) c.lineTo(f[i], f[i + 1]); c.closePath();
+    const k = SCOL[st[n]] || ((p.types && p.types[t] && p.types[t].c) || [242, 205, 70]);
+    c.fillStyle = `rgba(${k[0]},${k[1]},${k[2]},${SCOL[st[n]] ? 0.95 : 0.88})`; c.fill();
+    c.strokeStyle = 'rgba(40,52,30,.85)'; c.stroke();
+  }
+  return { src: cv.toDataURL('image/png'), cut: true };
 }
 function planLayer(L, p, g) {   // g: { c: [lat, lng], rot, k }
   const mpp = planMpp(p); if (!p.map || !mpp) return null;
@@ -54,7 +76,7 @@ function planLayer(L, p, g) {   // g: { c: [lat, lng], rot, k }
     onAdd(map) {
       this._map = map; const el = this._el = L.DomUtil.create('img', 'pplan'); el.alt = ''; el.style.opacity = 0;
       map.getPanes().overlayPane.appendChild(el);
-      planPicture(p).then((src) => { el.src = src; this._ok = 1; this._reset(); }).catch(() => el.remove());
+      planPicture(p).then((r) => { el.src = r.src; this._cut = r.cut; this._ok = 1; this._reset(); }).catch(() => el.remove());
       map.on('zoomend viewreset moveend', this._reset, this); map.on('zoomstart', this._hide, this);
       L.DomEvent.on(el, 'click', (e) => { L.DomEvent.stopPropagation(e); this.fire('click'); });
     },
@@ -66,7 +88,8 @@ function planLayer(L, p, g) {   // g: { c: [lat, lng], rot, k }
       const z = map.getZoom(); if (z < 13) { el.style.opacity = 0; el.style.pointerEvents = 'none'; return; }
       const mppMap = 40075016.686 * Math.cos(g.c[0] * Math.PI / 180) / (256 * Math.pow(2, z));
       const k = (g.k || 1) * mpp / mppMap, w = p.map.w * k, h = p.map.h * k, pt = map.latLngToLayerPoint(g.c);
-      Object.assign(el.style, { width: w + 'px', height: h + 'px', left: pt.x - w / 2 + 'px', top: pt.y - h / 2 + 'px', transform: `rotate(${g.rot || 0}deg)`, opacity: z >= 15 ? 0.92 : 0.8, pointerEvents: 'auto' });
+      Object.assign(el.style, { width: w + 'px', height: h + 'px', left: pt.x - w / 2 + 'px', top: pt.y - h / 2 + 'px', transform: `rotate(${g.rot || 0}deg)`, opacity: this._cut ? 1 : z >= 15 ? 0.92 : 0.8, pointerEvents: 'auto' });
+      el.classList.toggle('cut', !!this._cut);
     },
   });
   return new Lay();

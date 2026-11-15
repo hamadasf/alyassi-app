@@ -30,7 +30,7 @@ globalThis.fetch = async (url, opt = {}) => {
 // bundle the app's own data module so the snapshot uses exactly the same rules as the app
 await build({ entryPoints: ['src/data.js'], bundle: true, format: 'esm', platform: 'neutral', outfile: '.snap/data.mjs', logLevel: 'error' });
 const { loadAll } = await import(process.cwd() + '/.snap/data.mjs');
-const { getIndex } = await import(process.cwd() + '/.snap/data.mjs');
+const { getIndex, rawPlots } = await import(process.cwd() + '/.snap/data.mjs');
 const index = await getIndex(true);
 const d = await loadAll({ force: true });
 const missing = index.filter((p) => !d.projects.some((x) => x.slug === p.slug)).map((p) => p.slug);
@@ -38,4 +38,11 @@ if (!d.projects.length || missing.length) { console.error('missing projects: ' +
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, JSON.stringify({ at: Date.now(), projects: d.projects }));
 for (const p of d.projects) console.log(`loc: ${p.slug} | ${p.name} | ${p.loc || '-'}`);
+// every plot's outline (kind + corners, whole numbers) per project — the projects map draws the plots alone, without the plan picture
+const od = dirname(out) + '/outlines'; mkdirSync(od, { recursive: true });
+for (const p of d.projects) {
+  const raw = rawPlots(p.slug) || [];
+  const o = raw.filter((q) => Array.isArray(q[6]) && q[6].length > 2).map((q) => [String(q[0]), q[1], q[6].flatMap((pt) => [Math.round(pt[0]), Math.round(pt[1])])]);
+  if (o.length) writeFileSync(`${od}/${p.slug}.json`, JSON.stringify(o));
+}
 console.log(`snapshot: ${d.projects.length} projects, ${d.lands.length} plots -> ${out}`);

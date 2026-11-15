@@ -1733,3 +1733,4 @@ body.guest #sheet .memf { display: none; }
   #home .slide { flex-basis: 420px; }
   .qacts, .hsearch2, .hs-chips, .mlist { max-width: 900px; }
 }
+.pplan.cut { box-shadow: none; border-radius: 0; filter: drop-shadow(0 2px 3px rgba(0,0,0,.45)); }
