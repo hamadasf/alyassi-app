@@ -51,16 +51,30 @@ async function plotOutlines(p) {
   const r = await fetch(`outlines/${encodeURIComponent(p.slug)}.json`, { cache: 'no-cache' }); if (!r.ok) throw new Error('outlines');
   return r.json();
 }
+const hull = (pts) => {   // convex hull (monotone chain) of [x, y] points
+  pts = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]); if (pts.length < 3) return pts;
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); const lo = [], up = [];
+  for (const q of pts) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (let k = pts.length - 1; k >= 0; k--) { const q = pts[k]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+};
 async function planPicture(p) {
-  const m = p.map, s = Math.min(1, 2400 / Math.max(m.w, m.h)), cv = document.createElement('canvas');
+  const m = p.map, s = Math.min(1, 2600 / Math.max(m.w, m.h)), cv = document.createElement('canvas');
   cv.width = Math.round(m.w * s); cv.height = Math.round(m.h * s); const c = cv.getContext('2d');
   let O = null; try { O = await plotOutlines(p); } catch { O = null; }
-  if (!O || !O.length) {   // no outlines to be had: the plan as before
-    const P = await loadPlan(p.slug, m);
+  const P = await loadPlan(p.slug, m).catch(() => null);
+  if (P && P.V && O && O.length) {   // the plan's drawing (plots, numbers, roads and their widths, gardens, shops, clinics, names) without its picture, cut to the project
+    const pts = []; for (const [, , f] of O) for (let i = 0; i < f.length; i += 2) pts.push([f[i], f[i + 1]]);
+    const H0 = hull(pts), cx = H0.reduce((a, q) => a + q[0], 0) / H0.length, cy = H0.reduce((a, q) => a + q[1], 0) / H0.length;
+    const pad = Math.max(m.w, m.h) * 0.025, clip = H0.map(([x, y]) => { const d = Math.hypot(x - cx, y - cy) || 1; return [x + (x - cx) / d * pad, y + (y - cy) / d * pad]; });
+    drawPlanView(c, { V: P.V, VS: P.VS }, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false, bg: false, clip });
+    return { src: cv.toDataURL('image/png'), cut: true };
+  }
+  if (!O || !O.length) {   // nothing else to be had: the plan as before
     drawPlanView(c, P, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false });
     return { src: cv.toDataURL('image/jpeg', 0.82), cut: false };
   }
-  const st = {}; (p.lands || []).forEach((l) => { st[l.n] = l.status; });
+  const st = {}; (p.lands || []).forEach((l) => { st[l.n] = l.status; });   // no drawing: the plots alone
   c.scale(s, s); c.lineJoin = 'round'; c.lineWidth = Math.max(0.6, 1.1 / s);
   for (const [n, t, f] of O) {
     c.beginPath(); c.moveTo(f[0], f[1]); for (let i = 2; i < f.length; i += 2) c.lineTo(f[i], f[i + 1]); c.closePath();

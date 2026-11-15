@@ -163,13 +163,14 @@ export function drawPlanLoc(c, P, land, lands, map, { x = 0, y = 0, w, h, radius
  * Draws any part of the plan: plan units from (x0, y0) at `ppu` pixels per unit into the W×H box at (x, y).
  * Plots are coloured by status like the website; `sel` (if any) is highlighted.
  */
-export function drawPlanView(c, P, lands, map, { x = 0, y = 0, w, h, radius = 0, ppu, x0, y0, sel = null, labels = true }) {
+export function drawPlanView(c, P, lands, map, { x = 0, y = 0, w, h, radius = 0, ppu, x0, y0, sel = null, labels = true, bg = true, clip = null }) {
   const x1 = x0 + w / ppu, y1 = y0 + h / ppu;
   c.save();
   c.beginPath(); if (radius) c.roundRect(x, y, w, h, radius); else c.rect(x, y, w, h); c.clip();
-  c.fillStyle = '#EFE9DD'; c.fillRect(x, y, w, h);
+  if (bg) { c.fillStyle = '#EFE9DD'; c.fillRect(x, y, w, h); }
   c.translate(x, y); c.scale(ppu, ppu); c.translate(-x0, -y0);
-  if (P && P.img) { c.imageSmoothingQuality = 'high'; c.drawImage(P.img, 0, 0, map.w, map.h); }
+  if (clip) { c.beginPath(); clip.forEach((q, i) => (i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1]))); c.closePath(); c.clip(); }   // only inside this outline (plan units)
+  if (bg && P && P.img) { c.imageSmoothingQuality = 'high'; c.drawImage(P.img, 0, 0, map.w, map.h); }
   if (P && P.V) drawVec(c, P.V, P.VS, x0, y0, x1, y1, ppu);
   const showText = labels && ppu * 4.5 >= 5;
   for (const l of lands) {
