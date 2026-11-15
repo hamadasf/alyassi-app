@@ -187,19 +187,23 @@ function ayaDraw(c, v, p, at) {
 }
 /* «قالب عمر الياسي» (the website's): the plan across the whole picture, the facts in coloured boxes over it, an arrow and a ring on the plot */
 PZ_THEMES.oy = Object.assign({}, PZ_THEMES.co, { name: 'قالب عمر الياسي', layout: 'oy', bar: '#B535FE' });
-const OY_R = 1468, OY_PC = 1110;   // the boxes' common right edge; the centre of the two black lines
+const OY_R = 1468, OY_PC = 1110;
+/** «فلل سكنية استثمارية» → «سكني استثماري» … the red box's short word for the use */
+function oyUse(u) {
+  u = String(u || ''); const inv = /استثمار/.test(u);
+  if (/تجار|محل/.test(u) && !/سكن|فلل/.test(u)) return 'تجاري' + (inv ? ' استثماري' : '');
+  if (/صناع/.test(u)) return 'صناعي'; if (/سكن|فلل|فيلا/.test(u)) return 'سكني' + (inv ? ' استثماري' : ''); return u;
+}
+/** «أرضي + طابقين» → «G+2», «G + 1» → «G+1» */
+function oyFloors(f) {
+  f = String(f || '').trim(); const g = /G\s*\+\s*(\d+)/i.exec(f); if (g) return 'G+' + g[1];
+  if (!/أرضي/.test(f)) return f;
+  const n = /(\d+)/.exec(f) ? +/(\d+)/.exec(f)[1] : /طابقين|اثنين|إثنين/.test(f) ? 2 : /ثلاث/.test(f) ? 3 : /طابق|واحد/.test(f) ? 1 : 0;
+  return n ? 'G+' + n : 'G';
+}   // the boxes' common right edge; the centre of the two black lines
 const OY = { black: '#0B0B0B', blue: '#4033FC', red: '#FF3535', purple: '#B535FE', ring: '#E0040B' };
 const isLatin = (s) => !/[؀-ۿ]/.test(String(s || ''));
 const FO = (w, px) => w + ' ' + px + 'px OYF, ' + FAM;   // the Instagram-like lettering of «قالب عمر الياسي» (and the extra shapes)
-function oyBox(c, s, right, top, bot, minW, maxW, px, fill, col, r, centre, weight) {
-  s = String(s || ''); if (!s) return null;
-  let size = Math.round(px * PZS); c.font = FO(weight || 800, size);
-  while (c.measureText(s).width > maxW - 70 && size > 18) { size -= 2; c.font = FO(weight || 800, size); }
-  const w = Math.max(minW, Math.min(maxW, c.measureText(s).width + 80)), x = centre ? right - w / 2 : right - w;
-  c.fillStyle = fill; box(c, x, top, w, bot - top, r); c.fill();
-  c.direction = isLatin(s) ? 'ltr' : 'rtl'; adFitV(c, s, x + w / 2, top + 8, bot - 8, w - 50, size / PZS, weight || 800, col, 'center', FO); c.direction = 'rtl';
-  return { x, y: top, w, h: bot - top };
-}
 function oyArrow(c, tx, ty, K) {   // a thick black arrow coming down from the upper right, its tip at (tx, ty)
   c.save(); c.translate(tx, ty); c.rotate(-Math.PI / 4); c.scale(K, K);
   const L = 250, hw = 50, hl = 92, sw = 19;
@@ -220,22 +224,16 @@ function oyDraw(c, v, p, at) {
     oyArrow(c, sx + R * 0.74 + 12, sy - R * 0.74 - 12, K * 1.25);
   }
   PZS = v.fsT;
-  // the three boxes share one right edge (OY_R); each is as wide as its words, so it grows or shrinks to the left only
-  const bw = (b) => (b ? b.w : 300);
-  let wp = 300, wa = 300, wu = 300;
-  c.font = FO(800, Math.round(104 * PZS)); wp = Math.min(1000, c.measureText(v.o_proj || '').width + 80);
-  c.font = FO(800, Math.round(86 * PZS)); wa = Math.min(1000, c.measureText(v.o_area || '').width + 80);
-  c.font = FO(800, Math.round(74 * PZS)); wu = Math.min(1000, Math.max(c.measureText(v.o_use1 || '').width, c.measureText(v.o_use2 || '').width) + 90);
-  at('proj', OY_R - wp, 34, wp, 128, () => bw(oyBox(c, v.o_proj, OY_R, 34, 162, 0, 1000, 104, OY.black, '#FFFFFF', 40)));
-  at('area', OY_R - wa, 190, wa, 104, () => bw(oyBox(c, v.o_area, OY_R, 190, 294, 0, 1000, 86, OY.blue, '#FFFFFF', 30)));
-  at('use', OY_R - wu, 324, wu, 152, () => {
-    if (!v.o_use1 && !v.o_use2) return; const two = v.o_use1 && v.o_use2;
-    c.fillStyle = OY.red; box(c, OY_R - wu, 324, wu, 152, 30); c.fill();
-    if (two) {
-      adFitV(c, v.o_use1, OY_R - wu / 2, 332, 404, wu - 50, 74, 800, '#FFFFFF', 'center', FO);
-      c.direction = isLatin(v.o_use2) ? 'ltr' : 'rtl'; adFitV(c, v.o_use2, OY_R - wu / 2, 404, 468, wu - 50, 66, 800, '#FFFFFF', 'center', FO); c.direction = 'rtl';
-    } else { const t = v.o_use1 || v.o_use2; c.direction = isLatin(t) ? 'ltr' : 'rtl'; adFitV(c, t, OY_R - wu / 2, 350, 450, wu - 50, 78, 800, '#FFFFFF', 'center', FO); c.direction = 'rtl'; }
+  // the three boxes: one size for all (as wide as the longest of the three needs), one right edge (OY_R), one height;
+  // the words fill their box — a short word is drawn bigger, a long one smaller
+  const useT = [v.o_use1, v.o_use2].filter(Boolean).join('  ');
+  c.font = FO(800, Math.round(84 * PZS));
+  const BW = Math.max(470, Math.min(1000, Math.max(...[v.o_proj, v.o_area, useT].map((t) => c.measureText(t || '').width)) + 110)), BH = 118, X = OY_R - BW;
+  const oyB = (k, t, top, fill) => at(k, X, top, BW, BH, () => {
+    if (!t) return; c.fillStyle = fill; box(c, X, top, BW, BH, 30); c.fill();
+    c.direction = isLatin(t) ? 'ltr' : 'rtl'; adFitV(c, t, X + BW / 2, top + 16, top + BH - 18, BW - 70, 96, 800, '#FFFFFF', 'center', FO); c.direction = 'rtl';
   });
+  oyB('proj', v.o_proj, 34, OY.black); oyB('area', v.o_area, 34 + BH + 20, OY.blue); oyB('use', useT, 34 + 2 * (BH + 20), OY.red);
   PZS = v.fsN;
   at('price', 62, 1474, 1466, 176, () => {
     const s = v.mode === 'inst' ? v.o_priceI : v.o_priceC; c.fillStyle = OY.purple; box(c, 62, 1474, 1466, 176, 64); c.fill();
@@ -693,7 +691,7 @@ function adDefaults(p) {
   Object.assign(v, { a_kick: 'فرصة إستثمارية مميزة', a_title: 'أرض ' + T.use + (v.side ? ' ' + v.side : '') + ' في', a_use: T.use, a_fl: code ? code[1] : fl,
     a_loc: PROJECT, a_city: 'الشارقة', a_ps: 'درهم فقط', a_iT: n === 1 ? 'قسط واحد' : n === 2 ? 'قسطان' : n ? n + ' أقساط' : 'أقساط', a_iS: 'شيكات',
     a_cT: 'الدفعات', a_cV: 'كاش', a_cS: 'نقداً',
-    o_proj: PROJECT, o_area: p.ft ? fmt(p.ft) + ' قدم' : '', o_use1: T.use + (v.side ? ' ' + v.side : ''), o_use2: String(code ? code[1] : fl).replace(/\s*\+\s*/g, '  +  '),
+    o_proj: PROJECT, o_area: p.ft ? fmt(p.ft) + ' قدم' : '', o_use1: oyUse(T.use), o_use2: oyFloors(code ? code[1] : fl),
     o_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', o_priceI: pr ? fmt(pr.total) + ' Dhs, ' + (n ? n + ' Installments' : 'Installments') : 'للاستفسار',
     o_p1: (ad && ad.pl && ad.pl.p1) || '', o_p2: (ad && ad.pl && ad.pl.p2) || '', o_p3: inst.length ? '' : adFeats(p).slice(0, 2).join(' · '), oFlag: true, oLogo: false, oP1: false, oP2: false,
     w_kick: 'أراضي ' + T.use + ' للبيع', w_proj: PROJECT, w_rib: (ad && ad.pl && ad.pl.p1) || 'موقع مميز في الشارقة',   // never «جاهزة للبناء» unless the project's own line says so
