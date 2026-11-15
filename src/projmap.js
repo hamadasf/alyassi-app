@@ -51,6 +51,28 @@ async function plotOutlines(p) {
   const r = await fetch(`outlines/${encodeURIComponent(p.slug)}.json`, { cache: 'no-cache' }); if (!r.ok) throw new Error('outlines');
   return r.json();
 }
+const size = (f) => { let a = Infinity, b = -Infinity, c2 = Infinity, d = -Infinity; for (let i = 0; i < f.length; i += 2) { a = Math.min(a, f[i]); b = Math.max(b, f[i]); c2 = Math.min(c2, f[i + 1]); d = Math.max(d, f[i + 1]); } return [b - a, d - c2]; };
+/** does the plan's drawing carry the plot numbers? (many tiny shapes — the digits — for every plot) */
+function vecHasNumbers(V, O) {
+  const sz = O.map((o) => { const [w, h] = size(o[2]); return Math.min(w, h); }).sort((x, y) => x - y), unit = sz[sz.length >> 1] || 10;
+  let small = 0; const { n, st, bb } = V;
+  for (let k = 0; k < n; k++) { if (st[k] >= 254) continue; const b = k * 4, m = Math.max(bb[b + 2] - bb[b], bb[b + 3] - bb[b + 1]); if (m > 0 && m < unit * 0.3) small++; }
+  return small > O.length * 1.5;
+}
+/** each plot's number in the middle of it, along its long side, sized to the plot */
+function plotNumbers(c, O, s) {
+  c.save(); c.scale(s, s); c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#1d1d1d';
+  for (const [n, , f] of O) {
+    let cx = 0, cy = 0; const k = f.length / 2; for (let i = 0; i < f.length; i += 2) { cx += f[i]; cy += f[i + 1]; } cx /= k; cy /= k;
+    let best = 0, ang = 0; for (let i = 0; i < f.length; i += 2) { const j = (i + 2) % f.length, dx = f[j] - f[i], dy = f[j + 1] - f[i + 1], L = Math.hypot(dx, dy); if (L > best) { best = L; ang = Math.atan2(dy, dx); } }
+    if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI;
+    const [w, h] = size(f), fs = Math.max(1.2, Math.min(w, h) * 0.32);
+    c.save(); c.translate(cx, cy); c.rotate(ang); c.font = `700 ${fs}px Tajawal, sans-serif`;
+    const tw = c.measureText(String(n)).width; if (tw > best * 0.92) c.font = `700 ${fs * best * 0.92 / tw}px Tajawal, sans-serif`;
+    c.fillText(String(n), 0, 0); c.restore();
+  }
+  c.restore();
+}
 const hull = (pts) => {   // convex hull (monotone chain) of [x, y] points
   pts = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]); if (pts.length < 3) return pts;
   const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); const lo = [], up = [];
@@ -76,7 +98,9 @@ async function planPicture(p) {
       c.fillStyle = `rgb(${k[0]},${k[1]},${k[2]})`; c.fill();
     }
     c.restore();
-    drawPlanView(c, { V: P.V, VS: P.VS }, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false, bg: false, clip });
+    const VS = P.VS.map((v) => (v.h ? null : v));   // no hatching over the solid colour — it dulls it
+    drawPlanView(c, { V: P.V, VS }, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false, bg: false, clip });
+    if (!vecHasNumbers(P.V, O)) plotNumbers(c, O, s);   // some plans keep the plot numbers in their picture only: write them
     return { src: cv.toDataURL('image/png'), cut: true };
   }
   if (!O || !O.length) {   // nothing else to be had: the plan as before
@@ -88,7 +112,7 @@ async function planPicture(p) {
   for (const [n, t, f] of O) {
     c.beginPath(); c.moveTo(f[0], f[1]); for (let i = 2; i < f.length; i += 2) c.lineTo(f[i], f[i + 1]); c.closePath();
     const k = SCOL[st[n]] || ((p.types && p.types[t] && p.types[t].c) || [242, 205, 70]);
-    c.fillStyle = `rgba(${k[0]},${k[1]},${k[2]},${SCOL[st[n]] ? 0.95 : 0.88})`; c.fill();
+    c.fillStyle = `rgb(${k[0]},${k[1]},${k[2]})`; c.fill();
     c.strokeStyle = 'rgba(40,52,30,.85)'; c.stroke();
   }
   return { src: cv.toDataURL('image/png'), cut: true };
