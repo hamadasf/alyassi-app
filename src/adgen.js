@@ -622,9 +622,10 @@ const AR_FIELDS = [
   ['r_own', 'سطر التملّك (اختياري — فعّله من «الخريطة والدبوس»)'], ['r_feat', 'مميزات الأرض (اختياري)'],
 ];
 /** the office has every template; a member with «تصميم البوستات» only the ones the office chose for them (none chosen: قالب عمر الياسي) */
+const RETIRED = { pk: 'aya' };   // «قالب آية الرفاعي» (the old one) is gone — whoever had it gets «قالب آية الرفاعي الجديد»
 const allowed = () => {
-  if (H && H.isAdmin && H.isAdmin()) return Object.keys(PZ_THEMES);
-  const t = ((H && H.tpls && H.tpls()) || []).filter((k) => PZ_THEMES[k]);
+  if (H && H.isAdmin && H.isAdmin()) return Object.keys(PZ_THEMES).filter((k) => !RETIRED[k]);
+  const t = [...new Set(((H && H.tpls && H.tpls()) || []).map((k) => RETIRED[k] || k))].filter((k) => PZ_THEMES[k]);
   return t.length ? t : ['oy'];
 };
 const layoutOf = (t) => (PZ_THEMES[t] || {}).layout || '';
