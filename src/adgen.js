@@ -500,12 +500,12 @@ function wrDraw(c, v, p, at) {
   c.strokeStyle = 'rgba(210,174,114,.55)'; c.lineWidth = 3; c.beginPath(); c.arc(W + 40, -40, 380, 0, 7); c.stroke();
   if (!tall) {
     wrPanel(c, 40, 40, 540, 1120, 310, 330);
-    wrAvatar(c, v, at, 310, 318, 200);
+    wrAvatar(c, v, at, 310, 318, 200, true);   // with the flower spray, like the Instagram one
     wrWho(c, v, at, 310, 572, 480, '#FFFFFF', WR.blush);
     wrPhone(c, v, at, 310, 712, 452);
     wrPrice(c, v, at, 310, 852, 480);
     wrHead(c, v, at, 1560, 940, 62);
-    wrPlan(c, v, p, 620, 384, 940, 516);
+    wrPlan(c, v, p, 620, 384, 940, 516, 'ring');   // the red ring with the pin
     wrCard(c, v, at, 'c1', 1100, 934, 460, 'cube', v.w_c1t, v.w_area, v.w_unit);
     wrCard(c, v, at, 'c2', 620, 934, 460, 'bld', v.w_c2t, v.w_c2s, '');
     wrOwn(c, v, at, 1090, 1090, 940);
