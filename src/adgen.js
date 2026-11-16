@@ -395,10 +395,10 @@ function wrAvatar(c, v, at, cx, cy, r, fl) {   // her portrait in an ivory ring 
     else { wrDiamond(c, cx, cy - r - 22, 11, WR.gold); wrDiamond(c, cx, cy + r + 22, 11, WR.gold); }
   });
 }
-function wrWho(c, v, at, cx, y, w, ink, sub) {
+function wrWho(c, v, at, cx, y, w, ink, sub, bold) {
   PZS = v.fsL; at('who', cx - w / 2, y, w, 110, () => {
-    adFitV(c, v.w_name, cx, y + 2, y + 60, w - 20, 50, 800, ink, 'center');
-    adFitV(c, v.w_nameS, cx, y + 64, y + 108, w - 40, 34, 500, sub, 'center');
+    adFitV(c, v.w_name, cx, y + 2, y + 60, w - 20, bold ? 54 : 50, 800, ink, 'center');
+    adFitV(c, v.w_nameS, cx, y + 64, y + 108, w - 40, bold ? 36 : 34, bold ? 700 : 500, sub, 'center');
   });
 }
 function wrPhone(c, v, at, cx, y, w) {
@@ -411,26 +411,29 @@ function wrPhone(c, v, at, cx, y, w) {
     c.direction = 'ltr'; adFitV(c, v.w_phone, x + 96 + (w - 96) / 2 - 8, y + 14, y + 84, w - 140, 58, 800, WR.deep, 'center'); c.direction = 'rtl';
   });
 }
-function wrPrice(c, v, at, cx, y, w) {
+function wrPrice(c, v, at, cx, y, w, bold) {
   at('price', cx - w / 2, y, w, 214, () => {
     c.fillStyle = 'rgba(242,211,206,.45)'; c.fillRect(cx - w * 0.38, y + 6, w * 0.76, 2); wrDiamond(c, cx, y + 7, 8, WR.gold);
-    PZS = v.fsL; adFitV(c, v.mode === 'inst' ? v.w_c3tI : v.w_c3t, cx, y + 24, y + 74, w - 40, 40, 700, WR.blush, 'center');
+    const lt = bold ? '#FFFFFF' : WR.blush;   // bold: the small lines in white, heavier, so they read clearly
+    PZS = v.fsL; adFitV(c, v.mode === 'inst' ? v.w_c3tI : v.w_c3t, cx, y + 24, y + 74, w - 40, bold ? 44 : 40, bold ? 800 : 700, lt, 'center');
     PZS = v.fsN; c.direction = isLatin(v.w_price) ? 'ltr' : 'rtl'; adFitV(c, v.w_price, cx, y + 74, y + 166, w - 20, 100, 800, '#FFFFFF', 'center'); c.direction = 'rtl';
-    PZS = v.fsL; adFitV(c, v.w_cur, cx, y + 168, y + 206, w - 40, 32, 600, WR.blush, 'center');
+    PZS = v.fsL; adFitV(c, v.w_cur, cx, y + 168, y + 206, w - 40, bold ? 36 : 32, bold ? 800 : 600, lt, 'center');
   });
 }
-function wrHead(c, v, at, R, w, y, ribDown = 0) {   // kicker pill, the project in big letters, the gold line — right-aligned at R
-  PZS = v.fsL; at('kick', R - Math.min(w, 620), y, Math.min(w, 620), 64, () => {
-    c.font = FD(700, Math.round(38 * PZS)); const pw = Math.min(620, c.measureText(v.w_kick || '').width + 76);
-    c.fillStyle = WR.blush; box(c, R - pw, y, pw, 64, 32); c.fill();
-    wrDiamond(c, R - pw + 30, y + 32, 8, WR.rose);
-    adFitV(c, v.w_kick, R - 26, y + 6, y + 58, pw - 76, 38, 700, WR.deep, 'right');
+function wrHead(c, v, at, R, w, y, ribDown = 0, big = false) {   // kicker pill, the project in big letters, the gold line — right-aligned at R
+  const kf = big ? 50 : 38, kh = big ? 82 : 64, kmax = big ? 900 : 620;
+  PZS = v.fsL; at('kick', R - Math.min(w, kmax), y - (kh - 64), Math.min(w, kmax), kh, () => {
+    const ky = y - (kh - 64);
+    c.font = FD(big ? 800 : 700, Math.round(kf * PZS)); const pw = Math.min(kmax, c.measureText(v.w_kick || '').width + 90);
+    c.fillStyle = WR.blush; box(c, R - pw, ky, pw, kh, kh / 2); c.fill();
+    wrDiamond(c, R - pw + 32, ky + kh / 2, 9, WR.rose);
+    adFitV(c, v.w_kick, R - 28, ky + 8, ky + kh - 8, pw - 84, kf, big ? 800 : 700, WR.deep, 'right');
   });
   PZS = v.fsT; at('proj', R - w, y + 74, w, 160, () => adFitV(c, v.w_proj, R, y + 78, y + 228, w, 128, 800, WR.ink, 'right'));
   y += ribDown;   // the line under the project name can sit lower
   PZS = v.fsL; at('rib', R - w, y + 238, w, 60, () => {
     wrDiamond(c, R - 12, y + 268, 11, WR.gold);
-    const px = adFitV(c, v.w_rib, R - 36, y + 242, y + 294, w - 300, 40, 700, WR.rose, 'right'); c.font = FD(700, px);
+    const px = adFitV(c, v.w_rib, R - 36, y + (big ? 236 : 242), y + (big ? 300 : 294), w - 300, big ? 52 : 40, big ? 800 : 700, WR.rose, 'right'); c.font = FD(big ? 800 : 700, px);
     const x = R - 36 - c.measureText(v.w_rib || '').width - 28, L = R - w;
     if (x > L + 40) { const g = c.createLinearGradient(L, 0, x, 0); g.addColorStop(0, 'rgba(210,174,114,0)'); g.addColorStop(1, WR.gold); c.fillStyle = g; c.fillRect(L, y + 267, x - L, 3); }
   });
@@ -457,7 +460,8 @@ function wrPlan(c, v, p, MX, MY, MW, MH, red) {   // the plan, with a rose ring 
     c.save(); box(c, MX, MY, MW, MH, 34); c.clip();
     const g = c.createLinearGradient(sx, sy - R, sx, sy + R); g.addColorStop(0, '#F5392C'); g.addColorStop(1, '#D10F0A');
     c.shadowColor = 'rgba(120,0,0,.3)'; c.shadowBlur = 10; c.lineWidth = 16 * K; c.strokeStyle = g; c.beginPath(); c.arc(sx, sy, R, 0, 7); c.stroke(); c.shadowColor = 'transparent';
-    if (red !== 'ring') wiArrow(c, sx, sy + R + 18 * K, K); c.restore();
+    if (red !== 'ring') wiArrow(c, sx, sy + R + 18 * K, K); else wrPin(c, sx, sy - R + 6 * K, K);   // ring + the location pin
+    c.restore();
   } else if (v.pin) {
     c.save(); box(c, MX, MY, MW, MH, 34); c.clip();
     c.fillStyle = 'rgba(178,88,88,.16)'; c.beginPath(); c.arc(sx, sy, R + 18 * K, 0, 7); c.fill();
@@ -508,15 +512,15 @@ function wrDraw(c, v, p, at) {
   } else {
     if (!v.w_name || v.w_name === 'مستشارتك العقارية') v.w_name = 'Leen AL Halabi';   // her name in English on this template
     wrAvatar(c, v, at, 290, 290, 196, true);
-    wrHead(c, v, at, 1540, 960, 92, 34);
+    wrHead(c, v, at, 1540, 960, 92, 34, true);
     wrPlan(c, v, p, 60, 560, 1480, 720, 'ring');   // the red ring alone on the plot
     wrCard(c, v, at, 'c1', 820, 1316, 720, 'cube', v.w_c1t, v.w_area, v.w_unit);
     wrCard(c, v, at, 'c2', 60, 1316, 720, 'bld', v.w_c2t, v.w_c2s, '');
     wrOwn(c, v, at, 800, 1474, 1400);
     wrPanel(c, 40, 1570, 1520, 390, 800, 1765);
     c.fillStyle = 'rgba(210,174,114,.7)'; c.fillRect(799, 1620, 2, 290); wrDiamond(c, 800, 1765, 9, WR.gold);
-    wrPrice(c, v, at, 1180, 1648, 680);
-    wrWho(c, v, at, 420, 1630, 680, '#FFFFFF', WR.blush);
+    wrPrice(c, v, at, 1180, 1648, 680, true);
+    wrWho(c, v, at, 420, 1630, 680, '#FFFFFF', '#FFFFFF', true);
     wrPhone(c, v, at, 420, 1792, 560);
   }
   PZS = 1;
