@@ -397,8 +397,13 @@ function wrAvatar(c, v, at, cx, cy, r, fl) {   // her portrait in an ivory ring 
 }
 function wrWho(c, v, at, cx, y, w, ink, sub, bold) {
   PZS = v.fsL; at('who', cx - w / 2, y, w, 110, () => {
-    adFitV(c, v.w_name, cx, y + 2, y + 60, w - 20, bold ? 54 : 50, 800, ink, 'center');
-    adFitV(c, v.w_nameS, cx, y + 64, y + 108, w - 40, bold ? 36 : 34, bold ? 700 : 500, sub, 'center');
+    if (bold) {   // the name bigger, the line under it a little lower
+      adFitV(c, v.w_name, cx, y - 4, y + 70, w - 20, 66, 800, ink, 'center');
+      adFitV(c, v.w_nameS, cx, y + 84, y + 128, w - 40, 36, 700, sub, 'center');
+    } else {
+      adFitV(c, v.w_name, cx, y + 2, y + 60, w - 20, 50, 800, ink, 'center');
+      adFitV(c, v.w_nameS, cx, y + 64, y + 108, w - 40, 34, 500, sub, 'center');
+    }
   });
 }
 function wrPhone(c, v, at, cx, y, w) {
@@ -458,9 +463,10 @@ function wrPlan(c, v, p, MX, MY, MW, MH, red) {   // the plan, with a rose ring 
   const K = +v.pinK || 1, R = Math.max(34, rr + 12) * K;
   if (v.pin && red) {   // the red ring and the black arrow coming up to the plot
     c.save(); box(c, MX, MY, MW, MH, 34); c.clip();
-    const g = c.createLinearGradient(sx, sy - R, sx, sy + R); g.addColorStop(0, '#F5392C'); g.addColorStop(1, '#D10F0A');
-    c.shadowColor = 'rgba(120,0,0,.3)'; c.shadowBlur = 10; c.lineWidth = 16 * K; c.strokeStyle = g; c.beginPath(); c.arc(sx, sy, R, 0, 7); c.stroke(); c.shadowColor = 'transparent';
-    if (red !== 'ring') wiArrow(c, sx, sy + R + 18 * K, K); else wrPin(c, sx, sy - R + 6 * K, K);   // ring + the location pin
+    const R2 = red === 'ring' ? Math.max(24, rr * 0.82) * K : R, lw = red === 'ring' ? 9 * K : 16 * K;   // the ring: tighter on the plot, thinner
+    const g = c.createLinearGradient(sx, sy - R2, sx, sy + R2); g.addColorStop(0, '#F5392C'); g.addColorStop(1, '#D10F0A');
+    c.shadowColor = 'rgba(120,0,0,.3)'; c.shadowBlur = 10; c.lineWidth = lw; c.strokeStyle = g; c.beginPath(); c.arc(sx, sy, R2, 0, 7); c.stroke(); c.shadowColor = 'transparent';
+    if (red !== 'ring') wiArrow(c, sx, sy + R + 18 * K, K); else wrPin(c, sx, sy - R2 + 4 * K, K);   // ring + the location pin
     c.restore();
   } else if (v.pin) {
     c.save(); box(c, MX, MY, MW, MH, 34); c.clip();
