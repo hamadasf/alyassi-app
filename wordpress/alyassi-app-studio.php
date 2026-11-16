@@ -34,13 +34,15 @@ function oay_acc_studio() {
 			'logo'  => is_readable( $logo ) && filesize( $logo ) < 1500000 ? 'data:image/png;base64,' . base64_encode( (string) file_get_contents( $logo ) ) : dnp_logo_url(), // phpcs:ignore
 			'ai'    => dnp_ai_public(),
 			'media' => dnp_media_public(),
+			'notes' => function_exists( 'dnp_notes_all' ) ? (object) dnp_notes_all() : (object) array(),
 			'css'   => array( dnp_asset( 'studio/maplibre-gl.css' ), dnp_asset( 'studio/studio.css' ) ),
 			'js'    => array( dnp_asset( 'studio/maplibre-gl.js' ), dnp_asset( 'studio/mp4-muxer.js' ), dnp_asset( 'studio/studio.js' ) ),
 			'fonts' => array( dnp_asset( 'fonts/tajawal-400.woff2' ), dnp_asset( 'fonts/tajawal-800.woff2' ) ),
 			'ver'   => defined( 'DNP_VERSION' ) ? DNP_VERSION : '',
 		) ) );
 	}
-	$map = array( 'dn_mapplots' => array( 'dnp_ajax_mapplots', '' ), 'dn_ai' => array( 'dnp_ajax_ai', 'dnp_ai' ), 'dn_ai_save' => array( 'dnp_ajax_ai_save', 'dnp_ai' ), 'dn_media_save' => array( 'dnp_ajax_media_save', 'dnp_media' ), 'dn_tts' => array( 'dnp_ajax_tts', 'dnp_media' ) );
+	$map = array( 'dn_mapplots' => array( 'dnp_ajax_mapplots', '' ), 'dn_ai' => array( 'dnp_ajax_ai', 'dnp_ai' ), 'dn_ai_save' => array( 'dnp_ajax_ai_save', 'dnp_ai' ), 'dn_ai_models' => array( 'dnp_ajax_ai_models', 'dnp_ai' ), 'dn_notes_save' => array( 'dnp_ajax_notes_save', 'dnp_ai' ),
+		'dn_media_save' => array( 'dnp_ajax_media_save', 'dnp_media' ), 'dn_tts' => array( 'dnp_ajax_tts', 'dnp_media' ), 'dn_voices' => array( 'dnp_ajax_voices', 'dnp_media' ), 'dn_voice_use' => array( 'dnp_ajax_voice_use', 'dnp_media' ) );
 	if ( ! isset( $map[ $a ] ) || ! function_exists( $map[ $a ][0] ) ) { oay_acc_err( 'غير مسموح', 403 ); }
 	$in = oay_acc_in(); $d = isset( $in['d'] ) && is_array( $in['d'] ) ? $in['d'] : array();
 	$req = array();

@@ -73,6 +73,7 @@ export async function openStudio({ api, toast }) {
     window.DNP_MAP = boot.map || []; window.DNP_MAP_AJAX = ''; window.DNP_LOGO = boot.logo || ''; window.DNP_MAP_URL = '';
     window.DNP_AI = { nonce: '', conf: boot.ai || { use: 'openai', list: [] } };
     window.DNP_MEDIA = { nonce: '', conf: boot.media || { use: 'elevenlabs', list: [] } };
+    window.DNP_NOTES = boot.notes || {};
     window.DNP_STUDIO_HOST = {
       root, app: true,
       call: (action, data) => api('studio', { a: action, d: data || {} }).then((j) => j.j),
