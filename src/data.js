@@ -119,6 +119,8 @@ export function category(use = '') {
   return 'أخرى';
 }
 
+/** a plan's floors line, tidied: «H + 2» (a slip in a plan for «G + 2») → «G + 2» */
+const fixFloors = (f) => String(f || '').replace(/(^|[^A-Za-z])H(\s*\+)/g, '$1G$2');
 /* Investment residential villas (ground + 2 floors) use the company's own photo in the app. */
 const VILLA_INVEST = './assets/villa-invest.jpg';
 function typeImage(l) {
@@ -146,7 +148,7 @@ function buildProject(p, plan, state) {
     return {
       id: p.slug + ':' + n, n: String(n), t, project: p.slug, projectName: plan.name || p.title,
       status: s.s, featured: !!s.fe, use: ty.use || '', tag: ty.tag || '', loc: ty.loc || '',
-      floors: ty.floors || '', color: ty.c || [200, 200, 200], cat: category(ty.use),
+      floors: fixFloors(ty.floors), color: ty.c || [200, 200, 200], cat: category(ty.use),
       ft: Math.round(area || 0), m2: Math.round((s.ft ? s.ft / 10.7639 : m2) || 0), approx: !exact && !s.ft,
       ppf: s.ppf || 0, total, inst, first: inst.length && total ? Math.max(0, total - instSum) : 0, img, sketch,
       ownImg: !!(s.img && s.img.u), doc: (s.doc && s.doc.u) || '', docId: (s.doc && s.doc.id) || 0, docTitle: (s.doc && s.doc.t) || '', dims: dims || null, poly: poly || null, pc: pc || null, pr: pr || 0,
@@ -161,7 +163,7 @@ function buildProject(p, plan, state) {
     return [String(n), t, Math.round(ft || 0), c];
   });
   return {
-    na, types: Object.fromEntries(Object.entries(plan.types || {}).map(([k, v]) => [k, { use: v.use || '', tag: v.tag || '', floors: v.floors || '', c: v.c || null }])),
+    na, types: Object.fromEntries(Object.entries(plan.types || {}).map(([k, v]) => [k, { use: v.use || '', tag: v.tag || '', floors: fixFloors(v.floors), c: v.c || null }])),
     ...p, name: plan.name || p.title, sub: plan.sub || SUB_FALLBACK[p.slug] || SUB_FALLBACK[(plan.name || p.title || '').trim()] || '', note: plan.note, poster: plan.poster || p.poster,
     loc: (state && state.loc) || '', updated: (state && state.updated) || '', map: plan.map || null,
     lands, available: count('av'), reserved: count('res'), sold: count('sold'),
@@ -182,7 +184,7 @@ function landFromPlot(p, n, st) {   // a listed plot that this data does not hav
   const pc = row ? (row[7] || null) : na[3];
   return typeImage({
     id: p.slug + ':' + n, n: String(n), t, project: p.slug, projectName: p.name, status: st.s, featured: !!st.fe, use: ty.use || '', tag: ty.tag || '', loc: ty.loc || '',
-    floors: ty.floors || '', color: ty.c || [200, 200, 200], cat: category(ty.use), ft: Math.round(st.ft || ft0 || 0), m2: Math.round((st.ft || ft0 || 0) / 10.7639), approx: !st.ft,
+    floors: fixFloors(ty.floors), color: ty.c || [200, 200, 200], cat: category(ty.use), ft: Math.round(st.ft || ft0 || 0), m2: Math.round((st.ft || ft0 || 0) / 10.7639), approx: !st.ft,
     ppf: 0, total: 0, inst: [], first: 0, img: like ? like.img : p.poster, sketch: '', ownImg: false, doc: '', docId: 0, docTitle: '',
     dims: row ? row[5] || null : null, poly: row ? row[6] || null : null, pc, pr: row ? row[8] || 0 : 0, lo: '', projectLoc: p.loc || '',
   });
