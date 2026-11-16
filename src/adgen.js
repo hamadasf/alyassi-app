@@ -1,6 +1,6 @@
 import { ei } from './icons.js';
 // «مولّد منشورات الإعلانات»: the website's ad designer (alyassi-dabdaba-plan → advertisement designer) inside the app.
-// The same four templates (الشركة · عبادة · آية الرفاعي · آية الرفاعي الجديد), cash and instalment versions, filled from the plot
+// The same four templates (الشركة · عبادة · آية الرفاعي · أمل), cash and instalment versions, filled from the plot
 // and the plan, every text editable, parts dragged on the picture, photos / PDF pages cut out, saved or shared as JPEG.
 // The drawing code is the website's own, adapted to the app's land objects.
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
@@ -39,7 +39,7 @@ const PZ_THEMES = {
   pk: { name: 'قالب آية الرفاعي', logo: pzLogo(AD_LOGOS.pk), bg: '#FFF5F4', ink: '#625252', band: ['#F6DCDB', '#F6DCDB'], bandText: '#625252', card: '#FCEAE8', cardLine: '#8C7894', icon: '#C47C80', price: '#625252',
     plot: '#1D2B4F', lbox: '#FFFFFF', ltext: '#3E3438', lline: '#C47C80', mapLine: '#C67F85', cap: 'rgba(70,66,74,.82)', capText: '#FFFFFF', picLine: '#D0C6C6', bar: '#CB7C7F', blob: '#F9E1E1', phoneInk: '#5A4A4C', addr: '#FFFFFF', pinIcon: '#F9E1E1', phone: '0564080004' },
 };
-PZ_THEMES.aya = Object.assign({}, PZ_THEMES.pk, { name: 'قالب آية الرفاعي الجديد', layout: 'aya', bar: '#B4525C', logo: null, phone: '0564080004' });
+PZ_THEMES.aya = Object.assign({}, PZ_THEMES.pk, { name: 'قالب أمل', layout: 'aya', bar: '#B4525C', logo: null, phone: '0564080004' });
 PZ_THEMES.ayk = Object.assign({}, PZ_THEMES.aya, { name: 'قالب آية كامل', ayaCol: 'plum', bar: '#5E1E51', ink: '#4A0D3C', price: '#4A0D3C', icon: '#5E1E51', phone: '0508600740' });
 PZ_THEMES.wa = Object.assign({}, PZ_THEMES.co, { name: 'قالب واتس أب', layout: 'wa', size: [1600, 1200], bar: '#B8893F', phone: '' });   // management only (never in the staff list)
 PZ_THEMES.wr = Object.assign({}, PZ_THEMES.co, { name: 'قالب لين واتس أب', layout: 'wr', size: [1600, 1200], bar: '#B25858', bg: '#F5EEE7', phone: '' });
@@ -622,7 +622,7 @@ const AR_FIELDS = [
   ['r_own', 'سطر التملّك (اختياري — فعّله من «الخريطة والدبوس»)'], ['r_feat', 'مميزات الأرض (اختياري)'],
 ];
 /** the office has every template; a member with «تصميم البوستات» only the ones the office chose for them (none chosen: قالب عمر الياسي) */
-const RETIRED = { pk: 'aya' };   // «قالب آية الرفاعي» (the old one) is gone — whoever had it gets «قالب آية الرفاعي الجديد»
+const RETIRED = { pk: 'aya' };   // «قالب آية الرفاعي» (the old one) is gone — whoever had it gets «قالب أمل»
 const allowed = () => {
   if (H && H.isAdmin && H.isAdmin()) return Object.keys(PZ_THEMES).filter((k) => !RETIRED[k]);
   const t = [...new Set(((H && H.tpls && H.tpls()) || []).map((k) => RETIRED[k] || k))].filter((k) => PZ_THEMES[k]);
