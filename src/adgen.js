@@ -419,7 +419,7 @@ function wrPrice(c, v, at, cx, y, w) {
     PZS = v.fsL; adFitV(c, v.w_cur, cx, y + 168, y + 206, w - 40, 32, 600, WR.blush, 'center');
   });
 }
-function wrHead(c, v, at, R, w, y) {   // kicker pill, the project in big letters, the gold line — right-aligned at R
+function wrHead(c, v, at, R, w, y, ribDown = 0) {   // kicker pill, the project in big letters, the gold line — right-aligned at R
   PZS = v.fsL; at('kick', R - Math.min(w, 620), y, Math.min(w, 620), 64, () => {
     c.font = FD(700, Math.round(38 * PZS)); const pw = Math.min(620, c.measureText(v.w_kick || '').width + 76);
     c.fillStyle = WR.blush; box(c, R - pw, y, pw, 64, 32); c.fill();
@@ -427,6 +427,7 @@ function wrHead(c, v, at, R, w, y) {   // kicker pill, the project in big letter
     adFitV(c, v.w_kick, R - 26, y + 6, y + 58, pw - 76, 38, 700, WR.deep, 'right');
   });
   PZS = v.fsT; at('proj', R - w, y + 74, w, 160, () => adFitV(c, v.w_proj, R, y + 78, y + 228, w, 128, 800, WR.ink, 'right'));
+  y += ribDown;   // the line under the project name can sit lower
   PZS = v.fsL; at('rib', R - w, y + 238, w, 60, () => {
     wrDiamond(c, R - 12, y + 268, 11, WR.gold);
     const px = adFitV(c, v.w_rib, R - 36, y + 242, y + 294, w - 300, 40, 700, WR.rose, 'right'); c.font = FD(700, px);
@@ -505,9 +506,10 @@ function wrDraw(c, v, p, at) {
     wrCard(c, v, at, 'c2', 620, 934, 460, 'bld', v.w_c2t, v.w_c2s, '');
     wrOwn(c, v, at, 1090, 1090, 940);
   } else {
+    if (!v.w_name || v.w_name === 'مستشارتك العقارية') v.w_name = 'Leen AL Halabi';   // her name in English on this template
     wrAvatar(c, v, at, 290, 290, 196, true);
-    wrHead(c, v, at, 1540, 960, 92);
-    wrPlan(c, v, p, 60, 560, 1480, 720, true);
+    wrHead(c, v, at, 1540, 960, 92, 34);
+    wrPlan(c, v, p, 60, 560, 1480, 720);
     wrCard(c, v, at, 'c1', 820, 1316, 720, 'cube', v.w_c1t, v.w_area, v.w_unit);
     wrCard(c, v, at, 'c2', 60, 1316, 720, 'bld', v.w_c2t, v.w_c2s, '');
     wrOwn(c, v, at, 800, 1474, 1400);
