@@ -193,7 +193,7 @@ function applyState(p, n, st) {   // st: { s, total, ppf, ft, inst, fe, lo } —
     if (l) { p.lands = p.lands.filter((x) => x !== l); p.na = [...(p.na || []), [n, l.t, l.ft, l.pc]]; }
     return;
   }
-  if (!l) { l = landFromPlot(p, n, st); if (!l) return; p.lands = [...p.lands, l]; p.na = (p.na || []).filter((x) => String(x[0]) !== n); l._new = Date.now(); }
+  if (!l) { l = landFromPlot(p, n, st); if (!l) return; p.lands = [...p.lands, l]; p.na = (p.na || []).filter((x) => String(x[0]) !== n); l._new = Date.now(); if (!l.poly) ensurePoly(l); }
   l.status = st.s; l.featured = !!st.fe;
   if (st.ft) { l.ft = Math.round(st.ft); l.m2 = Math.round(st.ft / 10.7639); l.approx = false; }
   l.ppf = st.ppf || 0; l.total = st.total || (st.ppf && l.ft ? Math.round(st.ppf * l.ft) : 0);
@@ -213,6 +213,22 @@ function relocal(m) {
     applyState(p, x.n, x.st); recount(p);
   }
   return { ...m, lands: m.projects.flatMap((p) => p.lands) };
+}
+const OUTL = new Map();
+/** a plot without its outline (listed after the web data was collected): its corners from the plan, or the web's outlines file */
+export async function ensurePoly(l) {
+  if (!l || (l.poly && l.poly.length > 2)) return l;
+  try {
+    const row = (RAW.get(l.project) || []).find((r) => String(r[0]) === String(l.n));
+    let pts = row && row[6];
+    if (!pts) {
+      if (!OUTL.has(l.project)) OUTL.set(l.project, fetch(`outlines/${encodeURIComponent(l.project)}.json`).then((r) => (r.ok ? r.json() : [])).catch(() => []));
+      const o = (await OUTL.get(l.project)).find((x) => String(x[0]) === String(l.n));
+      if (o) { pts = []; for (let i = 0; i < o[2].length; i += 2) pts.push([o[2][i], o[2][i + 1]]); }
+    }
+    if (pts && pts.length > 2) { l.poly = pts; if (!l.pc) l.pc = [pts.reduce((a, q) => a + q[0], 0) / pts.length, pts.reduce((a, q) => a + q[1], 0) / pts.length]; }
+  } catch { /* the card is made without the plan */ }
+  return l;
 }
 /** after «حفظ القطعة»: the plot appears / changes everywhere in the app straight away */
 export function patchPlot(slug, plot) {
@@ -238,7 +254,7 @@ async function loadSnapshot() {
       const st = await getState(p);
       const sp = (st && st.plots) || {};
       const have = new Set(p.lands.map((l) => l.n));
-      for (const n of Object.keys(sp)) if (sp[n] && sp[n].s && !have.has(String(n))) { const l = landFromPlot(p, n, sp[n]); if (l) { p.lands.push(l); p.na = (p.na || []).filter((x) => String(x[0]) !== String(n)); } }
+      for (const n of Object.keys(sp)) if (sp[n] && sp[n].s && !have.has(String(n))) { const l = landFromPlot(p, n, sp[n]); if (l) { if (!l.poly) ensurePoly(l); p.lands.push(l); p.na = (p.na || []).filter((x) => String(x[0]) !== String(n)); } }
       if (Object.keys(sp).length) p.lands = p.lands.filter((l) => sp[l.n] && sp[l.n].s);   // taken off the lists since the snapshot
       p.lands.forEach((l) => {
         const s = sp[l.n]; if (!s || !s.s) return;

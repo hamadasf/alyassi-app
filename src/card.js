@@ -3,6 +3,7 @@ import { PDFDocument } from 'pdf-lib';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { SITE, LOGO } from './config.js';
 import { loadPlan, drawPlanLoc } from './planloc.js';
+import { ensurePoly } from './data.js';
 
 const native = Capacitor.isNativePlatform();
 const nf = new Intl.NumberFormat('en-US');
@@ -27,7 +28,7 @@ export function cardModel(l, offer, projectLoc) {
   const info = [['المشروع', l.projectName], ['رقم القطعة', l.n], ['المساحة', area], ['الأبعاد', dims]].filter((r) => r[1]);
   const terms = [['الاستخدام', l.use], ['الارتفاع المسموح', l.floors], ['موقع القطعة', l.loc], ['التصنيف', l.tag && l.tag !== l.loc && !tagIsDims ? l.tag : '']].filter((r) => r[1]);
   const showPrice = l.status === 'av' && price;
-  const pay = showPrice && l.inst.length ? [['الدفعة المقدمة', l.first], ...l.inst.map((x, i) => [`القسط ${i + 1} · ${dstr(x[0])}`, +x[1] || 0])] : [];
+  const pay = showPrice && l.inst.length ? [['الدفعة المقدمة', l.first], ...l.inst.map((x, i) => [`القسط ${i + 1} · ${dstr(x[0])}`, +x[1] || 0])] : showPrice ? [['دفعة واحدة · كاش', price]] : [];
   return { l, offer, map: null, price: showPrice ? price : 0, was, info, terms, pay, loc: l.lo || projectLoc || '', planUrl: `${SITE}/${l.project}/#p${l.n}` };
 }
 
@@ -36,6 +37,7 @@ export function cardModel(l, offer, projectLoc) {
 async function drawCard(m, { aspect = 1.414, planImg = null } = {}) {
   await Promise.all(['400', '500', '700', '800'].map((w) => document.fonts.load(`${w} 40px Tajawal`, 'عربي 123').catch(() => {})));
   const logo = await loadImg(LOGO);
+  await ensurePoly(m.l);
   const rowH = 70;
   const hasMap = !!(planImg && m.map && m.l.poly && m.l.poly.length > 2);   // planImg = loaded plan files
   const fixed = 308 + 190 + (m.offer ? 150 : 0) + (m.price ? 210 : 80) + (m.pay.length ? 100 + (m.pay.length + 1) * rowH + 30 : 0) + 60;
@@ -144,6 +146,7 @@ export async function buildLandPdf(m) {
   // the card page gets the same size as the plot plan's page, so both open at the same zoom
   let pw = 595.28, ph = 841.89;
   if (src) { try { const p0 = src.getPage(0); const sz = p0.getSize(); const rot = ((p0.getRotation().angle % 360) + 360) % 360; [pw, ph] = rot === 90 || rot === 270 ? [sz.height, sz.width] : [sz.width, sz.height]; } catch { /* keep A4 */ } }
+  await ensurePoly(m.l);   // a plot listed after the web data was collected
   const planImg = m.map && m.l.poly ? await loadPlan(m.l.project, m.map).catch(() => null) : null;
   const card = await drawCard(m, { aspect: Math.max(1.2, ph / pw), planImg });
   const doc = await PDFDocument.create();

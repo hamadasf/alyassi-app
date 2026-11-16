@@ -457,7 +457,7 @@ function wrPlan(c, v, p, MX, MY, MW, MH, red) {   // the plan, with a rose ring 
     c.save(); box(c, MX, MY, MW, MH, 34); c.clip();
     const g = c.createLinearGradient(sx, sy - R, sx, sy + R); g.addColorStop(0, '#F5392C'); g.addColorStop(1, '#D10F0A');
     c.shadowColor = 'rgba(120,0,0,.3)'; c.shadowBlur = 10; c.lineWidth = 16 * K; c.strokeStyle = g; c.beginPath(); c.arc(sx, sy, R, 0, 7); c.stroke(); c.shadowColor = 'transparent';
-    wiArrow(c, sx, sy + R + 18 * K, K); c.restore();
+    if (red !== 'ring') wiArrow(c, sx, sy + R + 18 * K, K); c.restore();
   } else if (v.pin) {
     c.save(); box(c, MX, MY, MW, MH, 34); c.clip();
     c.fillStyle = 'rgba(178,88,88,.16)'; c.beginPath(); c.arc(sx, sy, R + 18 * K, 0, 7); c.fill();
@@ -509,7 +509,7 @@ function wrDraw(c, v, p, at) {
     if (!v.w_name || v.w_name === 'مستشارتك العقارية') v.w_name = 'Leen AL Halabi';   // her name in English on this template
     wrAvatar(c, v, at, 290, 290, 196, true);
     wrHead(c, v, at, 1540, 960, 92, 34);
-    wrPlan(c, v, p, 60, 560, 1480, 720);
+    wrPlan(c, v, p, 60, 560, 1480, 720, 'ring');   // the red ring alone on the plot
     wrCard(c, v, at, 'c1', 820, 1316, 720, 'cube', v.w_c1t, v.w_area, v.w_unit);
     wrCard(c, v, at, 'c2', 60, 1316, 720, 'bld', v.w_c2t, v.w_c2s, '');
     wrOwn(c, v, at, 800, 1474, 1400);

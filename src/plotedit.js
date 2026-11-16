@@ -1,7 +1,7 @@
 // Management: add / edit a company plot on a project's plan — status, price, area, «مميزة» and the payment plan.
 // Saved to the website's plan data (the same the website's plan editor uses), so the website, the app and the
 // notifications all follow.
-import { api } from './owner.js';
+import { api, session } from './owner.js';
 import { uiConfirm, uiPrompt } from './dialog.js';
 
 let H = null;
@@ -16,7 +16,8 @@ export function initPlotEditPage(pg, id = '') {
   const { esc, money, I } = H; const el = pg.querySelector('.pled');
   const [slug0, n0s] = String(id || '').split('|');
   const projects = H.DATA().projects;
-  let cur = null, inst = [], stt = 'av', quiet = false;   // «حفظ بدون إشعار» stays on for the next plots until turned off
+  let cur = null, inst = [], stt = 'av', quiet = false;
+  const canQuiet = () => { const u = session.user() || {}; return !!u.admin || u.role === 'mgr'; };   // «حفظ بدون إشعار»: the management and the managers only   // «حفظ بدون إشعار» stays on for the next plots until turned off
   el.innerHTML = `<div class="ccard">
       <div class="cgrid"><label>المشروع<select id="peProj">${projects.map((p) => `<option value="${esc(p.slug)}"${p.slug === slug0 ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
         <label>رقم القطعة<span class="pe-n"><input id="peN" inputmode="numeric" value="${esc(n0s || '')}" placeholder="مثال: 4701"><button class="btn primary" data-peload>عرض</button></span></label></div>
@@ -56,11 +57,11 @@ export function initPlotEditPage(pg, id = '') {
           <button class="btn ghost block" data-pegen>توليد</button></details>
         <div id="peInst"></div>
         <button class="btn ghost block" data-iadd>+ إضافة قسط</button></div>
-      <label class="pe-quiet"><input type="checkbox" id="peQuiet"><span><b>حفظ بدون إشعار</b><small>لا يصل إشعار للعملاء ولا للفريق عن هذا الحفظ</small></span></label>
+      ${canQuiet() ? '' : '<!--'}<label class="pe-quiet"><input type="checkbox" id="peQuiet"><span><b>حفظ بدون إشعار</b><small>لا يصل إشعار للعملاء ولا للفريق عن هذا الحفظ</small></span></label>${canQuiet() ? '' : '-->'}
       <button class="btn primary block pe-save" data-pesave>${I.check || ''} حفظ القطعة على المخطط</button>
       <p class="muted cnote" id="peNote">يظهر التعديل في الموقع والتطبيق خلال دقائق، ويصل إشعار للعملاء عند إضافة أرض متاحة أو تغيّر الحالة أو السعر.</p>`;
-    const q = $('#peQuiet'); q.checked = quiet; const qn = () => { $('#peNote').textContent = q.checked ? 'سيظهر التعديل في الموقع والتطبيق خلال دقائق — بدون أي إشعار.' : 'يظهر التعديل في الموقع والتطبيق خلال دقائق، ويصل إشعار للعملاء عند إضافة أرض متاحة أو تغيّر الحالة أو السعر.'; $('[data-pesave]').innerHTML = `${I.check || ''} ${q.checked ? 'حفظ بدون إشعار' : 'حفظ القطعة على المخطط'}`; };
-    q.onchange = () => { quiet = q.checked; qn(); }; qn();
+    const q = $('#peQuiet') || { checked: false }; if (!canQuiet()) quiet = false; q.checked = quiet; const qn = () => { $('#peNote').textContent = q.checked ? 'سيظهر التعديل في الموقع والتطبيق خلال دقائق — بدون أي إشعار.' : 'يظهر التعديل في الموقع والتطبيق خلال دقائق، ويصل إشعار للعملاء عند إضافة أرض متاحة أو تغيّر الحالة أو السعر.'; $('[data-pesave]').innerHTML = `${I.check || ''} ${q.checked ? 'حفظ بدون إشعار' : 'حفظ القطعة على المخطط'}`; };
+    q.onchange = () => { quiet = q.checked; qn(); }; if ($('#peQuiet')) qn();
     drawInst(); drawCopy();
   };
   /* ---- «نسخ من قطعة»: a plot of the same size in the project is offered; any plot can be copied by its number ---- */
