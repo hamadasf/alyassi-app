@@ -52,7 +52,7 @@ let AD_W = 1600, AD_H = 2000;   // «قالب واتس أب» is 4:3 (1600 × 12
 const ayaArt = {}; let ayaReady = null;
 function ayaLoad() {
   if (ayaReady) return ayaReady;
-  const ld = (n) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = './assets/ad/' + n + '?v=' + (typeof __VERSION__ !== 'undefined' ? __VERSION__ : '');   // a new build always loads its own artwork (no old copy from the phone's cache) });
+  const ld = (n) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = './assets/ad/' + n + '?v=' + (typeof __VERSION__ !== 'undefined' ? __VERSION__ : ''); });   // the build's version: never an older cached picture });
   return (ayaReady = Promise.all([ld('aya-base.jpg'), ld('aya-icons.png'), ld('oy-flag.png'), ld('ar-icons.png'), ld('ar-avatar.jpg'), ld('ayk-base.jpg'), ld('ayk-icons.png'), ld('wr-avatar.jpg'), ld('wi-flowers.png'), ...[1, 2, 3, 4, 5, 6, 7].map((n) => ld('wg-' + n + '.jpg'))]).then(([b, i, f, ai, av, kb, ki, wr, wfl, ...wg]) => { ayaArt.wrAv = wr; ayaArt.wiFl = wfl; wg.forEach((im, k) => { ayaArt['wg' + (k + 1)] = im; }); ayaArt.pbase = ayaArt.base = b; ayaArt.picons = ayaArt.icons = i; ayaArt.oyFlag = f; ayaArt.arIcons = ai; ayaArt.arAv = av; ayaArt.kbase = kb; ayaArt.kicons = ki; }));
 }
 const AYA_PINK = { kick: '#A85E5E', title: '#655454', proj: '#A3504D', sub: '#605050', card: '#F0E5E1', cTitle: '#3E3330', cVal: '#A85E5D', tag: '#46372F', phone: '#A95F5E', addr: '#6A4E4A', plot: '#A2474F',
