@@ -53,7 +53,7 @@ const ayaArt = {}; let ayaReady = null;
 function ayaLoad() {
   if (ayaReady) return ayaReady;
   const ld = (n) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = './assets/ad/' + n; });
-  return (ayaReady = Promise.all([ld('aya-base.jpg'), ld('aya-icons.png'), ld('oy-flag.png'), ld('ar-icons.png'), ld('ar-avatar.jpg'), ld('ayk-base.jpg'), ld('ayk-icons.png'), ld('wr-avatar.jpg'), ...[1, 2, 3, 4, 5, 6, 7].map((n) => ld('wg-' + n + '.jpg'))]).then(([b, i, f, ai, av, kb, ki, wr, ...wg]) => { ayaArt.wrAv = wr; wg.forEach((im, k) => { ayaArt['wg' + (k + 1)] = im; }); ayaArt.pbase = ayaArt.base = b; ayaArt.picons = ayaArt.icons = i; ayaArt.oyFlag = f; ayaArt.arIcons = ai; ayaArt.arAv = av; ayaArt.kbase = kb; ayaArt.kicons = ki; }));
+  return (ayaReady = Promise.all([ld('aya-base.jpg'), ld('aya-icons.png'), ld('oy-flag.png'), ld('ar-icons.png'), ld('ar-avatar.jpg'), ld('ayk-base.jpg'), ld('ayk-icons.png'), ld('wr-avatar.jpg'), ld('wi-flowers.png'), ...[1, 2, 3, 4, 5, 6, 7].map((n) => ld('wg-' + n + '.jpg'))]).then(([b, i, f, ai, av, kb, ki, wr, wfl, ...wg]) => { ayaArt.wrAv = wr; ayaArt.wiFl = wfl; wg.forEach((im, k) => { ayaArt['wg' + (k + 1)] = im; }); ayaArt.pbase = ayaArt.base = b; ayaArt.picons = ayaArt.icons = i; ayaArt.oyFlag = f; ayaArt.arIcons = ai; ayaArt.arAv = av; ayaArt.kbase = kb; ayaArt.kicons = ki; }));
 }
 const AYA_PINK = { kick: '#A85E5E', title: '#655454', proj: '#A3504D', sub: '#605050', card: '#F0E5E1', cTitle: '#3E3330', cVal: '#A85E5D', tag: '#46372F', phone: '#A95F5E', addr: '#6A4E4A', plot: '#A2474F',
   ground: '#EFE3DC', wash: 'rgba(250,232,228,0.32)', pinA: '#E7A3A8', pinB: '#B4525C', labBg: 'rgba(180,82,92,.94)', shadow: 'rgba(120,70,70,.14)', cardLine: '' };
@@ -385,13 +385,14 @@ function wrPanel(c, x, y, w, h, cx, cy) {   // the rose panel with faint rings a
   c.restore();
   c.strokeStyle = 'rgba(210,174,114,.8)'; c.lineWidth = 2; box(c, x + 18, y + 18, w - 36, h - 36, 44); c.stroke();
 }
-function wrAvatar(c, v, at, cx, cy, r) {   // her portrait in an ivory ring with a gold line and two gold diamonds
+function wrAvatar(c, v, at, cx, cy, r, fl) {   // her portrait in an ivory ring with a gold line and two gold diamonds
   if (v.wAv === false || !ayaArt.wrAv) return;
   at('avatar', cx - r - 26, cy - r - 26, 2 * r + 52, 2 * r + 52, () => {
     c.save(); c.shadowColor = 'rgba(50,15,20,.35)'; c.shadowBlur = 26; c.shadowOffsetY = 8; c.fillStyle = WR.ivory; c.beginPath(); c.arc(cx, cy, r + 14, 0, 7); c.fill(); c.restore();
     c.save(); c.beginPath(); c.arc(cx, cy, r, 0, 7); c.clip(); c.drawImage(ayaArt.wrAv, cx - r, cy - r, 2 * r, 2 * r); c.restore();
     c.strokeStyle = WR.gold; c.lineWidth = 4; c.beginPath(); c.arc(cx, cy, r + 22, 0, 7); c.stroke();
-    wrDiamond(c, cx, cy - r - 22, 11, WR.gold); wrDiamond(c, cx, cy + r + 22, 11, WR.gold);
+    if (fl && ayaArt.wiFl) { const k = (r + 22) / 200; c.drawImage(ayaArt.wiFl, cx - 300 * k, cy - 300 * k, 600 * k, 600 * k); }   // «قالب لين إنستجرام»: the flower spray on the right of the ring
+    else { wrDiamond(c, cx, cy - r - 22, 11, WR.gold); wrDiamond(c, cx, cy + r + 22, 11, WR.gold); }
   });
 }
 function wrWho(c, v, at, cx, y, w, ink, sub) {
@@ -433,7 +434,15 @@ function wrHead(c, v, at, R, w, y) {   // kicker pill, the project in big letter
     if (x > L + 40) { const g = c.createLinearGradient(L, 0, x, 0); g.addColorStop(0, 'rgba(210,174,114,0)'); g.addColorStop(1, WR.gold); c.fillStyle = g; c.fillRect(L, y + 267, x - L, 3); }
   });
 }
-function wrPlan(c, v, p, MX, MY, MW, MH) {   // the plan, with a rose ring and a pin on the plot
+function wiArrow(c, tx, ty, K) {   // a black arrow with a thick white edge, pointing straight up, its tip at (tx, ty)
+  c.save(); c.translate(tx, ty); c.scale(K, K);
+  const hw = 62, hl = 92, sw = 26, L = 230;
+  c.beginPath(); c.moveTo(0, 0); c.lineTo(hw, hl); c.lineTo(sw, hl - 6); c.lineTo(sw, L); c.lineTo(-sw, L); c.lineTo(-sw, hl - 6); c.lineTo(-hw, hl); c.closePath();
+  c.lineJoin = 'round'; c.shadowColor = 'rgba(0,0,0,.28)'; c.shadowBlur = 14; c.shadowOffsetY = 4; c.lineWidth = 26; c.strokeStyle = '#FFFFFF'; c.stroke();
+  c.shadowColor = 'transparent'; c.lineWidth = 8; c.strokeStyle = '#000000'; c.stroke(); c.fillStyle = '#000000'; c.fill();
+  c.restore();
+}
+function wrPlan(c, v, p, MX, MY, MW, MH, red) {   // the plan, with a rose ring and a pin on the plot
   const o = v.o.map || [0, 0];
   c.save(); c.translate(o[0], o[1]);
   c.save(); c.shadowColor = 'rgba(90,40,40,.22)'; c.shadowBlur = 26; c.shadowOffsetY = 8; c.fillStyle = '#FFFFFF'; box(c, MX - 12, MY - 12, MW + 24, MH + 24, 44); c.fill(); c.restore();
@@ -443,7 +452,12 @@ function wrPlan(c, v, p, MX, MY, MW, MH) {   // the plan, with a rose ring and a
   const sx = MX + (p.c[0] - x0) * k, sy = MY + (p.c[1] - y0) * k;
   let rr = 0; (p.p || []).forEach((q) => { rr = Math.max(rr, Math.hypot((q[0] - p.c[0]) * k, (q[1] - p.c[1]) * k)); });
   const K = +v.pinK || 1, R = Math.max(34, rr + 12) * K;
-  if (v.pin) {
+  if (v.pin && red) {   // the red ring and the black arrow coming up to the plot
+    c.save(); box(c, MX, MY, MW, MH, 34); c.clip();
+    const g = c.createLinearGradient(sx, sy - R, sx, sy + R); g.addColorStop(0, '#F5392C'); g.addColorStop(1, '#D10F0A');
+    c.shadowColor = 'rgba(120,0,0,.3)'; c.shadowBlur = 10; c.lineWidth = 16 * K; c.strokeStyle = g; c.beginPath(); c.arc(sx, sy, R, 0, 7); c.stroke(); c.shadowColor = 'transparent';
+    wiArrow(c, sx, sy + R + 18 * K, K); c.restore();
+  } else if (v.pin) {
     c.save(); box(c, MX, MY, MW, MH, 34); c.clip();
     c.fillStyle = 'rgba(178,88,88,.16)'; c.beginPath(); c.arc(sx, sy, R + 18 * K, 0, 7); c.fill();
     c.lineWidth = 8 * K; c.strokeStyle = WR.rose; c.beginPath(); c.arc(sx, sy, R, 0, 7); c.stroke();
@@ -491,9 +505,9 @@ function wrDraw(c, v, p, at) {
     wrCard(c, v, at, 'c2', 620, 934, 460, 'bld', v.w_c2t, v.w_c2s, '');
     wrOwn(c, v, at, 1090, 1090, 940);
   } else {
-    wrAvatar(c, v, at, 290, 290, 196);
+    wrAvatar(c, v, at, 290, 290, 196, true);
     wrHead(c, v, at, 1540, 960, 92);
-    wrPlan(c, v, p, 60, 560, 1480, 720);
+    wrPlan(c, v, p, 60, 560, 1480, 720, true);
     wrCard(c, v, at, 'c1', 820, 1316, 720, 'cube', v.w_c1t, v.w_area, v.w_unit);
     wrCard(c, v, at, 'c2', 60, 1316, 720, 'bld', v.w_c2t, v.w_c2s, '');
     wrOwn(c, v, at, 800, 1474, 1400);
@@ -1294,7 +1308,7 @@ const PZ_FILE = { wa: 'whatsapp', wr: 'leen-whatsapp', wi: 'leen-instagram', wg:
 function designFor(k) {   // the template's saved design, the open one, or a fresh one carrying the payment type and prices
   if (k === ad.v.theme) return ad.v;
   const sv = ad.saved && ad.saved[k]; if (sv) return Object.assign(adDefaults(ad.p), sv.v, { theme: k });
-  const v = adDefaults(ad.p); v.theme = k; v.phone = pzPhone(k); if (layoutOf(k) === 'aya') v.lab = false;
+  const v = adDefaults(ad.p); v.theme = k; v.phone = pzPhone(k); if (layoutOf(k) === 'aya') v.lab = false; if (k === 'wi') v.w_name = 'Leen AL Halabi';
   ['mode', 'ppf', 'price', 'o_priceC', 'o_priceI', 'r_priceC', 'r_priceI'].forEach((f) => { if (ad.v[f] !== undefined && ad.v[f] !== '') v[f] = ad.v[f]; });
   return v;
 }
