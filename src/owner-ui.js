@@ -521,8 +521,8 @@ export async function initAdmUser(pg, id) {
   const me = session.user() || {};
   const draw = (j) => {
     const u = j.user;
-    box.innerHTML = `${profileHead(u, { status: true, actions: true, pending: true })}
-      ${u.verify ? `<div class="vreq"><b>طلب التوثيق: ${u.verify.status === 'approved' ? 'موثّق ✓' : u.verify.status === 'pending' ? 'قيد المراجعة' : 'مرفوض'}</b>
+    box.innerHTML = `${profileHead(u, { status: !!me.admin, actions: true, pending: !!me.admin })}
+      ${me.admin && u.verify ? `<div class="vreq"><b>طلب التوثيق: ${u.verify.status === 'approved' ? 'موثّق ✓' : u.verify.status === 'pending' ? 'قيد المراجعة' : 'مرفوض'}</b>
         <span>${esc(u.verify.company)} · ${esc(u.verify.city)} · ${esc(u.verify.name)} · <a href="tel:${esc(u.verify.phone)}" dir="ltr">${esc(u.verify.phone)}</a></span>
         ${u.verify.status === 'pending' ? `<div class="admact"><button class="btn wa" data-vok2="1">✓ توثيق (+500 نقطة)</button><button class="btn ghost" data-vno2="1">✕ رفض</button></div>` : u.verify.status === 'approved' ? `<button class="btn ghost danger" data-vno2="1">إلغاء التوثيق</button>` : ''}</div>` : ''}
       ${me.admin ? `<div class="admact">

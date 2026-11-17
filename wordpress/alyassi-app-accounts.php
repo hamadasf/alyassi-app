@@ -626,21 +626,29 @@ function oay_acc_adm_feature() {
 	else { delete_post_meta( $p->ID, '_oay_featured' ); delete_post_meta( $p->ID, '_oay_featured_until' ); delete_post_meta( $p->ID, '_oay_slider_until' ); }
 	oay_acc_ok( array( 'item' => oay_acc_card( get_post( $p->ID ), 'admin' ) ) );
 }
+/** what a team member who is not the admin may see of another account: the name, picture, the office badge and their ads —
+ *  never points, permissions, the verification request (office name, phone) or ban state; email and phone only with «متابعة العملاء» */
+function oay_acc_staff_view( $row, $me ) {
+	if ( ! is_array( $row ) || oay_acc_is_admin( $me ) ) { return $row; }
+	$keep = array( 'id', 'name', 'company', 'verified', 'team', 'avatar', 'online', 'last', 'joined', 'ads', 'admin', 'role' );
+	if ( oay_acc_can( $me, 'leads' ) ) { $keep[] = 'email'; $keep[] = 'phone'; }
+	return array_intersect_key( $row, array_flip( $keep ) ) + array( 'limited' => true );
+}
 function oay_acc_adm_userrow( $u ) {
 	$n = (int) ( new WP_Query( array( 'post_type' => 'lands', 'author' => $u->ID, 'post_status' => array( 'publish', 'pending', 'draft' ), 'meta_key' => '_oay_from_app', 'fields' => 'ids', 'posts_per_page' => 1 ) ) )->found_posts;
 	return oay_acc_userdata( $u ) + array( 'joined' => strtotime( $u->user_registered ) * 1000, 'ads' => $n );
 }
 function oay_acc_adm_users() {
-	oay_acc_need_office(); $q = sanitize_text_field( oay_acc_arg( 'q', 80 ) );
+	$me = oay_acc_need_office(); $q = sanitize_text_field( oay_acc_arg( 'q', 80 ) );
 	$args = array( 'number' => 200, 'orderby' => 'registered', 'order' => 'DESC', 'meta_key' => 'oay_app_user' );
 	if ( $q ) { unset( $args['meta_key'] ); $args['search'] = '*' . $q . '*'; $args['search_columns'] = array( 'user_email', 'display_name', 'user_login' ); }
-	oay_acc_ok( array( 'items' => array_map( 'oay_acc_adm_userrow', get_users( $args ) ) ) );
+	oay_acc_ok( array( 'items' => array_map( function ( $u ) use ( $me ) { return oay_acc_staff_view( oay_acc_adm_userrow( $u ), $me ); }, get_users( $args ) ) ) );
 }
 function oay_acc_adm_target() { $u = get_userdata( absint( oay_acc_arg( 'id', 12 ) ) ); if ( ! $u ) { oay_acc_err( 'غير موجود', 404 ); } return $u; }
 function oay_acc_adm_user() {
-	oay_acc_need_office(); $u = oay_acc_adm_target();
+	$me = oay_acc_need_office(); $u = oay_acc_adm_target();
 	$ads = get_posts( array( 'post_type' => 'lands', 'author' => $u->ID, 'post_status' => array( 'publish', 'pending', 'draft' ), 'numberposts' => 100, 'meta_key' => '_oay_from_app' ) );
-	oay_acc_ok( array( 'user' => oay_acc_adm_userrow( $u ), 'ads' => array_map( function ( $p ) { return oay_acc_card( $p, 'admin' ); }, $ads ) ) );
+	oay_acc_ok( array( 'user' => oay_acc_staff_view( oay_acc_adm_userrow( $u ), $me ), 'ads' => array_map( function ( $p ) { return oay_acc_card( $p, 'admin' ); }, $ads ) ) );
 }
 function oay_acc_adm_points() {
 	oay_acc_need_admin(); $u = oay_acc_adm_target();
@@ -858,9 +866,9 @@ function oay_acc_adm_chats() {
 	}, $q ) ) ) ) );
 }
 function oay_acc_adm_chat() {
-	oay_acc_need_perm( 'chats' ); $u = oay_acc_adm_target(); $tid = oay_chat_thread( $u->ID, false );
+	$me = oay_acc_need_perm( 'chats' ); $u = oay_acc_adm_target(); $tid = oay_chat_thread( $u->ID, false );
 	if ( $tid ) { update_post_meta( $tid, 'oay_read_admin', (int) round( microtime( true ) * 1000 ) ); }
-	oay_acc_ok( array( 'user' => oay_acc_adm_userrow( $u ), 'items' => $tid ? oay_chat_msgs( $tid, true ) : array() ) + oay_chat_peer_user( $tid, $u->ID ) );
+	oay_acc_ok( array( 'user' => oay_acc_staff_view( oay_acc_adm_userrow( $u ), $me ), 'items' => $tid ? oay_chat_msgs( $tid, true ) : array() ) + oay_chat_peer_user( $tid, $u->ID ) );
 }
 function oay_acc_adm_chat_send() {
 	$me = oay_acc_need_perm( 'chats' ); $u = oay_acc_adm_target(); $tid = oay_chat_thread( $u->ID );
@@ -1104,7 +1112,7 @@ function oay_acc_user_get() {
 		'online' => oay_is_online( $t->ID ), 'last' => oay_seen_ms( $t->ID ), 'ads' => count( $pub ), 'admin' => oay_acc_is_admin( $t ),
 		'items' => array_map( 'oay_acc_card', $pub ), 'rating' => oay_rating_summary( $t->ID, true ) );
 	if ( $adm ) {   // the office sees everything
-		$p['full'] = oay_acc_adm_userrow( $t ) + array( 'verifyPhone' => $v ? (string) ( $v['phone'] ?? '' ) : '' );
+		$p['full'] = oay_acc_is_admin( $me ) ? oay_acc_adm_userrow( $t ) + array( 'verifyPhone' => $v ? (string) ( $v['phone'] ?? '' ) : '' ) : oay_acc_staff_view( oay_acc_adm_userrow( $t ), $me );
 	}
 	oay_acc_ok( array( 'profile' => $p ) );
 }
