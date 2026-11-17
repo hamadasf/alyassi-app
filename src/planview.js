@@ -13,7 +13,7 @@ export function planViewPage(p) {
     <div class="pvload"><i class="spin"></i><span>جارِ تحميل المخطط…</span></div>
     <div class="pvtop"><div class="pvleg"><span><i class="av"></i>متاح ${p.available}</span><span><i class="res"></i>محجوز ${p.reserved}</span><span><i class="sold"></i>مباع ${p.sold}</span></div>
       <button class="pvweb" data-web="${esc(p.plan)}" aria-label="فتح في الموقع">${H.I.globe}</button></div>
-    <div class="pvzoom"><button data-z="in" aria-label="تكبير">＋</button><button data-z="out" aria-label="تصغير">－</button><button data-z="fit" aria-label="عرض الكل">⤢</button><button data-z="me" class="pvme" aria-label="أنا فين؟">${H.I.pin}</button></div>
+    <div class="pvzoom"><button data-z="in" aria-label="تكبير">＋</button><button data-z="out" aria-label="تصغير">－</button><button data-z="fit" aria-label="عرض الكل">⤢</button><button data-z="me" class="pvme" aria-label="موقعي على المخطط">${H.I.pin}</button></div>
     <div class="pvmetip" hidden></div>
     <div class="pvcard" hidden></div>
   </div>`;
@@ -57,21 +57,21 @@ export async function initPlanView2(pg, p, focusN) {
     if (!navigator.geolocation) { H.toast('الموقع غير متاح على هذا الجهاز'); return; }
     say('<i class="spin"></i> جارِ تحديد موقعك…'); btn.classList.add('on');
     try { loc = loc || await planLocator(p); } catch { loc = null; }
-    if (!loc) { say(''); btn.classList.remove('on'); H.toast('المشروع ده لسه ما اتحددش مكانه على الخريطة — الإدارة تحدده من «خريطة المشاريع»'); return; }
+    if (!loc) { say(''); btn.classList.remove('on'); H.toast('لم يُحدَّد موقع هذا المشروع على الخريطة بعد — تحدده الإدارة من «خريطة المشاريع»'); return; }
     watch = navigator.geolocation.watchPosition((pos) => {
       if (!pg.isConnected) { navigator.geolocation.clearWatch(watch); watch = null; return; }   // the plan was closed
       const { latitude: la, longitude: lo, accuracy: acc } = pos.coords;
       const q = loc(la, lo), q2 = loc(la + Math.min(acc || 10, 200) / 111320, lo); if (!q) return;
       me = { x: q[0], y: q[1], r: q2 ? Math.hypot(q2[0] - q[0], q2[1] - q[1]) : 0 };
       const out = q[0] < -map.w * 0.15 || q[1] < -map.h * 0.15 || q[0] > map.w * 1.15 || q[1] > map.h * 1.15;
-      if (out) { say('📍 إنت برّه المشروع دلوقتي — افتحها وإنت في الأرض'); if (!centred) { fit(); clamp(); } }
+      if (out) { say('📍 أنت خارج المشروع حالياً — افتح المخطط وأنت في الموقع'); if (!centred) { fit(); clamp(); } }
       else {
         const nb = nearest(q[0], q[1]);
-        say(nb ? `📍 إنت جنب القطعة <b>${esc(nb.n)}</b>${nb.l ? ` <button class="pvmego" data-land="${esc(nb.l.id)}">تفاصيلها</button>` : ''}` : '📍 ده مكانك على المخطط');
+        say(nb ? `📍 أنت بجوار القطعة <b>${esc(nb.n)}</b>${nb.l ? ` <button class="pvmego" data-land="${esc(nb.l.id)}">التفاصيل</button>` : ''}` : '📍 هذا موقعك على المخطط');
         if (!centred) { view.ppu = Math.max(view.ppu, Math.min(maxPpu(), Math.min(W / 220, Hh / 180))); view.x0 = q[0] - W / 2 / view.ppu; view.y0 = q[1] - Hh / 2 / view.ppu; clamp(); }
       }
       centred = true; full();
-    }, (err) => { stopMe(); H.toast(err && err.code === 1 ? 'اسمح للتطبيق بالوصول لموقعك من إعدادات الجهاز' : 'تعذّر تحديد موقعك — جرّب في مكان مفتوح'); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+    }, (err) => { stopMe(); H.toast(err && err.code === 1 ? 'اسمح للتطبيق بالوصول إلى موقعك من إعدادات الجهاز' : 'تعذّر تحديد موقعك — حاول في مكان مفتوح'); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
   };
   // a plot the company does not offer: only its centre is known → the nearest centre within about a plot's size
   const plotR = (() => { const a = lands.filter((l) => l.poly && l.poly.length > 2).slice(0, 40).map((l) => { let s = 0; const q = l.poly; for (let i = 0, j = q.length - 1; i < q.length; j = i++) s += (q[j][0] + q[i][0]) * (q[j][1] - q[i][1]); return Math.abs(s / 2); }).sort((x, y) => x - y); return a.length ? Math.sqrt(a[a.length >> 1]) * 0.65 : 0; })();

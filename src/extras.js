@@ -53,7 +53,7 @@ function rateSheet(id) {
       await api('svc_rate', { stars, text: el.querySelector('textarea').value.trim(), id, dev: deviceId() });
       localStorage.removeItem('oay:rateq'); lsSet('rated', Date.now());
       if (stars >= 4) { setTimeout(close, 1800); askPlayReview(2200); }   // a happy client: ask for a Google Play rating too
-      el.querySelector('form').innerHTML = `<div class="rs-ic ok">✓</div><h3>شكراً لتقييمك!</h3><p class="muted">${stars >= 4 ? 'سعداء إن تجربتك كانت مميزة' : 'وصلت ملاحظتك للإدارة وهنتواصل معك لو احتجنا'}</p><button type="button" class="btn ghost block" data-rno>إغلاق</button>`;
+      el.querySelector('form').innerHTML = `<div class="rs-ic ok">✓</div><h3>شكراً لتقييمك!</h3><p class="muted">${stars >= 4 ? 'يسعدنا أن تجربتك كانت مميزة' : 'وصلت ملاحظتك إلى الإدارة وسنتواصل معك عند الحاجة'}</p><button type="button" class="btn ghost block" data-rno>إغلاق</button>`;
     } catch (ex) { toast(ex.message); go.disabled = false; go.textContent = 'إرسال التقييم'; }
   };
   document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('in'));

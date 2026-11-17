@@ -46,14 +46,14 @@ export function favSeen() { const s = {}; for (const l of lands()) s[l.id] = { p
 export function favNoticeHTML() {
   const ch = favChanges(); if (!ch.length) return '';
   const { esc, money } = H;
-  return `<div class="favnote"><b>${H.I.heart} تحديثات على أراضٍ في مفضلتك</b>${ch.map((c) => `<button data-land="${esc(c.l.id)}">قطعة ${esc(c.l.n)} · ${esc(c.l.projectName)}<span>${c.kind === 'av' ? 'رجعت متاحة للبيع' : `نزل السعر من ${money(c.from)} إلى ${money(c.to)} د.إ`}</span></button>`).join('')}</div>`;
+  return `<div class="favnote"><b>${H.I.heart} تحديثات على أراضٍ في مفضلتك</b>${ch.map((c) => `<button data-land="${esc(c.l.id)}">قطعة ${esc(c.l.n)} · ${esc(c.l.projectName)}<span>${c.kind === 'av' ? 'عادت متاحة للبيع' : `نزل السعر من ${money(c.from)} إلى ${money(c.to)} د.إ`}</span></button>`).join('')}</div>`;
 }
 /** a toast once per change when the app opens */
 export function favToast() {
   const ch = favChanges(); if (!ch.length) return;
   const key = ch.map((c) => c.l.id + c.kind + (c.to || '')).join('|');
   if (lsGet('favtoast', '') === key) return; lsSet('favtoast', key);
-  H.toast(ch.length > 1 ? `❤️ ${ch.length} تحديثات على أراضٍ في مفضلتك` : ch[0].kind === 'av' ? `❤️ قطعة ${ch[0].l.n} في مفضلتك رجعت متاحة` : `❤️ نزل سعر قطعة ${ch[0].l.n} في مفضلتك`);
+  H.toast(ch.length > 1 ? `❤️ ${ch.length} تحديثات على أراضٍ في مفضلتك` : ch[0].kind === 'av' ? `❤️ قطعة ${ch[0].l.n} في مفضلتك عادت متاحة` : `❤️ نزل سعر قطعة ${ch[0].l.n} في مفضلتك`);
 }
 
 /* ---------- compare ---------- */

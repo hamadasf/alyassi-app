@@ -77,7 +77,7 @@ export function wantedAddPage() {
     <div class="cgrid"><label>أقل مساحة (قدم²)<input name="minFt" inputmode="numeric"></label><label>أكبر مساحة (قدم²)<input name="maxFt" inputmode="numeric"></label></div>
     <label>طريقة الدفع<select name="pay"><option value="any">لا يهم</option><option value="cash">كاش</option><option value="inst">أقساط</option></select></label>
     <label>ملاحظات<textarea name="notes" rows="3" maxlength="800" placeholder="زاوية، شارعين، قريبة من الخدمات…"></textarea></label>
-    <label class="chkrow"><input type="checkbox" name="alert" checked> نبهني فوراً لما تنزل أرض تناسب طلبي</label>
+    <label class="chkrow"><input type="checkbox" name="alert" checked> نبّهني فوراً عند توفّر أرض تناسب طلبي</label>
     <button class="btn primary block">إرسال الطلب</button></form>`;
 }
 export function initWantedAdd(pg) {
@@ -142,7 +142,7 @@ export function initLeads(pg) {
       box.innerHTML = j.items.length ? j.items.map((r) => `<button class="lrow${r.due ? ' due' : ''}" data-lead="${r.id}">${avatar(r)}
         <div><b class="notr">${H.esc(shownName(r))} ${r.verified ? H.I.verified : ''}</b>
           <span>${r.top ? `${(SRC[r.top.src] || ['•'])[0]} <span class="notr">${H.esc(r.top.name || (SRC[r.top.src] || ['', ''])[1])}</span>` : ''}</span>
-          <small>${r.stale ? '<em class="lstale">⏰ مستني رد</em> ' : ''}${r.count} اهتمام · ${ago(r.last)}${r.next ? ` · ${ei('calendar')} ${day(r.next)}` : ''}${r.ownerName ? ` · ${ei('user')} <span class="notr">${H.esc(r.ownerName)}</span>` : ''}</small></div>
+          <small>${r.stale ? '<em class="lstale">⏰ بانتظار الرد</em> ' : ''}${r.count} اهتمام · ${ago(r.last)}${r.next ? ` · ${ei('calendar')} ${day(r.next)}` : ''}${r.ownerName ? ` · ${ei('user')} <span class="notr">${H.esc(r.ownerName)}</span>` : ''}</small></div>
         <i class="lst ${r.status}">${ST[r.status]}</i></button>`).join('') : `<div class="cempty">${H.I.user || ''}<p>لا يوجد عملاء في هذه القائمة</p></div>`;
     } catch (e) { box.innerHTML = `<p class="muted">${H.esc(e.message)}</p>`; }
   };
@@ -159,7 +159,7 @@ export async function initLead(pg, id) {
     el.innerHTML = `<div class="ccard lcard">${avatar(u)}<div><b class="notr">${esc(shownName(u))} ${u.verified ? I.verified : ''}</b><span dir="ltr">${esc(ph || u.email)}</span></div></div>
       <div class="lbtns">${ph ? `<a class="btn ghost" href="tel:${esc(ph)}">${ei('phone')} اتصال</a><a class="btn wa" href="${esc(waUrl(ph))}" data-ext>${I.wa} واتساب</a>` : ''}
         <button class="btn primary" data-chat="${u.id}">${ei('chat')} محادثة</button><button class="btn ghost" data-prof="${u.id}">${ei('user')} الملف</button><button class="btn ghost" data-apush="${u.id}">${ei('bell')} إشعار له</button></div>
-      <div class="lowner">${u.stale ? '<em class="lstale">⏰ مستني رد من يومين</em>' : ''}<span>${ei('user')} المسؤول: <b class="notr">${esc(u.ownerName || 'لا أحد بعد')}</b></span>${u.owner && u.owner === ((session.user() || {}).id) ? '' : '<button class="btn sm ghost" data-mine>أنا المسؤول</button>'}</div>
+      <div class="lowner">${u.stale ? '<em class="lstale">⏰ بانتظار الرد منذ يومين</em>' : ''}<span>${ei('user')} المسؤول: <b class="notr">${esc(u.ownerName || 'لا أحد بعد')}</b></span>${u.owner && u.owner === ((session.user() || {}).id) ? '' : '<button class="btn sm ghost" data-mine>أنا المسؤول</button>'}</div>
       <div class="ccard"><h4 class="lh">الحالة</h4><div class="lstates">${Object.entries(ST).map(([k, v]) => `<button class="${l.status === k ? 'on ' : ''}${k}" data-st="${k}">${v}</button>`).join('')}</div>
         <h4 class="lh">موعد المتابعة</h4><div class="lnext"><input type="date" id="lnext" value="${l.next ? new Date(l.next).toISOString().slice(0, 10) : ''}">
           <button data-nd="1">غداً</button><button data-nd="3">بعد 3 أيام</button><button data-nd="7">أسبوع</button>${l.next ? '<button data-nd="0">إلغاء</button>' : ''}</div>
@@ -189,7 +189,7 @@ export async function initLead(pg, id) {
     else if (t.dataset.munlink) { if ((await uiConfirm('إزالة هذه الأرض من «أرضي» لدى العميل؟', { danger: true, ok: 'إزالة' }))) link(t.dataset.munlink, false); }
     else if (t.dataset.apush) { e.stopPropagation(); H.pushPage('apush', 'user:' + t.dataset.apush + ':' + (j.user.name || '')); }
   });
-  // a call / WhatsApp from here counts as working on the client (stops the «مستني رد» reminder)
+  // a call / WhatsApp from here counts as working on the client (stops the «بانتظار الرد» reminder)
   el.addEventListener('click', (e) => { if (e.target.closest('a[href^="tel:"], a.wa')) api('adm_lead_save', { id }).catch(() => {}); }, true);
   el.addEventListener('change', (e) => { if (e.target.id === 'lnext' && e.target.value) save({ next: new Date(e.target.value + 'T09:00:00').getTime(), status: j.lead.status === 'new' ? 'follow' : j.lead.status }, 'تم ضبط موعد المتابعة ✓'); });
 }

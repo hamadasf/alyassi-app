@@ -39,7 +39,7 @@ async function saveVideo(blob, name, toast) {
     try {   // no share sheet: keep it in the phone's files
       const u8 = new Uint8Array(await blob.arrayBuffer());
       await Filesystem.writeFile({ path: 'عمر الياسي/' + file, data: b64(u8), directory: Directory.Documents, recursive: true });
-      toast('اتحفظ في الملفات ← Documents ← عمر الياسي ✓');
+      toast('تم الحفظ في الملفات ← Documents ← عمر الياسي ✓');
     } catch { toast('تعذّر حفظ الفيديو'); }
   }
 }

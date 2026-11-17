@@ -44,7 +44,7 @@ add_action( 'oay_plot_changes', function ( $slug, $name, $ch, $new ) {
 		$n = (string) ( $c['n'] ?? '' ); $q = $st[ $n ] ?? array(); if ( ( $q['s'] ?? '' ) !== 'av' ) { continue; }
 		$from = (int) ( $c['from'] ?? 0 ); $to = (int) ( $c['to'] ?? 0 );
 		if ( 'price' === ( $c['kind'] ?? '' ) && $from && $to && $to < $from ) { $why = 'نزل السعر من ' . number_format( $from ) . ' إلى ' . number_format( $to ) . ' د.إ'; }
-		elseif ( 'status' === ( $c['kind'] ?? '' ) ) { $why = 'رجعت متاحة للبيع' . ( ! empty( $q['total'] ) ? ' · ' . number_format( (int) $q['total'] ) . ' د.إ' : '' ); }
+		elseif ( 'status' === ( $c['kind'] ?? '' ) ) { $why = 'عادت متاحة للبيع' . ( ! empty( $q['total'] ) ? ' · ' . number_format( (int) $q['total'] ) . ' د.إ' : '' ); }
 		else { continue; }
 		$hits[ $slug . ':' . $n ] = array( 'n' => $n, 'why' => $why );
 	}
@@ -94,8 +94,8 @@ add_action( 'oay_plot_changes', function ( $slug, $name, $ch, $new ) {
 	}
 	foreach ( $sent as $alias => $b ) {
 		list( $n, $f, $fn ) = $b; $id = $slug . ':' . $n;
-		$title = '✨ أرض جديدة شبه اللي في مفضلتك · ' . $name;
-		$body = 'قطعة ' . $n . ' · ' . number_format( (int) round( $f[1] ) ) . ' قدم²' . ( $f[2] ? ' · ' . number_format( $f[2] ) . ' د.إ' : '' ) . ' — شبه القطعة ' . $fn;
+		$title = '✨ أرض جديدة مشابهة لأرض في مفضلتك · ' . $name;
+		$body = 'قطعة ' . $n . ' · ' . number_format( (int) round( $f[1] ) ) . ' قدم²' . ( $f[2] ? ' · ' . number_format( $f[2] ) . ' د.إ' : '' ) . ' — مشابهة للقطعة ' . $fn;
 		wp_remote_post( 'https://api.onesignal.com/notifications?c=push', array( 'timeout' => 8, 'blocking' => false,
 			'headers' => array( 'Content-Type' => 'application/json', 'Authorization' => 'Key ' . $key ),
 			'body' => wp_json_encode( array( 'app_id' => OAY_APP_ID, 'target_channel' => 'push', 'include_aliases' => array( 'external_id' => array( $alias ) ),

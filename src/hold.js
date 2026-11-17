@@ -24,10 +24,10 @@ export async function fillHold(pg, l) {
     if (h) {
       const mine = h.uid === me.id || boss;
       box.innerHTML = `<div class="hold on"><b>⏳ محجوزة مؤقتاً لـ <span class="notr">${esc(h.client)}</span></b>
-        <span>بواسطة <span class="notr">${esc(h.by)}</span> · باقي <em data-hleft>${left(h.until)}</em></span>
-        ${mine ? `<div class="hold-b"><button class="btn primary sm" data-hact="paid">تم دفع العربون</button><button class="btn ghost sm" data-hact="extend">مدّد يوم</button><button class="btn ghost sm" data-hact="release">إلغاء الحجز</button></div>` : ''}</div>`;
+        <span>بواسطة <span class="notr">${esc(h.by)}</span> · المتبقي <em data-hleft>${left(h.until)}</em></span>
+        ${mine ? `<div class="hold-b"><button class="btn primary sm" data-hact="paid">تم دفع العربون</button><button class="btn ghost sm" data-hact="extend">تمديد يوم</button><button class="btn ghost sm" data-hact="release">إلغاء الحجز</button></div>` : ''}</div>`;
     } else if (l.status === 'av') {
-      box.innerHTML = `<div class="hold"><b>⏳ حجز مؤقت لعميل</b><span>تظهر «محجوزة» للكل، وترجع متاحة لوحدها لو العربون ما اتسجلش في المدة.</span>
+      box.innerHTML = `<div class="hold"><b>⏳ حجز مؤقت لعميل</b><span>تظهر «محجوزة» للجميع، وتعود متاحة تلقائياً إذا لم يُسجَّل العربون خلال المدة.</span>
         <input class="hold-c" maxlength="80" placeholder="اسم العميل"><div class="hold-b"><button class="btn primary sm" data-hh="24">24 ساعة</button><button class="btn ghost sm" data-hh="48">48 ساعة</button></div></div>`;
     } else box.innerHTML = '';
   };
@@ -42,11 +42,11 @@ export async function fillHold(pg, l) {
         l.status = 'res'; H.toast('تم الحجز المؤقت ✓'); H.refreshData && H.refreshData();
       } else if (t.dataset.hact) {
         const a = t.dataset.hact;
-        if (a === 'release' && !(await uiConfirm('إلغاء الحجز المؤقت؟ القطعة هترجع «متاحة» للكل.', { ok: 'إلغاء الحجز', danger: true }))) return;
+        if (a === 'release' && !(await uiConfirm('إلغاء الحجز المؤقت؟ ستعود القطعة «متاحة» للجميع.', { ok: 'إلغاء الحجز', danger: true }))) return;
         t.disabled = true;
         h = (await api('hold_done', { id: l.id, act: a })).hold; cache = null;
         if (a === 'release') l.status = 'av';
-        H.toast(a === 'paid' ? 'تمام — القطعة محجوزة نهائياً ✓' : a === 'extend' ? 'اتمدّد الحجز يوم ✓' : 'اتلغى الحجز والقطعة رجعت متاحة'); H.refreshData && H.refreshData();
+        H.toast(a === 'paid' ? 'تم — القطعة محجوزة نهائياً ✓' : a === 'extend' ? 'تم تمديد الحجز يوماً ✓' : 'أُلغي الحجز وعادت القطعة متاحة'); H.refreshData && H.refreshData();
       }
       paint();
     } catch (ex) { t.disabled = false; H.toast(ex.message); }

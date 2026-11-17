@@ -384,7 +384,7 @@ function oay_acc_hold_set() {
 	$h[ $id ] = array( 'uid' => $me->ID, 'client' => $client, 't' => time(), 'until' => time() + $hours * HOUR_IN_SECONDS, 'warned' => 0 );
 	update_option( 'oay_holds', $h, false ); do_action( 'oay_hold_made', $me, $id, $client, $hours );
 	if ( function_exists( 'oay_push_to' ) ) {
-		oay_push_to( array_diff( oay_admin_ids(), array( $me->ID ) ), '⏳ حجز مؤقت · قطعة ' . $n, $me->display_name . ' حجزها لـ ' . $client . ' لمدة ' . $hours . ' ساعة', array( 'open' => 'land', 'id' => $id ) );
+		oay_push_to( array_diff( oay_admin_ids(), array( $me->ID ) ), '⏳ حجز مؤقت · قطعة ' . $n, $me->display_name . ' حجزها مؤقتاً لـ ' . $client . ' لمدة ' . $hours . ' ساعة', array( 'open' => 'land', 'id' => $id ) );
 	}
 	oay_acc_ok( array( 'hold' => oay_hold_row( $id, $h[ $id ] ) ) );
 }
@@ -412,11 +412,11 @@ add_action( 'oay_holds_check', function () {
 			if ( $still ) { oay_hold_status( $slug, $n, 'av', false ); }   // available again: the favourites alert goes out
 			if ( function_exists( 'oay_push_to' ) ) {
 				oay_push_to( array_unique( array_merge( array( (int) $x['uid'] ), oay_admin_ids() ) ), '⌛ انتهى الحجز المؤقت · قطعة ' . $n,
-					'العربون ما اتسجلش من ' . $x['client'] . ( $still ? ' — القطعة رجعت متاحة' : '' ), array( 'open' => 'land', 'id' => $id ) );
+					'لم يُسجَّل عربون ' . $x['client'] . ( $still ? ' — عادت القطعة متاحة' : '' ), array( 'open' => 'land', 'id' => $id ) );
 			}
 			unset( $h[ $id ] ); $dirty = true;
 		} elseif ( $left <= HOUR_IN_SECONDS && empty( $x['warned'] ) && function_exists( 'oay_push_to' ) ) {
-			oay_push_to( array( (int) $x['uid'] ), '⏳ باقي ساعة على نهاية الحجز · قطعة ' . $n, 'كلّم ' . $x['client'] . ' عشان العربون، أو مدّد الحجز يوم من صفحة القطعة', array( 'open' => 'land', 'id' => $id ) );
+			oay_push_to( array( (int) $x['uid'] ), '⏳ تبقّت ساعة على انتهاء الحجز · قطعة ' . $n, 'تواصل مع ' . $x['client'] . ' بشأن العربون، أو مدّد الحجز يوماً من صفحة القطعة', array( 'open' => 'land', 'id' => $id ) );
 			$h[ $id ]['warned'] = 1; $dirty = true;
 		}
 	}

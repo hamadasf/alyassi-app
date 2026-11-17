@@ -255,7 +255,7 @@ const push = {
       const p = el.querySelector('p');
       if (p) p.textContent = st === 'install' ? 'على الآيفون: أضف التطبيق للشاشة الرئيسية من زر المشاركة، ثم افتحه من الأيقونة وفعّل الإشعارات.'
         : st === 'denied' ? 'الإشعارات مرفوضة — فعّلها من إعدادات المتصفح لهذا الموقع.'
-        : 'يوصلك إشعار فوراً عند تغيّر سعر أو حالة أي أرض، أو نزول أرض جديدة.';
+        : 'يصلك إشعار فوراً عند تغيّر سعر أي أرض أو حالتها، أو عند إضافة أرض جديدة.';
       const b = el.querySelector('button'); if (b) b.hidden = st === 'install' || st === 'denied';
     });
   },
@@ -924,7 +924,7 @@ function renderLands() {
   $('#lands .count').textContent = DATA().lands.length ? `${items.length} أرض` : '';
   if (!DATA().lands.length) { $('#lands .list').innerHTML = skeleton(4); return; }
   if (!items.length) noteNoResult();
-  renderList($('#lands .list'), items, landCard, `${I.search}<p>مفيش أراضي مطابقة لبحثك</p><p class="sub">جرّب توسّع نطاق السعر أو المساحة، أو فعّل تنبيه يوصلك أول ما تنزل أرض مناسبة</p><button class="btn primary" data-reset>مسح الفلاتر</button><button class="btn ghost" id="emptyAlert" data-alertf>${I.bell} نبهني بأرض مناسبة</button>`);
+  renderList($('#lands .list'), items, landCard, `${I.search}<p>لا توجد أراضٍ مطابقة لبحثك</p><p class="sub">جرّب توسيع نطاق السعر أو المساحة، أو فعّل تنبيهاً يصلك فور توفّر أرض مناسبة</p><button class="btn primary" data-reset>مسح الفلاتر</button><button class="btn ghost" id="emptyAlert" data-alertf>${I.bell} نبهني بأرض مناسبة</button>`);
 }
 
 function renderProjects() {
@@ -935,7 +935,7 @@ function renderProjects() {
 function renderFavs() {
   const ids = favs.all(); const map = new Map(DATA().lands.map((l) => [l.id, l]));
   const items = ids.map((id) => map.get(id)).filter(Boolean);
-  renderList($('#favs .list'), items, landCard, `${I.heart}<p>مفضلتك فاضية</p><p class="sub">اضغط على القلب في أي أرض علشان تحفظها هنا، ويوصلك تنبيه لو نزل سعرها</p><button class="btn primary" data-go="lands">تصفح الأراضي</button>`);
+  renderList($('#favs .list'), items, landCard, `${I.heart}<p>لا توجد أراضٍ في مفضلتك</p><p class="sub">اضغط على القلب في أي أرض لحفظها هنا، وسيصلك تنبيه إذا انخفض سعرها</p><button class="btn primary" data-go="lands">تصفح الأراضي</button>`);
   const top = $('#favs .favtop');
   if (top) top.innerHTML = favNoticeHTML() + (items.length >= 2 ? `<button class="btn ghost block cmpbtn" data-compare="">${I.scale} قارن بين أراضي المفضلة</button>` : '');
   favSeen();

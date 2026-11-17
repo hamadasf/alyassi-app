@@ -32,7 +32,7 @@ export async function initReportPage(pg, weeks = 0) {
     const box = el.querySelector('#repDemand'); if (!box) return;
     box.innerHTML = `<div class="pcard"><h4>${ei('search')} يبحثون عنه ولا يجدونه <small class="muted">آخر 30 يوماً</small></h4>
         ${d.nores.length ? d.nores.map((x, i) => `<div class="rrow"><i>${i + 1}</i><span class="notr">${esc(x.q)}</span><b>${money(x.n)} مرة</b></div>`).join('') : '<p class="muted">لا توجد بيانات بعد — تظهر هنا عمليات البحث والفلاتر التي لم تجد أي أرض</p>'}
-        <p class="muted cnote">يساعدك تعرف نوع الأراضي والمساحات والأسعار المطلوبة اللي ناقصة عندك.</p></div>
+        <p class="muted cnote">يساعدك على معرفة أنواع الأراضي والمساحات والأسعار المطلوبة غير المتوفرة لديك.</p></div>
       <div class="pcard"><h4>${ei('eye')} الأكثر مشاهدة ولم تُبع بعد</h4>
         ${d.unsold.length ? d.unsold.map((x, i) => `<button class="rrow" data-land="${esc(x.id)}"><i>${i + 1}</i><span class="notr">${esc(name(x))}${x.price ? ` · ${money(x.price)} د.إ` : ''}</span><b>${money(x.n)} مشاهدة · ${money(x.wa)} واتساب</b></button>`).join('') : '<p class="muted">لا توجد بيانات بعد</p>'}
         <p class="muted cnote">مشاهدات كثيرة وتواصل قليل = راجع السعر أو اعمل عليها عرض لفترة محدودة.</p></div>`;

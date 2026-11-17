@@ -101,7 +101,7 @@ add_action( 'oay_leads_daily', function () {
 	}
 	foreach ( $per as $owner => $x ) {
 		$to = $owner && get_userdata( $owner ) ? array( $owner ) : oay_admin_ids();
-		$t = '📋 متابعة العملاء اليوم: ' . implode( ' · ', array_filter( array( $x['due'] ? $x['due'] . ' موعد متابعة' : '', $x['stale'] ? $x['stale'] . ' مستني رد' : '' ) ) );
+		$t = '📋 متابعة العملاء اليوم: ' . implode( ' · ', array_filter( array( $x['due'] ? $x['due'] . ' موعد متابعة' : '', $x['stale'] ? $x['stale'] . ' بانتظار الرد' : '' ) ) );
 		$n = $x['due'] + $x['stale'];
 		oay_push_to( $to, $t, implode( '، ', $x['names'] ) . ( $n > 3 ? ' وغيرهم' : '' ), array( 'open' => 'leads' ) );
 	}
@@ -119,7 +119,7 @@ add_action( 'oay_leads_hourly', function () {
 		$l = oay_lead_get( $u->ID ); if ( ! oay_lead_stale( $l ) || (int) ( $l['nudged'] ?? 0 ) > max( (int) ( $l['touched'] ?? 0 ), (int) $l['last'] ) ) { continue; }
 		$owner = (int) ( $l['owner'] ?? 0 ); $to = $owner && get_userdata( $owner ) ? array( $owner ) : oay_admin_ids();
 		$what = $l['items'] ? ( $l['items'][0]['name'] ?: '' ) : '';
-		oay_push_to( $to, '⏰ ' . $u->display_name . ' مستني منك رد', 'من يومين ما حدش كلّمه' . ( $what ? ' · ' . $what : '' ), array( 'open' => 'lead', 'id' => (string) $u->ID ) );
+		oay_push_to( $to, '⏰ ' . $u->display_name . ' بانتظار ردّك', 'لم يتواصل معه أحد منذ يومين' . ( $what ? ' · ' . $what : '' ), array( 'open' => 'lead', 'id' => (string) $u->ID ) );
 		$l['nudged'] = oay_crm_ms(); update_user_meta( $u->ID, 'oay_lead', $l );
 		if ( ++$sent >= 15 ) { break; }
 	}

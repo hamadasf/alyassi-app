@@ -168,7 +168,7 @@ function oay_acc_adm_prereg_mail() {
 	foreach ( oay_prereg_all() as $x ) {
 		if ( empty( $x['email'] ) ) { continue; }
 		$body = '<div dir="rtl" style="font-family:Tahoma,Arial;font-size:15px;line-height:1.8;color:#14203a">مرحباً ' . esc_html( $x['name'] ) . '،<br>'
-			. 'تطبيق <b>عمر الياسي للعقارات</b> متاح الآن! كل أراضي الشارقة بأسعارها وتنبيهات فورية لما ينزل السعر.<br><br>'
+			. 'تطبيق <b>عمر الياسي للعقارات</b> متاح الآن! جميع أراضي الشارقة بأسعارها وتنبيهات فورية عند انخفاض السعر.<br><br>'
 			. ( $android ? '<a href="' . esc_url( $android ) . '" style="display:inline-block;background:#0e1c36;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;margin:4px">حمّل من Google Play</a>' : '' )
 			. ( $ios ? '<a href="' . esc_url( $ios ) . '" style="display:inline-block;background:#0e1c36;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;margin:4px">حمّل من App Store</a>' : '' )
 			. '<br><br>للتواصل: 06 744 2027 · instagram.com/omaralyassi.uae3</div>';
@@ -188,8 +188,8 @@ add_action( 'template_redirect', function () {
 	status_header( 200 ); nocache_headers(); header( 'Content-Type: text/html; charset=utf-8' );
 	?><!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>تطبيق عمر الياسي للعقارات · قريباً</title>
-<meta name="description" content="سجّل الآن ويوصلك إشعار أول ما ينزل تطبيق عمر الياسي للعقارات على أندرويد وآيفون — كل أراضي الشارقة بأسعارها.">
-<meta property="og:title" content="تطبيق عمر الياسي للعقارات · قريباً"><meta property="og:description" content="سجّل الآن ويوصلك إشعار أول ما ينزل التطبيق على أندرويد وآيفون.">
+<meta name="description" content="سجّل الآن ليصلك إشعار فور إطلاق تطبيق عمر الياسي للعقارات على أندرويد وآيفون — جميع أراضي الشارقة بأسعارها.">
+<meta property="og:title" content="تطبيق عمر الياسي للعقارات · قريباً"><meta property="og:description" content="سجّل الآن ليصلك إشعار فور إطلاق التطبيق على أندرويد وآيفون.">
 <meta property="og:image" content="<?php echo esc_url( $logo ); ?>"><meta name="theme-color" content="#0e1c36">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
@@ -218,15 +218,15 @@ button{width:100%;margin-top:16px;min-height:54px;border:0;border-radius:16px;ba
 <h1>تطبيق <span class="gold">عمر الياسي</span> للعقارات</h1>
 <p class="sub">كل أراضي الشارقة بأسعارها ومخططاتها في جيبك</p>
 <span class="soon">قريباً على أندرويد وآيفون</span>
-<ul class="feats"><li>مخططات تفاعلية</li><li>تنبيه لما ينزل السعر</li><li>استفسار بضغطة واتساب</li><li>اعرض أرضك للبيع</li></ul>
-<form id="f" novalidate><h2>سجّل الآن واعرف أول واحد</h2><p>يوصلك إشعار يوم ما ينزل التطبيق على المتاجر</p>
+<ul class="feats"><li>مخططات تفاعلية</li><li>تنبيه عند انخفاض السعر</li><li>استفسار بضغطة واتساب</li><li>اعرض أرضك للبيع</li></ul>
+<form id="f" novalidate><h2>سجّل الآن وكن أول من يعلم</h2><p>يصلك إشعار يوم إطلاق التطبيق في المتاجر</p>
 <label>الاسم</label><input name="name" autocomplete="name" placeholder="الاسم الكامل" required>
 <label>رقم الجوال</label><input name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="05X XXX XXXX" autocomplete="tel" required>
 <label>البريد الإلكتروني (اختياري)</label><input name="email" type="email" dir="ltr" placeholder="name@email.com" autocomplete="email">
 <label>أنت</label><div class="k"><label><input type="radio" name="kind" value="buyer" checked><span>أبحث عن أرض</span></label><label><input type="radio" name="kind" value="seller"><span>عندي أرض للبيع</span></label><label><input type="radio" name="kind" value="broker"><span>مكتب / وسيط</span></label></div>
 <div class="err" id="e"></div><button id="b">سجّلني</button>
 <div class="note">بياناتك تصل لمكتب عمر الياسي للعقارات فقط</div></form>
-<div class="ok" id="ok"><i>✓</i><b>تم تسجيلك بنجاح!</b><p>هنبعتلك أول ما التطبيق ينزل على المتاجر.</p></div>
+<div class="ok" id="ok"><i>✓</i><b>تم تسجيلك بنجاح!</b><p>سنُعلمك فور إطلاق التطبيق في المتاجر.</p></div>
 <div class="ct">للتواصل: <a href="tel:+97167442027" dir="ltr">06 744 2027</a><br><a href="https://www.instagram.com/omaralyassi.uae3" dir="ltr">@omaralyassi.uae3</a></div>
 </div>
 <script>
