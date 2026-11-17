@@ -249,7 +249,19 @@ function bindChat(root, { admin, uid }) {
       const u = j.user;
       root.querySelector('.waid b').innerHTML = `<span class="notr">${H.esc(shownName(u))}</span> ${u.verified ? H.I.verified : ''}`;
       root.querySelector('.waid .acc-av').outerHTML = userAv({ ...u, online: j.peer && j.peer.online });
+      ownerBar(j);
     }
+  };
+  // who follows this client: shown to the team; the admin / a manager can hand the chat to someone else
+  const ownerBar = (j) => {
+    let bar = root.querySelector('.cowner');
+    if (!bar) { bar = document.createElement('div'); bar.className = 'cowner'; box.parentNode.insertBefore(bar, box); }
+    const opts = (j.staff || []).map((x) => `<option value="${x.id}"${x.id === j.owner ? ' selected' : ''}>${H.esc(x.name)}</option>`).join('');
+    bar.innerHTML = j.boss
+      ? `<span>المسؤول عن المحادثة:</span><select data-cown><option value="0"${j.owner ? '' : ' selected'}>— غير مسندة —</option>${opts}</select>`
+      : `<span>${j.owner ? `المسؤول: <b class="notr">${H.esc(j.ownerName)}</b>` : 'محادثة جديدة — تصبح مسؤولاً عنها عند ردّك الأول'}</span>`;
+    const sel = bar.querySelector('[data-cown]');
+    if (sel) sel.onchange = async () => { try { const r = await api('adm_chat_assign', { id: uid, to: +sel.value }); H.toast(r.owner ? `أُسندت المحادثة إلى ${r.ownerName} ✓` : 'أصبحت المحادثة غير مسندة'); } catch (e) { H.toast(e.message); load(true); } };
   };
   const load = async (keep) => {
     try { took(admin ? await api('adm_chat', { id: uid }) : await api('chat_get')); draw(keep); refreshUnread(); }
@@ -415,7 +427,7 @@ async function loadInbox(box) {
     const j = await api('adm_chats');
     box.innerHTML = j.items.length ? j.items.map((c) => `<button class="cthread${c.unread ? ' new' : ''}" data-chat="${c.user.id}">
         ${userAv(c.user)}
-        <div><b class="notr">${esc(shownName(c.user))} ${c.user.verified ? H.I.verified : ''}</b><span>${c.lastFrom === 'admin' ? 'أنت: ' : ''}<span class="notr">${esc(c.lastText)}</span></span></div>
+        <div><b class="notr">${esc(shownName(c.user))} ${c.user.verified ? H.I.verified : ''}</b><span>${c.lastFrom === 'admin' ? 'أنت: ' : ''}<span class="notr">${esc(c.lastText)}</span></span>${c.ownerName ? `<small class="cown">مع <span class="notr">${esc(c.ownerName)}</span></small>` : '<small class="cown new">غير مسندة</small>'}</div>
         <div class="cmeta"><time>${c.last ? tm(c.last) : ''}</time>${c.unread ? `<i>${c.unread}</i>` : ''}</div></button>`).join('')
       : `<div class="cempty">${H.I.chat}<p>لا توجد محادثات بعد</p></div>`;
   } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }

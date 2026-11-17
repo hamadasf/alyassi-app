@@ -847,31 +847,62 @@ function oay_acc_chat_send() {
 	oay_chat_add( $tid, $u->ID, 'user', oay_acc_arg( 'text', 2000 ), $lid );
 	if ( function_exists( 'oay_lead_add' ) ) { oay_lead_add( $u->ID, 'chat', $lid ? (string) $lid : '', $lid ? get_the_title( $lid ) : 'محادثة مع الإدارة' ); }
 	$who = oay_shown_name( $u );
-	oay_push_to( oay_notif_filter( oay_admin_ids(), $first ? 'chat_first' : 'chat_all' ), 'رسالة جديدة · ' . $who, mb_substr( oay_acc_arg( 'text', 2000 ) ?: 'استفسار عن إعلان', 0, 120 ), array( 'user' => $u->ID ) );
+	oay_push_to( oay_notif_filter( oay_chat_notify_ids( $tid ), $first ? 'chat_first' : 'chat_all' ), 'رسالة جديدة · ' . $who, mb_substr( oay_acc_arg( 'text', 2000 ) ?: 'استفسار عن إعلان', 0, 120 ), array( 'user' => $u->ID ) );
 	oay_acc_ok( array( 'items' => oay_chat_msgs( $tid, false ) ) + oay_chat_peer_office( $tid ) );
 }
 function oay_chat_peer_office( $tid ) { $s = oay_office_seen(); return array( 'seen' => $tid ? (int) get_post_meta( $tid, 'oay_read_admin', true ) : 0, 'peer' => array( 'online' => time() * 1000 - $s < OAY_ONLINE_SECS * 1000, 'last' => $s ) ); }
 function oay_chat_peer_user( $tid, $uid ) { return array( 'seen' => $tid ? (int) get_post_meta( $tid, 'oay_read_user', true ) : 0, 'peer' => array( 'online' => oay_is_online( $uid ), 'last' => oay_seen_ms( $uid ) ) ); }
 function oay_acc_chat_unread() { $u = oay_acc_need_user(); $tid = oay_chat_thread( $u->ID, false );
-	if ( oay_acc_can( $u, 'chats' ) ) { $n = 0; foreach ( get_posts( array( 'post_type' => 'oay_chat', 'post_status' => 'private', 'numberposts' => 200, 'fields' => 'ids', 'meta_key' => 'oay_last' ) ) as $t ) { $n += oay_chat_unread_count( $t, 'admin' ); } oay_acc_ok( array( 'n' => $n, 'group' => oay_group_summary( $u->ID ) ) ); }
+	if ( oay_acc_can( $u, 'chats' ) ) { $n = 0; foreach ( get_posts( array( 'post_type' => 'oay_chat', 'post_status' => 'private', 'numberposts' => 200, 'fields' => 'ids', 'meta_key' => 'oay_last' ) ) as $t ) { if ( oay_chat_sees( $u, $t ) ) { $n += oay_chat_unread_count( $t, 'admin' ); } } oay_acc_ok( array( 'n' => $n, 'group' => oay_group_summary( $u->ID ) ) ); }
 	oay_acc_ok( array( 'n' => oay_chat_unread_count( $tid, 'user' ), 'group' => oay_group_summary( $u->ID ), 'private' => array( 'unread' => oay_chat_unread_count( $tid, 'user' ), 'last' => $tid ? (int) get_post_meta( $tid, 'oay_last', true ) : 0, 'lastText' => $tid ? (string) get_post_meta( $tid, 'oay_last_text', true ) : '', 'online' => time() * 1000 - oay_office_seen() < OAY_ONLINE_SECS * 1000 ) ) ); }
+/* ---- each client's chat is followed by one team member: the first one who replies (or whom the admin / a manager assigns).
+   A team member sees the chats assigned to them and the new ones nobody has taken yet; the admin and the managers see them all. ---- */
+function oay_chat_boss( $u ) { return $u && ( oay_acc_is_admin( $u ) || ( function_exists( 'oay_role' ) && 'mgr' === oay_role( $u ) ) ); }
+function oay_chat_owner( $tid ) { return $tid ? (int) get_post_meta( $tid, 'oay_owner', true ) : 0; }
+function oay_chat_sees( $me, $tid ) { if ( oay_chat_boss( $me ) ) { return true; } $o = oay_chat_owner( $tid ); return ! $o || $o === (int) $me->ID; }
+/** the team members who answer chats (the admin included) */
+function oay_chat_staff() { return array_values( array_filter( oay_admin_ids(), function ( $id ) { $u = get_userdata( $id ); return $u && oay_acc_can( $u, 'chats' ); } ) ); }
+/** who hears about a new message: the one following the chat and the admin — or, for a chat nobody has taken yet, everyone who answers chats */
+function oay_chat_notify_ids( $tid ) {
+	$o = oay_chat_owner( $tid ); $all = oay_chat_staff();
+	if ( ! $o || ! get_userdata( $o ) ) { return $all; }
+	return array_values( array_unique( array_merge( array( $o ), array_filter( $all, function ( $id ) { return oay_acc_is_admin( get_userdata( $id ) ); } ) ) ) );
+}
+function oay_acc_adm_chat_assign() {
+	$me = oay_acc_need_perm( 'chats' ); if ( ! oay_chat_boss( $me ) ) { oay_acc_err( 'تحويل المحادثات للإدارة والمدير فقط', 403 ); }
+	$u = oay_acc_adm_target(); $tid = oay_chat_thread( $u->ID ); $to = absint( oay_acc_arg( 'to', 12 ) );
+	if ( $to ) {
+		$t = get_userdata( $to ); if ( ! $t || ! oay_acc_can( $t, 'chats' ) ) { oay_acc_err( 'هذا الحساب ليست لديه صلاحية الرد على المحادثات' ); }
+		update_post_meta( $tid, 'oay_owner', $to );
+		if ( $to !== (int) $me->ID && function_exists( 'oay_push_to' ) ) { oay_push_to( array( $to ), 'محادثة جديدة مسندة إليك', 'أسند إليك ' . $me->display_name . ' متابعة محادثة ' . oay_shown_name( $u ), array( 'user' => $u->ID ) ); }
+	} else { delete_post_meta( $tid, 'oay_owner' ); }
+	oay_acc_ok( array( 'owner' => $to, 'ownerName' => $to ? get_userdata( $to )->display_name : '' ) );
+}
+add_action( 'wp_ajax_oay_acc_adm_chat_assign', 'oay_acc_adm_chat_assign' ); add_action( 'wp_ajax_nopriv_oay_acc_adm_chat_assign', 'oay_acc_adm_chat_assign' );
 function oay_acc_adm_chats() {
-	oay_acc_need_perm( 'chats' );
+	$me = oay_acc_need_perm( 'chats' );
 	$q = get_posts( array( 'post_type' => 'oay_chat', 'post_status' => 'private', 'numberposts' => 200, 'meta_key' => 'oay_last', 'orderby' => 'meta_value_num', 'order' => 'DESC' ) );
-	$q = array_values( array_filter( $q, function ( $t ) { return ! get_post_meta( $t->ID, 'oay_group', true ); } ) );
-	oay_acc_ok( array( 'items' => array_values( array_filter( array_map( function ( $t ) {
+	$q = array_values( array_filter( $q, function ( $t ) use ( $me ) { return ! get_post_meta( $t->ID, 'oay_group', true ) && oay_chat_sees( $me, $t->ID ); } ) );
+	$staff = oay_chat_boss( $me ) ? array_map( function ( $id ) { $x = get_userdata( $id ); return array( 'id' => (int) $id, 'name' => $x->display_name ); }, oay_chat_staff() ) : array();
+	oay_acc_ok( array( 'boss' => oay_chat_boss( $me ), 'staff' => $staff, 'items' => array_values( array_filter( array_map( function ( $t ) {
 		$u = get_userdata( $t->post_author ); if ( ! $u ) { return null; }
 		return array( 'user' => array( 'id' => $u->ID, 'name' => $u->display_name, 'team' => oay_is_team( $u ), 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ), 'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ), 'online' => oay_is_online( $u->ID ) ),
-			'last' => (int) get_post_meta( $t->ID, 'oay_last', true ), 'lastText' => (string) get_post_meta( $t->ID, 'oay_last_text', true ), 'lastFrom' => (string) get_post_meta( $t->ID, 'oay_last_from', true ), 'unread' => oay_chat_unread_count( $t->ID, 'admin' ) );
+			'last' => (int) get_post_meta( $t->ID, 'oay_last', true ), 'lastText' => (string) get_post_meta( $t->ID, 'oay_last_text', true ), 'lastFrom' => (string) get_post_meta( $t->ID, 'oay_last_from', true ), 'unread' => oay_chat_unread_count( $t->ID, 'admin' ),
+			'owner' => oay_chat_owner( $t->ID ), 'ownerName' => ( $o = get_userdata( oay_chat_owner( $t->ID ) ) ) ? $o->display_name : '' );
 	}, $q ) ) ) ) );
 }
 function oay_acc_adm_chat() {
 	$me = oay_acc_need_perm( 'chats' ); $u = oay_acc_adm_target(); $tid = oay_chat_thread( $u->ID, false );
+	if ( ! oay_chat_sees( $me, $tid ) ) { oay_acc_err( 'هذه المحادثة يتابعها موظف آخر', 403 ); }
 	if ( $tid ) { update_post_meta( $tid, 'oay_read_admin', (int) round( microtime( true ) * 1000 ) ); }
-	oay_acc_ok( array( 'user' => oay_acc_staff_view( oay_acc_adm_userrow( $u ), $me ), 'items' => $tid ? oay_chat_msgs( $tid, true ) : array() ) + oay_chat_peer_user( $tid, $u->ID ) );
+	oay_acc_ok( array( 'user' => oay_acc_staff_view( oay_acc_adm_userrow( $u ), $me ), 'items' => $tid ? oay_chat_msgs( $tid, true ) : array(),
+		'owner' => oay_chat_owner( $tid ), 'ownerName' => ( $o = get_userdata( oay_chat_owner( $tid ) ) ) ? $o->display_name : '', 'boss' => oay_chat_boss( $me ),
+		'staff' => oay_chat_boss( $me ) ? array_map( function ( $id ) { $x = get_userdata( $id ); return array( 'id' => (int) $id, 'name' => $x->display_name ); }, oay_chat_staff() ) : array() ) + oay_chat_peer_user( $tid, $u->ID ) );
 }
 function oay_acc_adm_chat_send() {
 	$me = oay_acc_need_perm( 'chats' ); $u = oay_acc_adm_target(); $tid = oay_chat_thread( $u->ID );
+	if ( ! oay_chat_sees( $me, $tid ) ) { oay_acc_err( 'هذه المحادثة يتابعها موظف آخر', 403 ); }
+	if ( ! oay_chat_owner( $tid ) && ! oay_chat_boss( $me ) ) { update_post_meta( $tid, 'oay_owner', (int) $me->ID ); }   // the first team member who replies follows this client
 	$lid = absint( oay_acc_arg( 'listing', 12 ) ); if ( $lid && 'lands' !== get_post_type( $lid ) ) { $lid = 0; }
 	$first = 0 === oay_chat_unread_count( $tid, 'user' );
 	oay_chat_add( $tid, $me->ID, 'admin', oay_acc_arg( 'text', 2000 ), $lid );
