@@ -42,7 +42,9 @@ async function fetchIndex() {
         const path = u.slice(SITE.length).split(/[?#]/)[0];
         if (/^\/[a-z0-9-]+\/$/.test(path) && !SKIP.test(path) && !plan) plan = SITE + path;
       });
-      const poster = [...d.querySelectorAll('img')].map((i) => i.getAttribute('src') || '').find((s) => /poster\.jpg/.test(s)) || '';
+      const imgs = [...d.querySelectorAll('img')].map((i) => i.getAttribute('src') || '');
+      // the project's own picture (cover.jpg) when the office gave one, else the plan picture
+      const poster = imgs.find((s) => /\/p\/[^/]+\/cover\.jpg/.test(s)) || imgs.find((s) => /poster\.jpg/.test(s)) || '';
       if (!plan) return null;
       const slug = plan.slice(SITE.length).replace(/\//g, '');
       return { slug, page, plan, pdf, poster: abs(poster), title: title.replace(/^مشروع\s+/, ''), order };

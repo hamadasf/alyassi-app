@@ -66,6 +66,7 @@ function oay_proj_lines_seed() {   // from the office: who may own in each proje
 		'muhathab'           => array( 'p1' => '', 'p2' => $all ),
 		'industrial4'        => array( 'p1' => '', 'p2' => $all ),
 		'rawdat-al-qurt'     => array( 'p1' => '', 'p2' => 'تملّك حر لجميع العرب' ),
+		'basateen-al-belaida' => array( 'p1' => '', 'p2' => $all ),
 	);
 }
 /** the projects still in the infrastructure works (Asas's announcement, 24 Sep 2026): never «جاهزة للبناء» on a post or a badge */
