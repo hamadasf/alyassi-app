@@ -105,7 +105,7 @@ const hull = (pts) => {   // convex hull (monotone chain) of [x, y] points
   for (let k = pts.length - 1; k >= 0; k--) { const q = pts[k]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
   return lo.slice(0, -1).concat(up.slice(0, -1));
 };
-async function planPicture(p) {
+export async function planPicture(p) {
   const m = p.map, s = Math.min(1, 2600 / Math.max(m.w, m.h)), cv = document.createElement('canvas');
   cv.width = Math.round(m.w * s); cv.height = Math.round(m.h * s); const c = cv.getContext('2d');
   let O = null; try { O = await plotOutlines(p); } catch { O = null; }
@@ -154,13 +154,26 @@ function crop(cv, s, pts, m) {
   o.getContext('2d').drawImage(cv, b[0] * s, b[1] * s, o.width, o.height, 0, 0, o.width, o.height);
   return { src: o.toDataURL('image/png'), cut: true, box: b };
 }
+/* the plan pictures drawn ahead of time by the website's build (scripts/map-images.mjs): shown at once; a project
+   without one (new, or no connection to the list) is drawn on the phone as before */
+const MAPIMG = (/github\.io$/.test(location.hostname) ? '' : 'https://hamadasf.github.io/alyassi-app/') + 'mapimg/';
+let mapIdx = null;
+const readyPictures = () => mapIdx || (mapIdx = fetch(MAPIMG + 'index.json', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+async function pictureFor(p) {
+  const m = (await readyPictures())[p.key || p.slug];
+  return m ? { src: MAPIMG + m.file, cut: m.cut, box: m.box || null, ready: true } : planPicture(p);
+}
 function planLayer(L, p, g) {   // g: { c: [lat, lng], rot, k }
   const mpp = planMpp(p); if (!p.map || !mpp) return null;
   const Lay = L.Layer.extend({
     onAdd(map) {
       this._map = map; const el = this._el = L.DomUtil.create('img', 'pplan'); el.alt = ''; el.style.opacity = 0;
       map.getPanes().overlayPane.appendChild(el);
-      planPicture(p).then((r) => { el.src = r.src; this._cut = r.cut; this._box = r.box || null; this._ok = 1; this._reset(); }).catch(() => el.remove());
+      const use = (r) => { el.src = r.src; this._cut = r.cut; this._box = r.box || null; this._ok = 1; this._reset(); };
+      pictureFor(p).then((r) => {
+        if (r.ready) el.onerror = () => { el.onerror = null; planPicture(p).then(use).catch(() => el.remove()); };   // the ready picture failed: draw it here
+        use(r);
+      }).catch(() => el.remove());
       map.on('zoomend viewreset moveend', this._reset, this); map.on('zoomstart', this._hide, this);
       L.DomEvent.on(el, 'click', (e) => { L.DomEvent.stopPropagation(e); this.fire('click'); });
     },

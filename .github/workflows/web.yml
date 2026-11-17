@@ -92,6 +92,28 @@ jobs:
           path: .ogcache
           key: ogimg-${{ github.run_id }}
 
+      - name: Restore map pictures
+        uses: actions/cache/restore@v4
+        with:
+          path: .mapcache
+          key: mapimg-${{ github.run_id }}
+          restore-keys: mapimg-
+
+      - name: Projects map pictures (each plan drawn once here, so phones show them at once)
+        id: mapimg
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          node scripts/map-images.mjs web/data.json web/mapimg .mapcache
+          echo "changed=$(cat .mapcache/.changed)" >> "$GITHUB_OUTPUT"
+
+      - name: Keep map pictures for the next run
+        if: steps.mapimg.outputs.changed == '1'
+        uses: actions/cache/save@v4
+        with:
+          path: .mapcache
+          key: mapimg-${{ github.run_id }}
+
       - name: Detect price / status changes
         run: |
           curl -fsSL --max-time 30 -o /tmp/prev-data.json "https://hamadasf.github.io/alyassi-app/data.json?t=$(date +%s)" || true
