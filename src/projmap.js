@@ -123,7 +123,10 @@ async function planPicture(p) {
       c.fillStyle = `rgb(${k[0]},${k[1]},${k[2]})`; c.fill();
     }
     c.restore();
-    const VS = P.VS.map((v) => (v.h ? null : v));   // no hatching over the solid colour — it dulls it
+    // no hatching over the solid colour — it dulls it. Some plans (made from a PDF) flag every filled shape — names, plot
+    // numbers, mosques, gardens — the same way: there the flag means nothing, and only hatched strokes are left out
+    const fills = P.VS.filter((v) => v && v.t === 'f'), allFlag = fills.length > 0 && fills.every((v) => v.h);
+    const VS = P.VS.map((v) => (v && v.h && (!allFlag || v.t === 's') ? null : v));
     drawPlanView(c, { V: P.V, VS }, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false, bg: false, clip });
     if (!vecHasNumbers(P.V, O)) plotNumbers(c, O, s);   // some plans keep the plot numbers in their picture only: write them
     return crop(cv, s, p.part && clip, m);

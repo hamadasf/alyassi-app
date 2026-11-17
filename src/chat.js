@@ -111,9 +111,19 @@ function bindComposer(root, { admin, onSend, quickReplies }) {
   const rbar = root.querySelector('.wareply');
   const setReply = (r) => {
     reply = r; rbar.hidden = !r;
-    if (r) { rbar.innerHTML = `<div class="cq"><b>${H.esc(r.who)}</b><span class="notr">${H.esc(r.text)}</span></div><button type="button" aria-label="إلغاء الرد">✕</button>`; ta.focus(); }
+    if (r) {
+      try { const sel = window.getSelection(); if (sel) sel.removeAllRanges(); } catch { /* ignore */ }   // no native text selection under the finger
+      rbar.innerHTML = `<div class="cq"><b>${H.esc(r.who)}</b><span class="notr">${H.esc(r.text)}</span></div>${r.text ? '<button type="button" class="wcopy" data-wcopy aria-label="نسخ النص">نسخ</button>' : ''}<button type="button" data-wx aria-label="إلغاء الرد">✕</button>`;
+      ta.focus();
+    }
   };
-  rbar.addEventListener('click', (e) => { if (e.target.closest('button')) setReply(null); });
+  rbar.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-wcopy]')) {   // copy the message's text (instead of the phone's selection menu)
+      try { await navigator.clipboard.writeText(reply ? reply.text : ''); H.toast('تم نسخ النص ✓'); } catch { H.toast('تعذّر النسخ'); }
+      return;
+    }
+    if (e.target.closest('[data-wx]')) setReply(null);
+  });
   const drawPicks = () => {
     strip.hidden = !picks.length;
     strip.innerHTML = picks.map((p, i) => `<div class="watt">${p.img ? `<img src="${p.prev}" alt="">` : `<span class="fi">${ICON.file}<em>${H.esc(p.ext)}</em></span><small class="notr" dir="ltr">${H.esc(p.name)}</small>`}<button type="button" data-rm="${i}" aria-label="إزالة">✕</button></div>`).join('');
