@@ -38,7 +38,8 @@ function oay_lead_row( $u ) {
 	$l = oay_lead_get( $u->ID ); $v = function_exists( 'oay_verify_get' ) ? oay_verify_get( $u->ID ) : null;
 	return array( 'id' => $u->ID, 'name' => $u->display_name, 'email' => $u->user_email, 'phone' => (string) get_user_meta( $u->ID, 'oay_phone', true ) ?: ( $v ? (string) ( $v['phone'] ?? '' ) : '' ),
 		'team' => function_exists( 'oay_is_team' ) && oay_is_team( $u ), 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ), 'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ),
-		'status' => $l['status'], 'next' => (int) $l['next'], 'last' => (int) $l['last'], 'count' => count( $l['items'] ), 'top' => $l['items'] ? $l['items'][0] : null, 'notes' => count( $l['notes'] ),
+		'status' => $l['status'], 'next' => (int) $l['next'], 'last' => (int) $l['last'], 'stale' => oay_lead_stale( $l ),
+		'owner' => (int) ( $l['owner'] ?? 0 ), 'ownerName' => ! empty( $l['owner'] ) && ( $o = get_userdata( (int) $l['owner'] ) ) ? $o->display_name : '', 'count' => count( $l['items'] ), 'top' => $l['items'] ? $l['items'][0] : null, 'notes' => count( $l['notes'] ),
 		'online' => function_exists( 'oay_is_online' ) ? oay_is_online( $u->ID ) : false );
 }
 function oay_acc_adm_leads() {
@@ -61,11 +62,14 @@ function oay_acc_adm_lead() {
 function oay_acc_adm_lead_save() {
 	$me = oay_acc_need_perm( 'leads' ); $u = get_userdata( absint( oay_acc_arg( 'id', 12 ) ) ); if ( ! $u ) { oay_acc_err( 'غير موجود', 404 ); }
 	$l = oay_lead_get( $u->ID ) ?: array( 'status' => 'new', 'notes' => array(), 'next' => 0, 'items' => array(), 'last' => oay_crm_ms(), 'created' => oay_crm_ms() );
-	$in = oay_acc_in();
+	$in = oay_acc_in(); $before = $l['status'];
 	if ( isset( $in['status'] ) && isset( OAY_LEAD_ST[ $in['status'] ] ) ) { $l['status'] = $in['status']; if ( in_array( $in['status'], array( 'won', 'lost' ), true ) ) { $l['next'] = 0; } }
 	if ( isset( $in['next'] ) ) { $l['next'] = max( 0, (int) $in['next'] ); }
 	$note = trim( mb_substr( sanitize_textarea_field( (string) ( $in['note'] ?? '' ) ), 0, 1000 ) );
 	if ( '' !== $note ) { array_unshift( $l['notes'], array( 't' => oay_crm_ms(), 'text' => $note, 'by' => $me->display_name ) ); $l['notes'] = array_slice( $l['notes'], 0, 100 ); }
+	$l['touched'] = oay_crm_ms();   // the office worked on this client now
+	do_action( 'oay_lead_worked', $me, $u, isset( $in['status'] ) && 'won' === $in['status'] && 'won' !== ( $before ?? '' ) ? 'won' : '' );
+	if ( ! empty( $in['mine'] ) || empty( $l['owner'] ) ) { $l['owner'] = $me->ID; }   // the first one to work on a client follows them (or «أنا المسؤول»)
 	update_user_meta( $u->ID, 'oay_lead', $l ); if ( ! get_user_meta( $u->ID, 'oay_lead_last', true ) ) { update_user_meta( $u->ID, 'oay_lead_last', oay_crm_ms() ); }
 	oay_acc_ok( array( 'lead' => $l, 'user' => oay_lead_row( $u ) ) );
 }
@@ -78,12 +82,48 @@ function oay_lead_from_track( $uid, $ev ) {
 add_action( 'init', function () {
 	if ( ! wp_next_scheduled( 'oay_leads_daily' ) ) { wp_schedule_event( strtotime( 'tomorrow 04:00 UTC' ), 'daily', 'oay_leads_daily' ); }
 } );
+/** a client still open (new / following) whom nobody in the office has worked on for 2 days since they last showed interest */
+function oay_lead_stale( $l ) {
+	if ( ! $l || ! in_array( $l['status'], array( 'new', 'follow' ), true ) ) { return false; }
+	if ( $l['next'] && $l['next'] > oay_crm_ms() ) { return false; }   // a follow-up date is set for later
+	if ( (int) ( $l['touched'] ?? 0 ) >= (int) $l['last'] ) { return false; }   // the office worked on them after their last interest
+	return oay_crm_ms() - (int) $l['last'] > 2 * DAY_IN_SECONDS * 1000;
+}
+// every morning: each one gets their own list (clients due today + clients waiting for a reply); clients with nobody on them go to the office
 add_action( 'oay_leads_daily', function () {
-	$end = ( time() + DAY_IN_SECONDS ) * 1000; $n = 0; $names = array();
+	if ( ! function_exists( 'oay_push_to' ) ) { return; }
+	$end = ( time() + DAY_IN_SECONDS ) * 1000; $per = array();
 	foreach ( get_users( array( 'meta_key' => 'oay_lead_last', 'number' => 1000 ) ) as $u ) {
-		$l = oay_lead_get( $u->ID ); if ( $l && $l['next'] && $l['next'] <= $end && in_array( $l['status'], array( 'new', 'follow' ), true ) ) { $n++; if ( count( $names ) < 3 ) { $names[] = $u->display_name; } }
+		$l = oay_lead_get( $u->ID ); if ( ! $l || ! in_array( $l['status'], array( 'new', 'follow' ), true ) ) { continue; }
+		$due = $l['next'] && $l['next'] <= $end; $stale = oay_lead_stale( $l ); if ( ! $due && ! $stale ) { continue; }
+		$k = (int) ( $l['owner'] ?? 0 ); $per[ $k ] = $per[ $k ] ?? array( 'due' => 0, 'stale' => 0, 'names' => array() );
+		$per[ $k ][ $due ? 'due' : 'stale' ]++; if ( count( $per[ $k ]['names'] ) < 3 ) { $per[ $k ]['names'][] = $u->display_name; }
 	}
-	if ( $n && function_exists( 'oay_push_to' ) ) { oay_push_to( oay_admin_ids(), '📋 متابعة العملاء اليوم: ' . $n, implode( '، ', $names ) . ( $n > 3 ? ' وغيرهم' : '' ), array( 'open' => 'leads' ) ); }
+	foreach ( $per as $owner => $x ) {
+		$to = $owner && get_userdata( $owner ) ? array( $owner ) : oay_admin_ids();
+		$t = '📋 متابعة العملاء اليوم: ' . implode( ' · ', array_filter( array( $x['due'] ? $x['due'] . ' موعد متابعة' : '', $x['stale'] ? $x['stale'] . ' مستني رد' : '' ) ) );
+		$n = $x['due'] + $x['stale'];
+		oay_push_to( $to, $t, implode( '، ', $x['names'] ) . ( $n > 3 ? ' وغيرهم' : '' ), array( 'open' => 'leads' ) );
+	}
+} );
+// every hour: a client who crossed 2 days without a reply → one push to whoever follows them (once until someone works on them)
+add_action( 'init', function () {
+	if ( ! wp_next_scheduled( 'oay_leads_hourly' ) ) { wp_schedule_event( time() + 600, 'hourly', 'oay_leads_hourly' ); }
+} );
+add_action( 'oay_leads_hourly', function () {
+	if ( ! function_exists( 'oay_push_to' ) ) { return; }
+	$h = (int) current_time( 'G' ); if ( $h < 9 || $h > 21 ) { return; }   // office hours only (UAE time)
+	$sent = 0; $first = ! get_option( 'oay_leads_nudge_init' );   // the first run only marks the old waiting clients (no flood of pushes)
+	foreach ( get_users( array( 'meta_key' => 'oay_lead_last', 'orderby' => 'meta_value_num', 'order' => 'DESC', 'number' => 600 ) ) as $u ) {
+		if ( $first ) { $l = oay_lead_get( $u->ID ); if ( oay_lead_stale( $l ) ) { $l['nudged'] = oay_crm_ms(); update_user_meta( $u->ID, 'oay_lead', $l ); } continue; }
+		$l = oay_lead_get( $u->ID ); if ( ! oay_lead_stale( $l ) || (int) ( $l['nudged'] ?? 0 ) > max( (int) ( $l['touched'] ?? 0 ), (int) $l['last'] ) ) { continue; }
+		$owner = (int) ( $l['owner'] ?? 0 ); $to = $owner && get_userdata( $owner ) ? array( $owner ) : oay_admin_ids();
+		$what = $l['items'] ? ( $l['items'][0]['name'] ?: '' ) : '';
+		oay_push_to( $to, '⏰ ' . $u->display_name . ' مستني منك رد', 'من يومين ما حدش كلّمه' . ( $what ? ' · ' . $what : '' ), array( 'open' => 'lead', 'id' => (string) $u->ID ) );
+		$l['nudged'] = oay_crm_ms(); update_user_meta( $u->ID, 'oay_lead', $l );
+		if ( ++$sent >= 15 ) { break; }
+	}
+	if ( $first ) { update_option( 'oay_leads_nudge_init', time(), false ); }
 } );
 
 /* ======================================================================================

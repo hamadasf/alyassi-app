@@ -10,7 +10,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 const OAY_ROLES = array( 'staff' => 'موظف', 'mgr' => 'مدير', 'mkt' => 'مدير تسويق' );
-const OAY_TEAM_EV = array( 'login' => 'تسجيل دخول', 'design' => 'حفظ تصميم', 'share_design' => 'مشاركة تصميم', 'save_img' => 'حفظ صورة تصميم', 'share_land' => 'مشاركة أرض', 'plot_new' => 'إضافة أرض', 'plot_edit' => 'تعديل أرض', 'chat' => 'رد على عميل' );
+const OAY_TEAM_EV = array( 'login' => 'تسجيل دخول', 'design' => 'حفظ تصميم', 'share_design' => 'مشاركة تصميم', 'save_img' => 'حفظ صورة تصميم', 'share_land' => 'مشاركة أرض', 'plot_new' => 'إضافة أرض', 'plot_edit' => 'تعديل أرض', 'chat' => 'رد على عميل', 'lead' => 'متابعة عميل', 'hold' => 'حجز مؤقت', 'deal' => 'صفقة / بيع' );
 
 foreach ( array( 'team_ev', 'team_report' ) as $a ) { add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a ); add_action( 'wp_ajax_nopriv_oay_acc_' . $a, 'oay_acc_' . $a ); }
 
@@ -65,6 +65,7 @@ add_action( 'oay_plot_saved', function ( $me, $slug, $n, $was, $s, $total ) {
 	$p = oay_team_plot_label( $slug . ':' . $n ); $st = array( 'av' => 'متاحة', 'res' => 'محجوزة', 'sold' => 'مباعة', '' => 'غير معروضة' );
 	$price = $total ? number_format( $total ) . ' د.إ' : 'السعر عند الاستفسار';
 	$new = '' === $was && 'av' === $s;
+	if ( 'sold' === $s && 'sold' !== $was ) { oay_team_log( $me->ID, 'deal', 'باع قطعة ' . $n . ' · ' . $p['proj'] . ( $total ? ' · ' . number_format( $total ) . ' د.إ' : '' ), $slug . ':' . $n ); }
 	oay_team_log( $me->ID, $new ? 'plot_new' : 'plot_edit', 'قطعة ' . $n . ' · ' . $p['proj'] . ' · ' . ( $st[ $s ] ?? $s ) . ( $s && 'sold' !== $s ? ' · ' . $price : '' ), $slug . ':' . $n );
 	if ( ! empty( $GLOBALS['oay_no_push'] ) ) { return; }
 	if ( ! $new || ! oay_team_once( 'pnew' . $slug . $n, 3600 ) ) { return; }
@@ -111,3 +112,15 @@ function oay_acc_team_report() {
 	}
 	oay_acc_ok( array( 'team' => $team, 'feed' => $feed, 'kinds' => OAY_TEAM_EV, 'roles' => OAY_ROLES, 'days' => $days ) );
 }
+
+/* the performance board: following clients, temporary holds and deals count too */
+add_action( 'oay_lead_worked', function ( $me, $client, $status ) {
+	if ( 'won' === $status ) { oay_team_log( $me->ID, 'deal', 'صفقة مع ' . $client->display_name, 'user:' . $client->ID ); return; }
+	if ( oay_team_once( 'lead' . $me->ID . ':' . $client->ID, 1800 ) ) { oay_team_log( $me->ID, 'lead', 'تابع ' . $client->display_name, 'user:' . $client->ID ); }
+}, 10, 3 );
+add_action( 'oay_hold_made', function ( $me, $id, $client, $hours ) {
+	$p = oay_team_plot_label( $id ); oay_team_log( $me->ID, 'hold', 'قطعة ' . $p['n'] . ' · ' . $p['proj'] . ' لـ ' . $client . ' (' . $hours . ' ساعة)', $id );
+}, 10, 4 );
+add_action( 'oay_hold_paid', function ( $me, $id, $client ) {
+	$p = oay_team_plot_label( $id ); oay_team_log( $me->ID, 'deal', 'عربون قطعة ' . $p['n'] . ' · ' . $p['proj'] . ' من ' . $client, $id );
+}, 10, 3 );

@@ -349,3 +349,76 @@ function oay_acc_adm_import() {
 	}
 	oay_acc_ok( array( 'dry' => $dry, 'items' => $res ) );
 }
+
+/* ======================================================================================
+ * 8. «حجز مؤقت»: a team member holds an available plot for a client for 24 / 48 hours — it shows «محجوزة» to all.
+ *    «تم دفع العربون» keeps it reserved; otherwise it comes back «متاحة» by itself when the time is up (and the holder is told).
+ * ==================================================================================== */
+foreach ( array( 'holds', 'hold_set', 'hold_done' ) as $a ) { add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a ); add_action( 'wp_ajax_nopriv_oay_acc_' . $a, 'oay_acc_' . $a ); }
+function oay_holds_all() { $h = get_option( 'oay_holds', array() ); return is_array( $h ) ? $h : array(); }
+function oay_hold_row( $id, $h ) {
+	$u = get_userdata( (int) $h['uid'] );
+	return array( 'id' => $id, 'until' => (int) $h['until'] * 1000, 't' => (int) $h['t'] * 1000, 'client' => (string) $h['client'], 'by' => $u ? $u->display_name : '', 'uid' => (int) $h['uid'] );
+}
+/** sets a plot's status the way the plot editor does (pictures, prices, payment plan kept) */
+function oay_hold_status( $slug, $n, $s, $quiet ) {
+	if ( ! function_exists( 'oay_plan_plot' ) || ! function_exists( 'oay_plan_write' ) ) { return false; }
+	$i = oay_plan_plot( $slug, $n ); if ( ! $i ) { return false; }
+	$prev = $GLOBALS['oay_no_push'] ?? null; $GLOBALS['oay_no_push'] = $quiet;
+	$ok = oay_plan_write( $i['proj'], function ( &$st ) use ( $n, $s ) {
+		$e = isset( $st['plots'][ (string) $n ] ) && is_array( $st['plots'][ (string) $n ] ) ? $st['plots'][ (string) $n ] : array();
+		$e['s'] = $s; $st['plots'][ (string) $n ] = $e;
+	} );
+	$GLOBALS['oay_no_push'] = $prev;
+	return $ok;
+}
+function oay_acc_holds() { oay_acc_need_office(); $out = array(); foreach ( oay_holds_all() as $id => $h ) { $out[] = oay_hold_row( $id, $h ); } oay_acc_ok( array( 'items' => $out ) ); }
+function oay_acc_hold_set() {
+	$me = oay_acc_need_office(); list( $slug, $n, $i ) = oay_plot_args(); $id = $slug . ':' . $n;
+	$hours = (int) oay_acc_arg( 'hours', 3 ); if ( ! in_array( $hours, array( 24, 48 ), true ) ) { $hours = 24; }
+	$client = trim( mb_substr( sanitize_text_field( (string) oay_acc_arg( 'client', 80 ) ), 0, 80 ) ); if ( '' === $client ) { oay_acc_err( 'اكتب اسم العميل' ); }
+	$h = oay_holds_all();
+	if ( isset( $h[ $id ] ) ) { oay_acc_err( 'القطعة محجوزة مؤقتاً بالفعل لـ ' . $h[ $id ]['client'] ); }
+	if ( ( $i['cur']['s'] ?? '' ) !== 'av' ) { oay_acc_err( 'القطعة غير متاحة — الحجز المؤقت للقطع المتاحة فقط' ); }
+	if ( ! oay_hold_status( $slug, $n, 'res', true ) ) { oay_acc_err( 'تعذّر الحجز — حاول مرة أخرى' ); }
+	$h[ $id ] = array( 'uid' => $me->ID, 'client' => $client, 't' => time(), 'until' => time() + $hours * HOUR_IN_SECONDS, 'warned' => 0 );
+	update_option( 'oay_holds', $h, false ); do_action( 'oay_hold_made', $me, $id, $client, $hours );
+	if ( function_exists( 'oay_push_to' ) ) {
+		oay_push_to( array_diff( oay_admin_ids(), array( $me->ID ) ), '⏳ حجز مؤقت · قطعة ' . $n, $me->display_name . ' حجزها لـ ' . $client . ' لمدة ' . $hours . ' ساعة', array( 'open' => 'land', 'id' => $id ) );
+	}
+	oay_acc_ok( array( 'hold' => oay_hold_row( $id, $h[ $id ] ) ) );
+}
+function oay_acc_hold_done() {
+	$me = oay_acc_need_office(); $id = (string) oay_acc_arg( 'id', 80 ); $act = oay_acc_arg( 'act', 10 );
+	$h = oay_holds_all(); if ( ! isset( $h[ $id ] ) ) { oay_acc_err( 'لا يوجد حجز مؤقت على هذه القطعة' ); }
+	$boss = oay_acc_is_admin( $me ) || ( function_exists( 'oay_role' ) && 'mgr' === oay_role( $me ) );
+	if ( (int) $h[ $id ]['uid'] !== (int) $me->ID && ! $boss ) { oay_acc_err( 'الحجز باسم ' . ( get_userdata( (int) $h[ $id ]['uid'] )->display_name ?? 'موظف آخر' ) . ' — هو أو المدير فقط' ); }
+	list( $slug, $n ) = explode( ':', $id, 2 );
+	if ( 'extend' === $act ) { $h[ $id ]['until'] = max( time(), (int) $h[ $id ]['until'] ) + DAY_IN_SECONDS; $h[ $id ]['warned'] = 0; update_option( 'oay_holds', $h, false ); oay_acc_ok( array( 'hold' => oay_hold_row( $id, $h[ $id ] ) ) ); }
+	if ( 'release' === $act && ! oay_hold_status( $slug, $n, 'av', false ) ) { oay_acc_err( 'تعذّر إلغاء الحجز — حاول مرة أخرى' ); }
+	if ( 'paid' === $act ) { do_action( 'oay_hold_paid', $me, $id, $h[ $id ]['client'] ); }
+	unset( $h[ $id ] ); update_option( 'oay_holds', $h, false );   // 'paid': the deposit is in — it stays «محجوزة» for good
+	oay_acc_ok( array( 'hold' => null ) );
+}
+// every 5 minutes: an hour before the end the holder is reminded; at the end the plot is available again (if nobody changed it meanwhile)
+add_action( 'init', function () { if ( ! wp_next_scheduled( 'oay_holds_check' ) ) { wp_schedule_event( time() + 120, 'oay_5min', 'oay_holds_check' ); } } );
+add_action( 'oay_holds_check', function () {
+	$h = oay_holds_all(); if ( ! $h ) { return; } $dirty = false;
+	foreach ( $h as $id => $x ) {
+		list( $slug, $n ) = explode( ':', $id, 2 ); $left = (int) $x['until'] - time();
+		if ( $left <= 0 ) {
+			$i = function_exists( 'oay_plan_plot' ) ? oay_plan_plot( $slug, $n ) : null;
+			$still = $i && ( $i['cur']['s'] ?? '' ) === 'res';
+			if ( $still ) { oay_hold_status( $slug, $n, 'av', false ); }   // available again: the favourites alert goes out
+			if ( function_exists( 'oay_push_to' ) ) {
+				oay_push_to( array_unique( array_merge( array( (int) $x['uid'] ), oay_admin_ids() ) ), '⌛ انتهى الحجز المؤقت · قطعة ' . $n,
+					'العربون ما اتسجلش من ' . $x['client'] . ( $still ? ' — القطعة رجعت متاحة' : '' ), array( 'open' => 'land', 'id' => $id ) );
+			}
+			unset( $h[ $id ] ); $dirty = true;
+		} elseif ( $left <= HOUR_IN_SECONDS && empty( $x['warned'] ) && function_exists( 'oay_push_to' ) ) {
+			oay_push_to( array( (int) $x['uid'] ), '⏳ باقي ساعة على نهاية الحجز · قطعة ' . $n, 'كلّم ' . $x['client'] . ' عشان العربون، أو مدّد الحجز يوم من صفحة القطعة', array( 'open' => 'land', 'id' => $id ) );
+			$h[ $id ]['warned'] = 1; $dirty = true;
+		}
+	}
+	if ( $dirty ) { update_option( 'oay_holds', $h, false ); }
+} );

@@ -4,8 +4,11 @@ import { api } from './owner.js';
 
 let H = null;
 export function initTeam(h) { H = h; }
-const ICON = { login: 'user', design: 'image', share_design: 'share', save_img: 'download', share_land: 'share', plot_new: 'plusc', plot_edit: 'edit', chat: 'chat' };
-const COUNTED = [['design', 'تصميم'], ['share_design', 'مشاركة تصميم'], ['share_land', 'مشاركة أرض'], ['plot_new', 'أرض جديدة'], ['plot_edit', 'تعديل أرض'], ['chat', 'رد على عميل']];
+const ICON = { login: 'user', design: 'image', share_design: 'share', save_img: 'download', share_land: 'share', plot_new: 'plusc', plot_edit: 'edit', chat: 'chat', lead: 'user', hold: 'clock', deal: 'brief' };
+const COUNTED = [['design', 'تصميم'], ['share_design', 'مشاركة تصميم'], ['share_land', 'مشاركة أرض'], ['plot_new', 'أرض جديدة'], ['plot_edit', 'تعديل أرض'], ['chat', 'رد على عميل'], ['lead', 'متابعة عميل'], ['hold', 'حجز مؤقت'], ['deal', 'صفقة']];
+/** «لوحة الأداء»: what counts most for selling, side by side — the posts, the clients followed, the holds and the deals */
+const BOARD = [['منشورات', ['design', 'share_design', 'save_img', 'share_land']], ['عملاء', ['lead', 'chat']], ['حجوزات', ['hold']], ['صفقات', ['deal']]];
+const score = (c) => BOARD.reduce((a, [, ks], i) => a + ks.reduce((b, k) => b + (+c[k] || 0), 0) * [1, 2, 4, 10][i], 0);
 const ago = (ms) => {
   if (!ms) return '—';
   const s = Math.max(0, (Date.now() - ms) / 1000);
@@ -24,6 +27,8 @@ export function initTeamPage(pg) {
     const total = (c) => COUNTED.reduce((a, [k]) => a + (+c[k] || 0), 0);
     el.innerHTML = `<div class="tm-top"><div class="seg tm-days">${[[1, 'اليوم'], [7, 'أسبوع'], [30, 'شهر']].map(([d, l]) => `<button class="${d === days ? 'on' : ''}" data-tdays="${d}">${l}</button>`).join('')}</div>
         ${person ? `<button class="btn ghost sm" data-twho="0">كل الفريق</button>` : ''}</div>
+      ${person || !j.team.length ? '' : `<div class="ccard tm-board"><h3 class="lh">${I.chart || ''} لوحة الأداء · ${days === 1 ? 'اليوم' : days === 7 ? 'آخر أسبوع' : 'آخر شهر'}</h3>
+        <table><thead><tr><th></th>${BOARD.map(([l]) => `<th>${l}</th>`).join('')}</tr></thead><tbody>${[...j.team].sort((a, b) => score(b.counts) - score(a.counts)).map((u, i) => `<tr data-twho="${u.id}"><td><b>${i < 3 && score(u.counts) ? ['🥇', '🥈', '🥉'][i] + ' ' : ''}${esc(u.name)}</b></td>${BOARD.map(([, ks]) => { const v = ks.reduce((a, k) => a + (+u.counts[k] || 0), 0); return `<td class="${v ? '' : 'z'}">${v}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`}
       ${person ? '' : `<div class="tm-list">${j.team.map((u) => `<button class="tm-row" data-twho="${u.id}">
           <span class="tm-av">${u.avatar ? `<img src="${esc(u.avatar)}" alt="">` : esc((u.name || '?').charAt(0))}${u.online ? '<i class="tm-on"></i>' : ''}</span>
           <span class="tm-info"><b>${esc(u.name)}</b><em class="tm-role r-${esc(u.role)}">${esc(u.roleLabel)}</em>

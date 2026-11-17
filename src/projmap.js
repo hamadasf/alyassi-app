@@ -341,3 +341,28 @@ function adminPins(pg, map, L, projects, have, layers) {
   });
   L.DomEvent.disableClickPropagation(bar); L.DomEvent.disableScrollPropagation(bar);
 }
+
+/* ---- «أنا فين؟»: a place on earth → the point of the project's plan under it (the plan as the admin laid it on the map) ---- */
+const merc = (lat, lng, z) => { const n = 256 * Math.pow(2, z), s = Math.sin(lat * Math.PI / 180); return [(lng + 180) / 360 * n, (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n]; };
+function toPlan(p, g, lat, lng) {
+  const mpp = planMpp(p); if (!mpp || !p.map || !g) return null;
+  const z = 18, mppMap = 40075016.686 * Math.cos(g.c[0] * Math.PI / 180) / (256 * Math.pow(2, z)), k = (g.k || 1) * mpp / mppMap;
+  const a = merc(lat, lng, z), o = merc(g.c[0], g.c[1], z), dx = a[0] - o[0], dy = a[1] - o[1], r = (g.rot || 0) * Math.PI / 180;
+  return [p.map.w / 2 + (dx * Math.cos(r) + dy * Math.sin(r)) / k, p.map.h / 2 + (-dx * Math.sin(r) + dy * Math.cos(r)) / k];
+}
+/** → async (lat, lng) → [x, y] on the plan (or null when the project is not placed on the map yet) */
+export async function planLocator(p) {
+  const items = mapItems([p]); const have = await coords(items);
+  const placed = items.map((it) => { const v = have[it.key] && have[it.key].c; return v ? { it, g: { c: [v[0], v[1]], rot: +v[2] || 0, k: +v[3] || 1 } } : null; }).filter(Boolean);
+  if (!placed.length) return null;
+  const box = (it) => { const C = [...(it.lands || []).map((l) => l.pc), ...(it.na || []).map((q) => q[3])].filter(Boolean); if (!C.length) return null; const xs = C.map((c) => c[0]), ys = C.map((c) => c[1]); return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]; };
+  return (lat, lng) => {
+    let best = null, bd = Infinity;
+    for (const { it, g } of placed) {
+      const q = toPlan({ ...it, all: p.lands, lands: it.lands }, g, lat, lng); if (!q) continue;
+      const b = it.part ? box(it) : null; const d = b ? Math.hypot(Math.max(b[0] - q[0], 0, q[0] - b[2]), Math.max(b[1] - q[1], 0, q[1] - b[3])) : 0;   // a part: the one whose plots are nearest
+      if (d < bd) { bd = d; best = q; }
+    }
+    return best;
+  };
+}

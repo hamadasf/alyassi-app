@@ -278,6 +278,8 @@ async function loadSnapshot() {
       p.lands.forEach((l) => {
         const s = sp[l.n]; if (!s || !s.s) return;
         l.status = s.s; l.featured = !!s.fe;
+        if (s.ft) { l.ft = Math.round(s.ft); l.m2 = Math.round(s.ft / 10.7639); l.approx = false; }
+        l.lo = /^https:\/\//.test(s.lo || '') ? s.lo : l.lo;
         if (s.doc && s.doc.u) { l.doc = s.doc.u; l.docId = s.doc.id || 0; }
         const total = s.total || (s.ppf && l.ft ? Math.round(s.ppf * l.ft) : 0);
         l.total = total; l.ppf = s.ppf || 0;

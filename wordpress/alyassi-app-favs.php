@@ -63,3 +63,44 @@ add_action( 'oay_plot_changes', function ( $slug, $name, $ch, $new ) {
 		}
 	}
 }, 30, 4 );
+
+/* a new plot like one in a favourites list (same project, same use, area within 15%) → push to whoever saved that one.
+   One push per person per project change, and never for a plot already in their list. */
+add_action( 'oay_plot_changes', function ( $slug, $name, $ch, $new ) {
+	if ( ! empty( $GLOBALS['oay_no_push'] ) || ! function_exists( 'oay_plan_plots' ) ) { return; }
+	$key = trim( (string) get_option( 'oay_onesignal_key', '' ) ); if ( '' === $key ) { return; }
+	$m = oay_favs_all(); if ( ! $m ) { return; }
+	$pp = oay_plan_plots( $slug ); $st = function_exists( 'oay_plots' ) ? oay_plots( $new ) : array();
+	$ft = function ( $n ) use ( $pp, $st ) { $s = (float) ( $st[ $n ]['ft'] ?? 0 ); return $s > 0 ? $s : (float) ( $pp[ $n ][1] ?? 0 ); };
+	$fresh = array();
+	foreach ( (array) $ch as $c ) {
+		$n = (string) ( $c['n'] ?? '' ); if ( 'new' !== ( $c['kind'] ?? '' ) || ( $st[ $n ]['s'] ?? '' ) !== 'av' || ! isset( $pp[ $n ] ) ) { continue; }
+		$fresh[ $n ] = array( $pp[ $n ][0], $ft( $n ), (int) ( $st[ $n ]['total'] ?? 0 ) );
+	}
+	if ( ! $fresh ) { return; }
+	$sent = array();
+	foreach ( $m as $who => $e ) {
+		$ids = (array) ( $e['ids'] ?? array() ); $best = null;
+		foreach ( $ids as $id ) {
+			if ( 0 !== strpos( $id, $slug . ':' ) ) { continue; }
+			$fn = substr( $id, strlen( $slug ) + 1 ); if ( ! isset( $pp[ $fn ] ) ) { continue; }
+			$fu = $pp[ $fn ][0]; $ff = $ft( $fn ); if ( $ff <= 0 ) { continue; }
+			foreach ( $fresh as $n => $f ) {
+				if ( in_array( $slug . ':' . $n, $ids, true ) || $f[0] !== $fu || $f[1] <= 0 || abs( $f[1] - $ff ) / $ff > 0.15 ) { continue; }
+				$best = array( $n, $f, $fn ); break 2;
+			}
+		}
+		if ( $best ) { $sent[ ( 'u' === $who[0] ? 'oay-' : 'dev-' ) . substr( $who, 1 ) ] = $best; }
+	}
+	foreach ( $sent as $alias => $b ) {
+		list( $n, $f, $fn ) = $b; $id = $slug . ':' . $n;
+		$title = '✨ أرض جديدة شبه اللي في مفضلتك · ' . $name;
+		$body = 'قطعة ' . $n . ' · ' . number_format( (int) round( $f[1] ) ) . ' قدم²' . ( $f[2] ? ' · ' . number_format( $f[2] ) . ' د.إ' : '' ) . ' — شبه القطعة ' . $fn;
+		wp_remote_post( 'https://api.onesignal.com/notifications?c=push', array( 'timeout' => 8, 'blocking' => false,
+			'headers' => array( 'Content-Type' => 'application/json', 'Authorization' => 'Key ' . $key ),
+			'body' => wp_json_encode( array( 'app_id' => OAY_APP_ID, 'target_channel' => 'push', 'include_aliases' => array( 'external_id' => array( $alias ) ),
+				'headings' => array( 'en' => $title, 'ar' => $title ), 'contents' => array( 'en' => $body, 'ar' => $body ),
+				'data' => array( 'open' => 'land', 'id' => $id ), 'web_url' => OAY_APP_URL, 'ttl' => 86400 ) + ( function_exists( 'oay_push_img' ) ? oay_push_img( array( 'id' => $id ) ) : array() ) ) ) );
+		if ( count( $sent ) > 300 ) { break; }
+	}
+}, 31, 4 );

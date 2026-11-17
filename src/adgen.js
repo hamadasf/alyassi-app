@@ -1223,7 +1223,7 @@ export function adgenPage(l, projects) {
       <div class="adg-tools"><button type="button" id="pzUndo" disabled><b>↶</b>تراجع</button><button type="button" id="pzRedo" disabled>إعادة<b>↷</b></button></div></div>
     <div class="adg-form" id="pzForm"></div>
     <input type="file" id="pzFile" accept="image/*,application/pdf" hidden>
-    <div class="adg-bar"><button class="btn primary" id="pzShare">${ei('share')} مشاركة</button><button class="btn" id="pzSave">${ei('pdf')} حفظ الصورة</button><button class="btn" id="pzKeep">${ei('bookmark')} حفظ التصميم</button><button class="btn gold" id="pzAll" hidden>${ei('grid')} كل القوالب</button></div>
+    <div class="adg-bar"><button class="btn primary" id="pzShare">${ei('share')} مشاركة</button><button class="btn" id="pzSave">${ei('pdf')} حفظ الصورة</button><button class="btn" id="pzStory">${ei('image')} ستوري 9:16</button><button class="btn" id="pzKeep">${ei('bookmark')} حفظ التصميم</button><button class="btn gold" id="pzAll" hidden>${ei('grid')} كل القوالب</button></div>
     <div class="adg-allpop" id="pzAllPop" hidden><div class="adg-allin"><b>كل القوالب مرة واحدة</b><p class="muted" id="pzAllTxt"></p>
       <button class="btn primary block" id="pzAllShare">${ei('share')} مشاركة الكل</button><button class="btn ghost block" id="pzAllSave">${ei('pdf')} حفظ الكل</button><button class="btn block" id="pzAllNo">إلغاء</button></div></div>
     <div class="adg-crop" id="pzCropBox" hidden><div class="adg-cropin">
@@ -1312,9 +1312,39 @@ function pzcDraw() {
 
 /* ---------- saving / sharing the finished post ---------- */
 const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
-function exportBlob() {
+function exportBlob(story) {
   const cv = $('pzCv'); ad.export = true; drawAd(cv); ad.export = false;
-  return new Promise((ok) => cv.toBlob((b) => { adRedraw(); ok(b); }, 'image/jpeg', 0.92));
+  const out = story ? storyOf(cv) : cv;
+  return new Promise((ok) => out.toBlob((b) => { adRedraw(); ok(b); }, 'image/jpeg', 0.92));
+}
+/** the same post as a 9:16 story / reel cover: the post in the middle on a soft blurred copy of itself, the company logo on top */
+function storyOf(src) {
+  const W = 1080, Hh = 1920, cv = document.createElement('canvas'); cv.width = W; cv.height = Hh; const c = cv.getContext('2d');
+  const r = src.width / src.height;
+  // background: the post itself, filling the frame, blurred and darkened
+  const bs = Math.max(W / src.width, Hh / src.height) * 1.15;
+  c.save(); c.filter = 'blur(38px) brightness(.62) saturate(1.1)';
+  c.drawImage(src, (W - src.width * bs) / 2, (Hh - src.height * bs) / 2, src.width * bs, src.height * bs); c.restore();
+  const g = c.createLinearGradient(0, 0, 0, Hh); g.addColorStop(0, 'rgba(20,24,60,.55)'); g.addColorStop(.5, 'rgba(20,24,60,.15)'); g.addColorStop(1, 'rgba(20,24,60,.6)');
+  c.fillStyle = g; c.fillRect(0, 0, W, Hh);
+  // the post, as wide as the frame allows, with rounded corners and a shadow
+  let w = W - 72, h = w / r; if (h > Hh - 560) { h = Hh - 560; w = h * r; }
+  const x = (W - w) / 2, y = (Hh - h) / 2 + 40, R = 34;
+  const path = () => { c.beginPath(); c.moveTo(x + R, y); c.arcTo(x + w, y, x + w, y + h, R); c.arcTo(x + w, y + h, x, y + h, R); c.arcTo(x, y + h, x, y, R); c.arcTo(x, y, x + w, y, R); c.closePath(); };
+  c.save(); c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 50; c.shadowOffsetY = 18; path(); c.fillStyle = '#fff'; c.fill(); c.restore();
+  c.save(); path(); c.clip(); c.drawImage(src, x, y, w, h); c.restore();
+  // the company logo on a white card at the top
+  const lg = PZ_THEMES.co.logo;
+  if (lg && lg.complete && lg.naturalWidth) {
+    const lh = 190, lw = lh * lg.naturalWidth / lg.naturalHeight, lx = (W - lw - 60) / 2, ly = Math.max(70, y - lh - 130);
+    c.save(); c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 24; c.fillStyle = '#fff';
+    c.beginPath(); c.roundRect ? c.roundRect(lx, ly, lw + 60, lh + 30, 28) : c.rect(lx, ly, lw + 60, lh + 30); c.fill(); c.restore();
+    c.drawImage(lg, lx + 30, ly + 15, lw, lh);
+  }
+  // a short line under the post
+  c.fillStyle = '#fff'; c.textAlign = 'center'; c.direction = 'rtl'; c.font = '700 46px Tajawal, sans-serif';
+  c.fillText('للتفاصيل تواصل معنا', W / 2, Math.min(Hh - 90, y + h + 110));
+  return cv;
 }
 /* ---------- every template at once: one picture per template the account may use, shared or saved together ---------- */
 const PZ_FILE = { wa: 'whatsapp', wr: 'leen-whatsapp', wi: 'leen-instagram', wg: 'leen-general', co: 'company', gr: 'ebada', pk: 'aya-aljabri', aya: 'aya-pink', oy: 'omar-alyassi', ar: 'abdulrahman' };
@@ -1364,12 +1394,12 @@ async function finishAll(share) {
     if (!/cancel/i.test(String(e && (e.message || e)))) H.toast('تعذّر الحفظ: ' + String((e && e.message) || e).slice(0, 80));
   }
 }
-async function finish(share) {
+async function finish(share, story) {
   if (!ad) return;
-  const b = await exportBlob().catch(() => null);
+  const b = await exportBlob(story).catch(() => null);
   if (!b) { H.toast('تعذّر تجهيز الصورة'); return; }
   if (H.teamEv) H.teamEv(share ? 'share_design' : 'save_img', ad.p.l.id, ad.v.theme);   // the team's activity (and, for a manager, the team is told)
-  const name = `post-${ad.p.l.project}-${ad.p.n}.jpg`, title = `قطعة رقم ${ad.p.n} · ${ad.p.l.projectName}`;
+  const name = `post-${ad.p.l.project}-${ad.p.n}${story ? '-story' : ''}.jpg`, title = `قطعة رقم ${ad.p.n} · ${ad.p.l.projectName}`;
   try {
     if (native) {
       const u8 = new Uint8Array(await b.arrayBuffer());
@@ -1645,6 +1675,7 @@ export async function initAdgen2(pg, l, proj) {
   $('adgBig').onclick = () => pg.querySelector('.adg').classList.toggle('big');
   $('pzShare').onclick = () => finish(true);
   $('pzSave').onclick = () => finish(false);
+  $('pzStory').onclick = () => finish(true, true);
 }
 /** the page was closed */
 export function closeAdgen(pg) { if (PG === pg) { PG = null; ad = null; pzc = null; } }

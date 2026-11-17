@@ -74,6 +74,9 @@ jobs:
                '<intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>'
                '<meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_news_info" /></receiver>')
           i = s.index('</application>'); s = s[:i] + w + s[i:]
+          # «أنا فين؟» on a project's plan: the phone's location while the app is open
+          perm = '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />'
+          if 'ACCESS_FINE_LOCATION' not in s: i = s.index('<application'); s = s[:i] + perm + s[i:]
           open(p, 'w').write(s); print('deep links + widget added')
           PY
           cp android-widget/java/NewsWidget.java android/app/src/main/java/com/omaralyassi/realestate/

@@ -48,6 +48,7 @@ import { mountRange } from './range.js';
 import { initProjMap, mapPage, initMapPage } from './projmap.js';
 import { initExtras, noteContact, maybeAskRating, ratesPage, initRatesPage, preregPage, initPreregPage } from './extras.js';
 import { uiConfirm, uiPrompt } from './dialog.js';
+import { initHold, holdSlot, fillHold } from './hold.js';
 
 const native = Capacitor.isNativePlatform();
 const $ = (s, r = document) => r.querySelector(s);
@@ -1009,6 +1010,7 @@ function landPage(l) {
       <button class="btn wa block share-big" data-share="land:${esc(l.id)}">${I.wa} مشاركة التفاصيل + مخطط الأرض PDF</button>
       ${ownerSlot(l.id)}
       ${session.token() && can('plots') ? `<button class="btn ghost block" data-plotedit="${esc(l.project + '|' + l.n)}">${I.edit || I.plusc} تعديل القطعة — الحالة والسعر والدفعات <small>للإدارة</small></button>` : ''}
+      ${holdSlot(l)}
       ${o ? `<div class="ofr-box"><b>${I.flame} عرض لفترة محدودة</b>${o.note ? `<span>${esc(o.note)}</span>` : ''}<div class="ofr-t2">${I.clock} <span data-until="${o.until}">${leftText(o.until)}</span> · حتى ${dmy(o.until)}</div></div>` : ''}
       ${priceboxHTML(l)}
       <div class="spec-grid">
@@ -1151,6 +1153,7 @@ function pushPage(kind, id) {
   if (kind === 'market') initMarketPage(pg, id || '');
   if (kind === 'compare') initComparePage(pg);
   if (kind === 'land' && can('listings') && l) fillMarketCard(pg, l);
+  if (kind === 'land' && l) fillHold(pg, l);
   if (kind === 'land' && session.token() && can('owners') && Date.now() - ownersAt > 60e3) reloadOwners();   // a fresh import shows up without restarting the app
   if (kind === 'mystats') initMyStats(pg);
   if (kind === 'advmine') initAdvMine(pg);
@@ -1429,8 +1432,19 @@ function renderAll() {
   if (current === 'favs') renderFavs();
 }
 let loading = null;
+/* keep prices and availability live: on coming back to the app and every few minutes while it is open (never while
+   someone is typing — the lists re-render) */
+let lastFresh = Date.now();
+function freshen(minGap = 60e3) {
+  if (document.hidden || Date.now() - lastFresh < minGap) return;
+  const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return;
+  refresh(false);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) freshen(); });
+setInterval(() => freshen(170e3), 180e3);
 function refresh(force) {
   if (loading) return loading;
+  lastFresh = Date.now();
   const hadData = DATA().lands.length > 0;
   let raf = 0;
   loading = loadAll({ force, onPartial: hadData ? null : () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(renderAll); } })
@@ -1446,6 +1460,7 @@ initStats({ toast });
 initMailAdm({ toast, esc });
 initMarket({ toast, I, projects: () => DATA().projects });
 initProjMap({ esc, I, toast, money, projects: () => DATA().projects, isAdmin: () => !!(session.user() || {}).admin, reopen: () => { closeTop(); setTimeout(() => pushPage('map'), 400); } });
+initHold({ esc, I, toast, refreshData: () => refresh(false) });
 initExtras({ esc, I, toast, native, shareFile: (f, t, ti) => shareFile(f, t, ti) });
 initSellMod({ esc, toast });
 initFavx({ DATA, esc, money, toast, I, findLand: (id) => findLand(id) });
@@ -1558,7 +1573,7 @@ async function boot() {
     };
     App.addListener('appUrlOpen', ({ url }) => widgetLink(url));
     App.getLaunchUrl().then((r) => r && widgetLink(r.url)).catch(() => {});
-    App.addListener('resume', () => { if (Date.now() - (DATA().at || 0) > 5 * 60e3) refresh(false); checkUpdate(openExternal); });
+    App.addListener('resume', () => { freshen(); checkUpdate(openExternal); });
     setTimeout(() => checkUpdate(openExternal), 4000);   // a newer version out? (at most every 30 minutes)
     setTimeout(() => SplashScreen.hide({ fadeOutDuration: 250 }).catch(() => {}), 150);
   }

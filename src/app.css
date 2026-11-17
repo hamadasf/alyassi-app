@@ -1740,3 +1740,28 @@ html.oay-studio-on, html.oay-studio-on body { overflow: hidden; }
 .oay-studio-boot { position: fixed; inset: 0; z-index: 2147483001; background: #000; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; font-weight: 700; }
 .oay-studio-spin { width: 42px; height: 42px; border-radius: 50%; border: 4px solid rgba(255,255,255,.18); border-top-color: #C9A14A; animation: oaySpin .9s linear infinite; }
 @keyframes oaySpin { to { transform: rotate(360deg); } }
+/* lead follow-up: who follows the client, and clients waiting for a reply */
+.lstale { font-style: normal; color: #b45309; background: #fef3c7; border-radius: 999px; padding: 1px 8px; font-weight: 700; font-size: .78em; }
+.lowner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; font-size: .92em; }
+.lowner > span { display: inline-flex; align-items: center; gap: 4px; flex: 1; }
+.lowner svg { width: 16px; height: 16px; }
+/* «حجز مؤقت» */
+.hold { border: 1.5px dashed #d6b46a; background: #fffaf0; border-radius: 16px; padding: 12px 14px; margin: 10px 0; display: flex; flex-direction: column; gap: 6px; }
+.hold.on { border-style: solid; border-color: #d97706; background: #fff7ed; }
+.hold b { font-size: 1em; } .hold > span { font-size: .85em; color: #6b6255; } .hold em { font-style: normal; font-weight: 700; color: #b45309; }
+.hold-c { border: 1px solid #e5dccb; border-radius: 12px; padding: 10px 12px; font: inherit; background: #fff; }
+.hold-b { display: flex; gap: 8px; flex-wrap: wrap; } .hold-b .btn { flex: 1; }
+/* «لوحة الأداء» */
+.tm-board { overflow-x: auto; } .tm-board h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
+.tm-board h3 svg { width: 18px; height: 18px; }
+.tm-board table { width: 100%; border-collapse: collapse; font-size: .9em; }
+.tm-board th { font-weight: 600; color: #7a7466; font-size: .82em; padding: 4px 6px; text-align: center; }
+.tm-board th:first-child, .tm-board td:first-child { text-align: start; }
+.tm-board td { padding: 8px 6px; border-top: 1px solid #eee7da; text-align: center; font-weight: 700; }
+.tm-board td.z { color: #c9c1b2; font-weight: 400; } .tm-board tr { cursor: pointer; }
+/* «أنا فين؟» on the plan */
+.pvzoom .pvme svg { width: 20px; height: 20px; } .pvzoom .pvme.on { background: #2563eb; color: #fff; }
+.pvmetip { position: absolute; left: 12px; right: 12px; top: 58px; z-index: 3; background: rgba(255,255,255,.96); border-radius: 14px; padding: 10px 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.15); font-size: .92em; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pvmetip[hidden] { display: none; } .pvmetip b { color: #2563eb; }
+.pvmego { margin-inline-start: auto; border: 0; background: #2563eb; color: #fff; border-radius: 999px; padding: 5px 12px; font: inherit; font-size: .9em; }
