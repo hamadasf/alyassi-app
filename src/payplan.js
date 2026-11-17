@@ -42,7 +42,7 @@ export function planOf(l) {
   return { total, inst, sum, down, ppf: l.ppf || (l.ft ? total / l.ft : 0), freq: inst.length > 1 ? monthsBetween(inst[0][0], inst[1][0]) : 0 };
 }
 
-async function drawPage(l, client) {
+async function drawPage(l, client, quote = null) {
   const A = await loadAssets();
   await Promise.all(['400', '500', '700', '800'].map((w) => document.fonts.load(`${w} 30px Tajawal`, 'خطة 0123'))).catch(() => {});
   const P = planOf(l);
@@ -62,8 +62,8 @@ async function drawPage(l, client) {
   }
 
   const L = 108, R = 1116;
-  text(c, 'خطة السداد', R, 310, F(800, 44), INK);
-  c.direction = 'ltr'; text(c, 'Payment Plan', L, 310, F(700, 22), GOLD, 'left'); c.direction = 'rtl';
+  text(c, quote ? 'عرض سعر رسمي' : 'خطة السداد', R, 310, F(800, 44), INK);
+  c.direction = 'ltr'; text(c, quote ? 'Price Quotation' : 'Payment Plan', L, 310, F(700, 22), GOLD, 'left'); c.direction = 'rtl';
   c.fillStyle = GOLD; c.fillRect(L, 328, R - L, 3);
 
   // details box: two columns × three rows
@@ -125,19 +125,28 @@ async function drawPage(l, client) {
   text(c, 'الإجمالي', X.desc, ey + rowH / 2 + fs * 0.36, F(800, fs), INK);
   text(c, fmt(P.total), X.amt, ey + rowH / 2 + fs * 0.36, F(800, fs), INK, 'right');
   text(c, 'هذه الخطة للتوضيح وتخضع لبنود العقد الموقّع بين الطرفين.', R, ey + rowH + 30, F(500, 15), MUTED);
+  if (quote) {   // the offer's validity, its number and who issued it
+    const qy = ey + rowH + 56, qh = 92;
+    c.fillStyle = 'rgba(201,162,74,.10)'; rr(c, L, qy, R - L, qh, 14); c.fill(); c.strokeStyle = GOLD; c.lineWidth = 2; c.stroke();
+    const d = new Date(quote.until), ds = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    text(c, `هذا العرض ساري حتى ${ds}`, R - 22, qy + 38, F(800, 24), INK);
+    text(c, quote.hold ? 'السعر محجوز للعميل حتى هذا التاريخ بموجب الحجز المؤقت، ويُلغى العرض بعده تلقائياً.' : 'بعد هذا التاريخ يخضع السعر والتوفر لإعادة التأكيد من الشركة.', R - 22, qy + 72, F(500, 16), MUTED);
+    c.direction = 'ltr'; text(c, `No. ${quote.no}`, L + 22, qy + 38, F(700, 18), GOLD, 'left'); c.direction = 'rtl';
+    if (quote.by) text(c, `المستشار: ${quote.by}`, L + 22 + 260, qy + 72, F(700, 16), INK, 'right');
+  }
   return cv;
 }
 
 /** → { bytes, name } — a one-page PDF */
-export async function buildPayPlan(l, client = '') {
-  const cv = await drawPage(l, client.trim());
+export async function buildPayPlan(l, client = '', quote = null) {
+  const cv = await drawPage(l, client.trim(), quote);
   const jpg = await new Promise((ok) => cv.toBlob((b) => ok(b), 'image/jpeg', 0.92));
   const doc = await PDFDocument.create();
-  doc.setTitle(`خطة السداد - قطعة ${l.n} - ${l.projectName || ''}`); doc.setAuthor('عمر الياسي للعقارات'); doc.setCreator('Omar Al Yassi Real Estate');
+  doc.setTitle(`${quote ? 'عرض سعر' : 'خطة السداد'} - قطعة ${l.n} - ${l.projectName || ''}`); doc.setAuthor('عمر الياسي للعقارات'); doc.setCreator('Omar Al Yassi Real Estate');
   const im = await doc.embedJpg(new Uint8Array(await jpg.arrayBuffer()));
   const pg = doc.addPage([612, 792]); pg.drawImage(im, { x: 0, y: 0, width: 612, height: 792 });
   const bytes = await doc.save();
-  return { bytes, name: `خطة السداد - قطعة ${l.n}${client ? ' - ' + client.replace(/[\\/:*?"<>|]+/g, ' ').trim() : ''}.pdf` };
+  return { bytes, name: `${quote ? 'عرض سعر' : 'خطة السداد'} - قطعة ${l.n}${client ? ' - ' + client.replace(/[\\/:*?"<>|]+/g, ' ').trim() : ''}.pdf` };
 }
 /** for checking the design (tests) */
 export const payPlanCanvas = drawPage;

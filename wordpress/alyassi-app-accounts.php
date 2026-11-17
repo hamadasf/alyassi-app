@@ -122,11 +122,12 @@ function oay_is_office( $u ) { return $u && ( oay_acc_is_admin( $u ) || oay_staf
 function oay_acc_need_perm( $perm ) { $u = oay_acc_need_user(); if ( ! oay_acc_can( $u, $perm ) ) { oay_acc_err( 'غير مسموح', 403 ); } return $u; }
 function oay_acc_need_office() { $u = oay_acc_need_user(); if ( ! oay_is_office( $u ) ) { oay_acc_err( 'غير مسموح', 403 ); } return $u; }
 function oay_acc_adm_staff() {
-	oay_acc_need_admin(); $u = oay_acc_adm_target(); $in = oay_acc_in();
+	$me = oay_acc_need_admin(); $u = oay_acc_adm_target(); $in = oay_acc_in();
 	$perms = array_values( array_intersect( (array) ( $in['perms'] ?? array() ), array_keys( OAY_STAFF_PERMS ) ) );
 	if ( $perms ) { update_user_meta( $u->ID, 'oay_staff', $perms ); } else { delete_user_meta( $u->ID, 'oay_staff' ); }
 	if ( isset( $in['tpl'] ) ) { $tpl = array_values( array_intersect( (array) $in['tpl'], array_keys( OAY_TPLS ) ) ); if ( $tpl ) { update_user_meta( $u->ID, 'oay_tpl', $tpl ); } else { delete_user_meta( $u->ID, 'oay_tpl' ); } }
 	if ( isset( $in['role'] ) && function_exists( 'oay_role_set' ) ) { oay_role_set( $u->ID, (string) $in['role'] ); }
+	if ( function_exists( 'oay_audit' ) ) { oay_audit( $me->ID, 'staff', $u->display_name . ': ' . ( $perms ? implode( '، ', array_map( function ( $k ) { return OAY_STAFF_PERMS[ $k ]; }, $perms ) ) : 'أُزيلت كل الصلاحيات' ), 'user:' . $u->ID ); }
 	if ( function_exists( 'oay_push_to' ) && $perms ) { oay_push_to( array( $u->ID ), 'تمت إضافتك لفريق عمر الياسي للعقارات', 'افتح التطبيق ← المزيد لتجد أدوات العمل الخاصة بك', array( 'open' => 'account' ) ); }
 	oay_acc_ok( array( 'user' => oay_acc_adm_userrow( get_userdata( $u->ID ) ) ) );
 }
@@ -364,7 +365,7 @@ function oay_acc_adm_verifs() {
 	oay_acc_ok( array( 'items' => array_map( 'oay_acc_adm_userrow', $users ), 'pending' => $cnt ) );
 }
 function oay_acc_adm_verify() {
-	oay_acc_need_admin(); $u = oay_acc_adm_target(); $v = oay_verify_get( $u->ID );
+	$me = oay_acc_need_admin(); $u = oay_acc_adm_target(); $v = oay_verify_get( $u->ID );
 	if ( ! $v ) { oay_acc_err( 'لا يوجد طلب توثيق لهذا الحساب' ); }
 	if ( '1' === oay_acc_arg( 'approve', 2 ) ) {
 		$first = ! get_user_meta( $u->ID, 'oay_verify_bonus', true );
@@ -377,6 +378,7 @@ function oay_acc_adm_verify() {
 		delete_user_meta( $u->ID, 'oay_verified' );
 	}
 	update_user_meta( $u->ID, 'oay_verify', $v ); update_user_meta( $u->ID, 'oay_verify_status', $v['status'] );
+	if ( function_exists( 'oay_audit' ) ) { oay_audit( $me->ID, 'approved' === $v['status'] ? 'verify' : 'unverify', ( $v['company'] ?? '' ) . ' · ' . $u->display_name . ( ! empty( $v['note'] ) ? ' — ' . $v['note'] : '' ), 'user:' . $u->ID ); }
 	oay_push_to( oay_notif_filter( array( $u->ID ), 'reqs' ), 'approved' === $v['status'] ? 'تم توثيق حسابك ✓' : 'بخصوص طلب التوثيق', 'approved' === $v['status'] ? 'أصبح حساب «' . $v['company'] . '» موثّقاً' : 'لم تتم الموافقة على طلب التوثيق', array( 'open' => 'account' ) );
 	oay_acc_ok( array( 'user' => oay_acc_adm_userrow( get_userdata( $u->ID ) ) ) );
 }
@@ -651,8 +653,9 @@ function oay_acc_adm_user() {
 	oay_acc_ok( array( 'user' => oay_acc_staff_view( oay_acc_adm_userrow( $u ), $me ), 'ads' => array_map( function ( $p ) { return oay_acc_card( $p, 'admin' ); }, $ads ) ) );
 }
 function oay_acc_adm_points() {
-	oay_acc_need_admin(); $u = oay_acc_adm_target();
+	$me = oay_acc_need_admin(); $u = oay_acc_adm_target();
 	$v = max( 0, (int) get_user_meta( $u->ID, 'oay_points', true ) + (int) oay_acc_arg( 'delta', 8 ) );
+	if ( function_exists( 'oay_audit' ) ) { $d = (int) oay_acc_arg( 'delta', 8 ); oay_audit( $me->ID, 'points', oay_shown_name( $u ) . ': ' . ( $d > 0 ? '+' : '' ) . $d . ' نقطة (الرصيد ' . $v . ')', 'user:' . $u->ID ); }
 	update_user_meta( $u->ID, 'oay_points', $v ); oay_acc_ok( array( 'user' => oay_acc_adm_userrow( $u ) ) );
 }
 function oay_acc_adm_ban() {
@@ -664,6 +667,7 @@ function oay_acc_adm_ban() {
 			wp_update_post( array( 'ID' => $p->ID, 'post_status' => 'draft' ) ); update_post_meta( $p->ID, '_oay_reject_note', 'الحساب موقوف' );
 		}
 	} else { delete_user_meta( $u->ID, 'oay_banned' ); }
+	if ( function_exists( 'oay_audit' ) ) { oay_audit( $me->ID, '1' === oay_acc_arg( 'on', 2 ) ? 'ban' : 'unban', oay_shown_name( $u ), 'user:' . $u->ID ); }
 	oay_acc_ok( array( 'user' => oay_acc_adm_userrow( get_userdata( $u->ID ) ) ) );
 }
 
@@ -848,6 +852,7 @@ function oay_acc_chat_send() {
 	if ( function_exists( 'oay_lead_add' ) ) { oay_lead_add( $u->ID, 'chat', $lid ? (string) $lid : '', $lid ? get_the_title( $lid ) : 'محادثة مع الإدارة' ); }
 	$who = oay_shown_name( $u );
 	oay_push_to( oay_notif_filter( oay_chat_notify_ids( $tid ), $first ? 'chat_first' : 'chat_all' ), 'رسالة جديدة · ' . $who, mb_substr( oay_acc_arg( 'text', 2000 ) ?: 'استفسار عن إعلان', 0, 120 ), array( 'user' => $u->ID ) );
+	if ( function_exists( 'oay_after_hours' ) ) { oay_after_hours( $tid ); }   // outside working hours: one automatic reply
 	oay_acc_ok( array( 'items' => oay_chat_msgs( $tid, false ) ) + oay_chat_peer_office( $tid ) );
 }
 function oay_chat_peer_office( $tid ) { $s = oay_office_seen(); return array( 'seen' => $tid ? (int) get_post_meta( $tid, 'oay_read_admin', true ) : 0, 'peer' => array( 'online' => time() * 1000 - $s < OAY_ONLINE_SECS * 1000, 'last' => $s ) ); }
@@ -876,6 +881,7 @@ function oay_acc_adm_chat_assign() {
 		update_post_meta( $tid, 'oay_owner', $to );
 		if ( $to !== (int) $me->ID && function_exists( 'oay_push_to' ) ) { oay_push_to( array( $to ), 'محادثة جديدة مسندة إليك', 'أسند إليك ' . $me->display_name . ' متابعة محادثة ' . oay_shown_name( $u ), array( 'user' => $u->ID ) ); }
 	} else { delete_post_meta( $tid, 'oay_owner' ); }
+	if ( function_exists( 'oay_audit' ) ) { oay_audit( $me->ID, 'chat', 'محادثة ' . oay_shown_name( $u ) . ' ← ' . ( $to ? get_userdata( $to )->display_name : 'غير مسندة' ), 'user:' . $u->ID ); }
 	oay_acc_ok( array( 'owner' => $to, 'ownerName' => $to ? get_userdata( $to )->display_name : '' ) );
 }
 add_action( 'wp_ajax_oay_acc_adm_chat_assign', 'oay_acc_adm_chat_assign' ); add_action( 'wp_ajax_nopriv_oay_acc_adm_chat_assign', 'oay_acc_adm_chat_assign' );

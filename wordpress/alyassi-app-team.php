@@ -110,7 +110,9 @@ function oay_acc_team_report() {
 		if ( $uid && (int) $e['u'] !== $uid ) { continue; }
 		$feed[] = $e; if ( count( $feed ) >= 300 ) { break; }
 	}
-	oay_acc_ok( array( 'team' => $team, 'feed' => $feed, 'kinds' => OAY_TEAM_EV, 'roles' => OAY_ROLES, 'days' => $days ) );
+	$mc = function_exists( 'oay_month_counts' ) ? oay_month_counts() : array(); $tg = function_exists( 'oay_targets' ) ? oay_targets() : array();
+	foreach ( $team as &$x ) { $x['month'] = (object) ( $mc[ $x['id'] ] ?? array() ); $x['target'] = (object) ( $tg[ $x['id'] ] ?? array() ); } unset( $x );
+	oay_acc_ok( array( 'team' => $team, 'feed' => $feed, 'kinds' => OAY_TEAM_EV, 'roles' => OAY_ROLES, 'days' => $days, 'boss' => oay_acc_is_admin( $me ) ) );
 }
 
 /* the performance board: following clients, temporary holds and deals count too */

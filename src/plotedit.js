@@ -159,7 +159,7 @@ export function initPlotEditPage(pg, id = '') {
       if (stt && stt !== 'sold' && !body.total && !body.ppf && !(await uiConfirm('ستظهر القطعة بعبارة «السعر عند الاستفسار».', { title: 'لم تكتب سعراً', ok: 'حفظ بدون سعر' }))) return;
       if (!stt && !(await uiConfirm('ستختفي من الموقع والتطبيق حتى تعرضها مرة أخرى.', { danger: true, title: 'إزالة القطعة من العرض؟', ok: 'إزالة من العرض' }))) return;
       t.disabled = true; const old = t.innerHTML; t.innerHTML = '<i class="spin"></i> جارِ الحفظ…';
-      try { const j = await api('adm_plot_save', body); cur = j.plot; remember(body.project, body.n); H.toast(quiet ? 'تم الحفظ بدون إشعار ✓' : 'تم حفظ القطعة على المخطط ✓'); if (H.saved) H.saved(body.project, j.plot); else H.refreshData(); load(); }
+      try { const j = await api('adm_plot_save', body); if (j.pending) { await uiConfirm(`${j.why}.\nأُرسل التعديل إلى الإدارة للموافقة، وستبقى القطعة كما هي حتى تتم الموافقة، وسيصلك إشعار بالنتيجة.`, { title: 'بانتظار موافقة الإدارة', ok: 'حسناً', cancel: '' }); return; } cur = j.plot; remember(body.project, body.n); H.toast(quiet ? 'تم الحفظ بدون إشعار ✓' : 'تم حفظ القطعة على المخطط ✓'); if (H.saved) H.saved(body.project, j.plot); else H.refreshData(); load(); }
       catch (ex) { H.toast(ex.message); }
       finally { t.disabled = false; t.innerHTML = old; }
     }

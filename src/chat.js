@@ -4,6 +4,7 @@
 import { api, session, resizePhoto, can, isOffice, shownName } from './owner.js';
 import { oLandCard } from './owner-ui.js';
 import { uiConfirm, uiPrompt } from './dialog.js';
+import { openQuick } from './ops.js';
 
 let H = null;
 export function initChat(h) {
@@ -99,8 +100,12 @@ function composerHTML(ph) {
     <input type="file" class="fpick" hidden multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt">
     <input type="file" class="cpick" hidden accept="image/*" capture="environment"></div>`;
 }
-function bindComposer(root, { admin, onSend }) {
+function bindComposer(root, { admin, onSend, quickReplies }) {
   const form = root.querySelector('.wacomp'), ta = form.querySelector('textarea'), strip = root.querySelector('.watts');
+  if (quickReplies) {   // the office: «ردود جاهزة» next to the attach button
+    const q = document.createElement('button'); q.type = 'button'; q.className = 'wai wquick'; q.setAttribute('aria-label', 'ردود جاهزة'); q.textContent = '⚡';
+    form.querySelector('.wapill').insertBefore(q, form.querySelector('[data-attach]')); q.onclick = () => openQuick(ta);
+  }
   const fpick = root.querySelector('.fpick'), cpick = root.querySelector('.cpick'), btn = form.querySelector('.wasend');
   let picks = [], busy = false, reply = null;
   const rbar = root.querySelector('.wareply');
@@ -280,7 +285,7 @@ function bindChat(root, { admin, uid }) {
     const ok = await send(text, files, ref, reply); if (ok && !admin) { pendingRef = null; showChip(); } return ok;
   };
   onSend.allowEmpty = () => !admin && !!pendingRef;
-  const { ta, setReply } = bindComposer(root, { admin, onSend });
+  const { ta, setReply } = bindComposer(root, { admin, onSend, quickReplies: admin });
   bindLongPress(box, (id) => {
     const m = items.find((x) => String(x.id) === String(id)); if (!m) return;
     const mine = admin ? m.from === 'admin' : m.from === 'user';

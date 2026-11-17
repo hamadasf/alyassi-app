@@ -48,7 +48,8 @@ import { mountRange } from './range.js';
 import { initProjMap, mapPage, initMapPage } from './projmap.js';
 import { initExtras, noteContact, maybeAskRating, ratesPage, initRatesPage, preregPage, initPreregPage } from './extras.js';
 import { uiConfirm, uiPrompt } from './dialog.js';
-import { initHold, holdSlot, fillHold } from './hold.js';
+import { initHold, holdSlot, fillHold, holdFor } from './hold.js';
+import { initOps, auditPage, initAudit, approvalsPage, initApprovals, needMktPage, initNeedMkt } from './ops.js';
 
 const native = Capacitor.isNativePlatform();
 const $ = (s, r = document) => r.querySelector(s);
@@ -271,6 +272,7 @@ function openFromPush(ev) {
   const n = (ev && (ev.notification || ev.result && ev.result.notification)) || {};
   const data = n.additionalData || n.data || {};
   if (data.open === 'design' && data.id) { closeAll(); if (data.theme) adgenWant(String(data.theme)); refresh(false); setTimeout(() => (can('design') ? pushPage('adgen', String(data.id)) : openLandId(String(data.id))), 300); return; }
+  if (data.open === 'approvals' || data.open === 'needmkt') { closeAll(); showTab('contact'); setTimeout(() => pushPage(data.open), 300); return; }
   if (data.open === 'team') { closeAll(); showTab('contact'); setTimeout(() => pushPage('team'), 300); return; }
   if (data.open === 'land' && data.id) { refresh(false); openLandId(String(data.id)); return; }
   if (data.open === 'chat') { closeAll(); showTab('chats'); setTimeout(() => (data.user && can('chats') ? pushPage('chat', String(data.user)) : pushPage('mychat')), 300); return; }
@@ -517,18 +519,26 @@ function openPayPlan(l) {
     <h3>خطة السداد · قطعة ${esc(l.n)}</h3>
     <p class="ss-sub">ملف PDF بترويسة الشركة: السعر والدفعة المقدمة وجدول الأقساط بتواريخها</p>
     <label class="ppname">اسم العميل (اختياري)<input id="ppClient" maxlength="60" placeholder="يظهر في الخطة — اتركه فارغاً إن لم يلزم"></label>
+    <label class="nrow ppq"><span><b>عرض سعر رسمي</b><small>بتاريخ صلاحية ورقم عرض واسم المستشار</small></span><input type="checkbox" class="nchk" id="ppQuote"></label>
+    <div class="ppqd" hidden><span>ساري لمدة</span><div class="seg">${[3, 7, 14].map((d) => `<button type="button" data-ppd="${d}" class="${d === 7 ? 'on' : ''}">${d} أيام</button>`).join('')}</div><small class="pphold" hidden></small></div>
     <button class="btn wa block" data-ppgo>${I.wa} إنشاء ومشاركة الخطة PDF</button>
   </div>`;
   document.body.appendChild(el);
   requestAnimationFrame(() => el.classList.add('open'));
   const close = () => { el.classList.remove('open'); setTimeout(() => el.remove(), 250); };
   el.querySelector('[data-ssclose]').onclick = close;
+  let days = 7, hold = null;
+  holdFor(l.id).then((h) => { hold = h; if (h) { const s = el.querySelector('.pphold'); s.hidden = false; s.textContent = `القطعة محجوزة مؤقتاً لـ ${h.client} — سيكون العرض ساريًا حتى نهاية الحجز`; } }).catch(() => {});
+  el.querySelector('#ppQuote').onchange = (e) => { el.querySelector('.ppqd').hidden = !e.target.checked; if (e.target.checked && hold && !el.querySelector('#ppClient').value) el.querySelector('#ppClient').value = hold.client; };
+  el.querySelector('.ppqd').onclick = (e) => { const d = e.target.closest('[data-ppd]'); if (!d) return; days = +d.dataset.ppd; el.querySelectorAll('[data-ppd]').forEach((x) => x.classList.toggle('on', x === d)); };
   el.querySelector('[data-ppgo]').onclick = async (e) => {
     const b = e.currentTarget, client = el.querySelector('#ppClient').value.trim();
+    const isQ = el.querySelector('#ppQuote').checked;
+    const quote = isQ ? { until: hold ? hold.until : Date.now() + days * 864e5, hold: !!hold, no: 'Q-' + l.n + '-' + Date.now().toString(36).slice(-5).toUpperCase(), by: (session.user() || {}).name || '' } : null;
     b.disabled = true; b.textContent = 'جارِ تجهيز الملف…';
     try {
-      const pdf = await buildPayPlan(l, client);
-      const txt = [`*خطة السداد — قطعة رقم ${l.n} · ${l.projectName}*`, client ? `للعميل: ${client}` : '', '', `📎 مرفق: خطة السداد (PDF)`, '', `🗺️ ${shareUrl(l)}`, '', '*عمر الياسي للعقارات*'].filter((x, i, a) => x || a[i - 1]).join('\n');
+      const pdf = await buildPayPlan(l, client, quote);
+      const txt = [`*${quote ? 'عرض سعر رسمي' : 'خطة السداد'} — قطعة رقم ${l.n} · ${l.projectName}*`, client ? `للعميل: ${client}` : '', quote ? `ساري حتى: ${new Date(quote.until).toLocaleDateString('ar-AE')}` : '', '', `📎 مرفق: ${quote ? 'عرض السعر' : 'خطة السداد'} (PDF)`, '', `🗺️ ${shareUrl(l)}`, '', '*عمر الياسي للعقارات*'].filter((x, i, a) => x || a[i - 1]).join('\n');
       await shareFile(pdf, txt, `خطة السداد · قطعة ${l.n}`);
       track('share', l.id); close();
     } catch (ex) {
@@ -1072,6 +1082,9 @@ function pushPage(kind, id) {
   else if (kind === 'refs') { html = refsPage(); }
   else if (kind === 'plotedit') { html = plotEditPage(); }
   else if (kind === 'team') { html = teamPage(); }
+  else if (kind === 'audit') { html = auditPage(); }
+  else if (kind === 'approvals') { html = approvalsPage(); }
+  else if (kind === 'needmkt') { html = needMktPage(); }
   else if (kind === 'backups') { html = backupsPage(); }
   else if (kind === 'errs') { html = errsPage(); }
   else if (kind === 'limport') { html = importPage(); }
@@ -1114,7 +1127,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = glock() ? guestLandPage(l) : landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { adwant: 'بوست مطلوب شراء ووساطة', backups: 'النسخ الاحتياطية', errs: 'أعطال التطبيق', team: 'نشاط الفريق', tools: 'لوحة العمل', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', plotedit: 'إضافة / تعديل قطعة', limport: 'استيراد ملف الأراضي', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', blocked: 'المحظورون', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { audit: 'سجل العمليات', approvals: 'طلبات الموافقة', needmkt: 'أراضٍ تحتاج تسويقاً', adwant: 'بوست مطلوب شراء ووساطة', backups: 'النسخ الاحتياطية', errs: 'أعطال التطبيق', team: 'نشاط الفريق', tools: 'لوحة العمل', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', plotedit: 'إضافة / تعديل قطعة', limport: 'استيراد ملف الأراضي', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', blocked: 'المحظورون', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -1130,6 +1143,9 @@ function pushPage(kind, id) {
   if (kind === 'refs') initRefs(pg);
   if (kind === 'plotedit') initPlotEditPage(pg, id || '');
   if (kind === 'team') initTeamPage(pg);
+  if (kind === 'audit') initAudit(pg);
+  if (kind === 'approvals') initApprovals(pg);
+  if (kind === 'needmkt') initNeedMkt(pg);
   if (kind === 'backups') initBackups(pg);
   if (kind === 'errs') initErrs(pg);
   if (kind === 'limport') initImportPage(pg);
@@ -1302,6 +1318,17 @@ document.addEventListener('click', (e) => {
   if (ds.views !== undefined) { pushPage('views'); return; }
   if (ds.staff !== undefined) { pushPage('staff'); return; }
   if (ds.team !== undefined) { pushPage('team'); return; }
+  if (ds.audit !== undefined) { pushPage('audit'); return; }
+  if (ds.plansoff !== undefined) { (async () => {
+    const ps = DATA().projects.filter((p) => p.map); if (!ps.length) { toast('لا توجد مخططات بعد'); return; }
+    if (!(await uiConfirm(`سيُحفظ ${ps.length} مخططاً على جهازك (قد يستهلك ذلك بعض بيانات الإنترنت، ويُفضَّل استخدام الواي فاي). بعدها يعمل المخطط و«موقعي على المخطط» دون اتصال.`, { title: 'حفظ المخططات بدون إنترنت', ok: 'حفظ الآن' }))) return;
+    const t0 = toast('جارِ حفظ المخططات…');
+    const { savePlansOffline } = await import('./planloc.js');
+    const n = await savePlansOffline(ps, (i, all, p) => toast(`جارِ حفظ المخططات… ${i} / ${all} · ${p.name}`));
+    void t0; toast(n ? `تم حفظ ${n} مخططاً على جهازك ✓` : 'تعذّر الحفظ — تحقق من الاتصال');
+  })(); return; }
+  if (ds.approvals !== undefined) { pushPage('approvals'); return; }
+  if (ds.needmkt !== undefined) { pushPage('needmkt'); return; }
   if (ds.backups !== undefined) { pushPage('backups'); return; }
   if (ds.errs !== undefined) { pushPage('errs'); return; }
   if (ds.calc !== undefined) { pushPage('calc', ds.calc); return; }
@@ -1461,6 +1488,7 @@ initMailAdm({ toast, esc });
 initMarket({ toast, I, projects: () => DATA().projects });
 initProjMap({ esc, I, toast, money, projects: () => DATA().projects, isAdmin: () => !!(session.user() || {}).admin, reopen: () => { closeTop(); setTimeout(() => pushPage('map'), 400); } });
 initHold({ esc, I, toast, refreshData: () => refresh(false) });
+initOps({ esc, I, toast, money, DATA: () => DATA(), refreshData: () => refresh(false) });
 initExtras({ esc, I, toast, native, shareFile: (f, t, ti) => shareFile(f, t, ti) });
 initSellMod({ esc, toast });
 initFavx({ DATA, esc, money, toast, I, findLand: (id) => findLand(id) });

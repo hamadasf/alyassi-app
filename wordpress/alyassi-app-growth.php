@@ -264,6 +264,14 @@ function oay_plot_out( $n, $i ) {
 function oay_acc_adm_plot_get() { oay_acc_need_perm( 'plots' ); list( , $n, $i ) = oay_plot_args(); oay_acc_ok( array( 'plot' => oay_plot_out( $n, $i ) ) ); }
 function oay_acc_adm_plot_save() {
 	$me = oay_acc_need_perm( 'plots' ); list( $slug, $n, $i ) = oay_plot_args(); $in = oay_acc_in();   // the admin, or staff given «إضافة / تعديل القطع»
+	if ( function_exists( 'oay_approval_needed' ) && ! oay_acc_is_admin( $me ) ) {   // a big price cut or «مباعة» by a team member waits for the admin
+		$why = oay_approval_needed( $i, $in );
+		if ( $why ) { oay_approval_add( $me, $slug, $n, $in, $why, $i ); oay_acc_ok( array( 'pending' => true, 'why' => $why, 'plot' => oay_plot_out( $n, $i ) ) ); }
+	}
+	oay_acc_ok( array( 'plot' => oay_plot_save_do( $me, $slug, $n, $i, $in ) ) );
+}
+/** writes a plot's status / price / payment plan (from the app's plot editor, or an approved request) → the plot as the editor shows it */
+function oay_plot_save_do( $me, $slug, $n, $i, $in ) {
 	$s = (string) ( $in['s'] ?? '' ); if ( ! in_array( $s, array( 'av', 'res', 'sold', '' ), true ) ) { oay_acc_err( 'حالة غير صحيحة' ); }
 	$total = max( 0, (int) round( (float) ( $in['total'] ?? 0 ) ) ); $ppf = max( 0, round( (float) ( $in['ppf'] ?? 0 ), 2 ) ); $ft = max( 0, round( (float) ( $in['ft'] ?? 0 ), 2 ) );
 	$inst = array();
@@ -294,7 +302,8 @@ function oay_acc_adm_plot_save() {
 	array_unshift( $log, array( 't' => oay_g_ms(), 'uid' => (int) $me->ID, 'id' => $slug . ':' . $n, 's' => $s, 'total' => $total, 'b' => is_array( $i['cur'] ?? null ) ? $i['cur'] : null, 'a' => $after ) );   // before / after: «سجل التغييرات» and «تراجع»
 	update_option( 'oay_plot_log', array_slice( $log, 0, 300 ), false );
 	do_action( 'oay_plot_saved', $me, $slug, (string) $n, $was, $s, $total ? $total : ( $ppf && $ft ? (int) round( $ppf * $ft ) : 0 ) );   // team activity + «أرض جديدة» to the team
-	oay_acc_ok( array( 'plot' => oay_plot_out( $n, oay_plan_plot( $slug, $n ) ) ) );
+	if ( function_exists( 'oay_audit_plot' ) ) { oay_audit_plot( $me, $slug, $n, is_array( $i['cur'] ?? null ) ? $i['cur'] : array(), is_array( $after ) ? $after : array(), (float) ( $i['plot']['ft'] ?? 0 ) ); }
+	return oay_plot_out( $n, oay_plan_plot( $slug, $n ) );
 }
 
 /* ======================================================================================
@@ -383,6 +392,7 @@ function oay_acc_hold_set() {
 	if ( ! oay_hold_status( $slug, $n, 'res', true ) ) { oay_acc_err( 'تعذّر الحجز — حاول مرة أخرى' ); }
 	$h[ $id ] = array( 'uid' => $me->ID, 'client' => $client, 't' => time(), 'until' => time() + $hours * HOUR_IN_SECONDS, 'warned' => 0 );
 	update_option( 'oay_holds', $h, false ); do_action( 'oay_hold_made', $me, $id, $client, $hours );
+	oay_audit( $me->ID, 'hold', 'قطعة ' . $n . ' لـ ' . $client . ' (' . $hours . ' ساعة)', $id );
 	if ( function_exists( 'oay_push_to' ) ) {
 		oay_push_to( array_diff( oay_admin_ids(), array( $me->ID ) ), '⏳ حجز مؤقت · قطعة ' . $n, $me->display_name . ' حجزها مؤقتاً لـ ' . $client . ' لمدة ' . $hours . ' ساعة', array( 'open' => 'land', 'id' => $id ) );
 	}
@@ -394,9 +404,10 @@ function oay_acc_hold_done() {
 	$boss = oay_acc_is_admin( $me ) || ( function_exists( 'oay_role' ) && 'mgr' === oay_role( $me ) );
 	if ( (int) $h[ $id ]['uid'] !== (int) $me->ID && ! $boss ) { oay_acc_err( 'الحجز باسم ' . ( get_userdata( (int) $h[ $id ]['uid'] )->display_name ?? 'موظف آخر' ) . ' — هو أو المدير فقط' ); }
 	list( $slug, $n ) = explode( ':', $id, 2 );
-	if ( 'extend' === $act ) { $h[ $id ]['until'] = max( time(), (int) $h[ $id ]['until'] ) + DAY_IN_SECONDS; $h[ $id ]['warned'] = 0; update_option( 'oay_holds', $h, false ); oay_acc_ok( array( 'hold' => oay_hold_row( $id, $h[ $id ] ) ) ); }
+	if ( 'extend' === $act ) { oay_audit( $me->ID, 'hold', 'قطعة ' . $n . ' · ' . $h[ $id ]['client'] . ' — تمديد يوم', $id ); $h[ $id ]['until'] = max( time(), (int) $h[ $id ]['until'] ) + DAY_IN_SECONDS; $h[ $id ]['warned'] = 0; update_option( 'oay_holds', $h, false ); oay_acc_ok( array( 'hold' => oay_hold_row( $id, $h[ $id ] ) ) ); }
 	if ( 'release' === $act && ! oay_hold_status( $slug, $n, 'av', false ) ) { oay_acc_err( 'تعذّر إلغاء الحجز — حاول مرة أخرى' ); }
 	if ( 'paid' === $act ) { do_action( 'oay_hold_paid', $me, $id, $h[ $id ]['client'] ); }
+	oay_audit( $me->ID, 'hold', 'قطعة ' . $n . ' · ' . $h[ $id ]['client'] . ' — ' . ( 'paid' === $act ? 'تم دفع العربون' : 'أُلغي الحجز' ), $id );
 	unset( $h[ $id ] ); update_option( 'oay_holds', $h, false );   // 'paid': the deposit is in — it stays «محجوزة» for good
 	oay_acc_ok( array( 'hold' => null ) );
 }
@@ -421,4 +432,172 @@ add_action( 'oay_holds_check', function () {
 		}
 	}
 	if ( $dirty ) { update_option( 'oay_holds', $h, false ); }
+} );
+
+/* ======================================================================================
+ * 9. «سجل العمليات»: who changed a price or a status, verified / un-verified an account, stopped an account, changed
+ *    points or permissions, handed a chat over, held a plot — for the admin.
+ * ==================================================================================== */
+const OAY_AUDIT_K = array( 'price' => 'تغيير سعر', 'status' => 'تغيير حالة', 'plot_new' => 'إضافة أرض', 'verify' => 'توثيق حساب', 'unverify' => 'إلغاء / رفض توثيق',
+	'ban' => 'إيقاف حساب', 'unban' => 'رفع إيقاف', 'points' => 'تعديل نقاط', 'staff' => 'تعديل صلاحيات', 'chat' => 'تحويل محادثة', 'hold' => 'حجز مؤقت',
+	'approval' => 'طلب موافقة', 'approved' => 'موافقة الإدارة', 'rejected' => 'رفض الإدارة', 'settings' => 'إعدادات' );
+function oay_audit( $uid, $kind, $text, $ref = '' ) {
+	$log = get_option( 'oay_audit', array() ); $log = is_array( $log ) ? $log : array();
+	array_unshift( $log, array( 't' => oay_g_ms(), 'u' => (int) $uid, 'k' => (string) $kind, 'x' => mb_substr( (string) $text, 0, 240 ), 'r' => mb_substr( (string) $ref, 0, 80 ) ) );
+	update_option( 'oay_audit', array_slice( $log, 0, 3000 ), false );
+}
+/** a plot saved: its price and status before → after */
+function oay_audit_plot( $me, $slug, $n, $b, $a, $planFt ) {
+	$st = array( 'av' => 'متاحة', 'res' => 'محجوزة', 'sold' => 'مباعة', '' => 'غير معروضة' );
+	$tot = function ( $x ) use ( $planFt ) { $t = (int) ( $x['total'] ?? 0 ); if ( ! $t && ! empty( $x['ppf'] ) ) { $t = (int) round( $x['ppf'] * ( (float) ( $x['ft'] ?? 0 ) ?: $planFt ) ); } return $t; };
+	$name = function_exists( 'oay_team_plot_label' ) ? oay_team_plot_label( $slug . ':' . $n )['proj'] : $slug; $id = $slug . ':' . $n;
+	$sb = (string) ( $b['s'] ?? '' ); $sa = (string) ( $a['s'] ?? '' ); $tb = $tot( $b ); $ta = $tot( $a );
+	if ( ! $b || '' === $sb && $sa ) { oay_audit( $me->ID, 'plot_new', 'قطعة ' . $n . ' · ' . $name . ' · ' . ( $st[ $sa ] ?? $sa ) . ( $ta ? ' · ' . number_format( $ta ) . ' د.إ' : '' ), $id ); return; }
+	if ( $sb !== $sa ) { oay_audit( $me->ID, 'status', 'قطعة ' . $n . ' · ' . $name . ': ' . ( $st[ $sb ] ?? $sb ) . ' ← ' . ( $st[ $sa ] ?? $sa ), $id ); }
+	if ( $tb !== $ta ) { oay_audit( $me->ID, 'price', 'قطعة ' . $n . ' · ' . $name . ': ' . ( $tb ? number_format( $tb ) : '—' ) . ' ← ' . ( $ta ? number_format( $ta ) : '—' ) . ' د.إ' . ( $tb && $ta ? ' (' . ( $ta > $tb ? '+' : '' ) . round( ( $ta - $tb ) * 100 / $tb, 1 ) . '%)' : '' ), $id ); }
+}
+foreach ( array( 'adm_audit', 'adm_approvals', 'adm_approval_do', 'quick_replies', 'adm_quick_save', 'adm_targets_save', 'need_mkt' ) as $a ) { add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a ); add_action( 'wp_ajax_nopriv_oay_acc_' . $a, 'oay_acc_' . $a ); }
+function oay_acc_adm_audit() {
+	oay_acc_need_admin(); $k = sanitize_key( oay_acc_arg( 'kind', 20 ) ); $uid = absint( oay_acc_arg( 'user', 12 ) );
+	$log = get_option( 'oay_audit', array() ); $out = array(); $names = array();
+	foreach ( (array) $log as $e ) {
+		if ( ( $k && $e['k'] !== $k ) || ( $uid && (int) $e['u'] !== $uid ) ) { continue; }
+		if ( ! isset( $names[ $e['u'] ] ) ) { $x = get_userdata( (int) $e['u'] ); $names[ $e['u'] ] = $x ? $x->display_name : '—'; }
+		$out[] = $e + array( 'by' => $names[ $e['u'] ] ); if ( count( $out ) >= 300 ) { break; }
+	}
+	oay_acc_ok( array( 'items' => $out, 'kinds' => OAY_AUDIT_K ) );
+}
+
+/* ======================================================================================
+ * 10. Approvals: a team member's price cut bigger than the admin's limit (10% unless changed), or marking a plot «مباعة»,
+ *     waits for the admin; the plot stays as it was until then.
+ * ==================================================================================== */
+function oay_cut_pct() { return max( 1, min( 90, (int) get_option( 'oay_cut_pct', 10 ) ) ); }
+function oay_approval_needed( $i, $in ) {
+	$c = is_array( $i['cur'] ?? null ) ? $i['cur'] : array(); $was = (string) ( $c['s'] ?? '' ); $s = (string) ( $in['s'] ?? '' );
+	if ( 'sold' === $s && 'sold' !== $was ) { return 'تحويل القطعة إلى «مباعة»'; }
+	$area = (float) ( $in['ft'] ?? 0 ) ?: ( (float) ( $c['ft'] ?? 0 ) ?: (float) ( $i['plot']['ft'] ?? 0 ) );
+	$old = (int) ( $c['total'] ?? 0 ) ?: ( ! empty( $c['ppf'] ) && $area ? (int) round( $c['ppf'] * $area ) : 0 );
+	$new = (int) round( (float) ( $in['total'] ?? 0 ) ) ?: ( ! empty( $in['ppf'] ) && $area ? (int) round( (float) $in['ppf'] * $area ) : 0 );
+	if ( $old && $new && $new < $old * ( 1 - oay_cut_pct() / 100 ) ) { return 'تخفيض السعر ' . round( ( $old - $new ) * 100 / $old, 1 ) . '% (من ' . number_format( $old ) . ' إلى ' . number_format( $new ) . ' د.إ)'; }
+	return '';
+}
+function oay_approvals() { $a = get_option( 'oay_approvals', array() ); return is_array( $a ) ? $a : array(); }
+function oay_approval_add( $me, $slug, $n, $in, $why, $i ) {
+	$a = oay_approvals(); $id = $slug . ':' . $n;
+	$keep = array_intersect_key( (array) $in, array_flip( array( 's', 'total', 'ppf', 'ft', 'inst', 'fe', 'lo', 'quiet' ) ) );
+	$a[ $id ] = array( 'id' => $id, 'uid' => (int) $me->ID, 't' => oay_g_ms(), 'why' => $why, 'in' => $keep );
+	update_option( 'oay_approvals', $a, false );
+	$name = function_exists( 'oay_team_plot_label' ) ? oay_team_plot_label( $id )['proj'] : $slug;
+	oay_audit( $me->ID, 'approval', 'قطعة ' . $n . ' · ' . $name . ' — ' . $why, $id );
+	if ( function_exists( 'oay_push_to' ) ) { oay_push_to( get_users( array( 'capability' => 'manage_options', 'fields' => 'ID' ) ), '🔒 طلب موافقة · قطعة ' . $n . ' · ' . $name, $me->display_name . ': ' . $why, array( 'open' => 'approvals' ) ); }
+}
+function oay_acc_adm_approvals() {
+	oay_acc_need_admin();
+	if ( null !== oay_acc_arg( 'pct', 3 ) && '' !== (string) oay_acc_arg( 'pct', 3 ) ) { $me = oay_acc_need_admin(); update_option( 'oay_cut_pct', max( 1, min( 90, (int) oay_acc_arg( 'pct', 3 ) ) ), false ); oay_audit( $me->ID, 'settings', 'حد التخفيض الذي يحتاج موافقة: ' . oay_cut_pct() . '%' ); }
+	$out = array();
+	foreach ( oay_approvals() as $x ) { $u = get_userdata( $x['uid'] ); $p = function_exists( 'oay_team_plot_label' ) ? oay_team_plot_label( $x['id'] ) : array( 'n' => $x['id'], 'proj' => '' ); $out[] = $x + array( 'by' => $u ? $u->display_name : '—', 'n' => $p['n'], 'proj' => $p['proj'] ); }
+	oay_acc_ok( array( 'items' => array_values( $out ), 'pct' => oay_cut_pct() ) );
+}
+function oay_acc_adm_approval_do() {
+	$me = oay_acc_need_admin(); $id = (string) oay_acc_arg( 'id', 80 ); $ok = '1' === oay_acc_arg( 'ok', 2 );
+	$a = oay_approvals(); if ( ! isset( $a[ $id ] ) ) { oay_acc_err( 'الطلب غير موجود — ربما تمت معالجته' ); }
+	$x = $a[ $id ]; unset( $a[ $id ] ); update_option( 'oay_approvals', $a, false );
+	list( $slug, $n ) = explode( ':', $id, 2 ); $by = get_userdata( $x['uid'] );
+	if ( $ok ) {
+		$i = function_exists( 'oay_plan_plot' ) ? oay_plan_plot( $slug, $n ) : null; if ( ! $i ) { oay_acc_err( 'القطعة غير موجودة في المخطط' ); }
+		oay_plot_save_do( $by ?: $me, $slug, $n, $i, (array) $x['in'] );
+	}
+	oay_audit( $me->ID, $ok ? 'approved' : 'rejected', 'قطعة ' . $n . ' — ' . $x['why'] . ( $by ? ' (طلب ' . $by->display_name . ')' : '' ), $id );
+	if ( $by && function_exists( 'oay_push_to' ) ) { oay_push_to( array( $by->ID ), $ok ? '✓ وافقت الإدارة على تعديل القطعة ' . $n : '✕ لم توافق الإدارة على تعديل القطعة ' . $n, $x['why'], array( 'open' => 'land', 'id' => $id ) ); }
+	oay_acc_ok( array() );
+}
+
+/* ======================================================================================
+ * 11. Chats: ready replies for the team, and an automatic reply when a client writes outside working hours.
+ * ==================================================================================== */
+function oay_quick_default() {
+	return array(
+		'أهلاً وسهلاً بك في عمر الياسي للعقارات، كيف يمكننا مساعدتك؟',
+		'القطعة متاحة حالياً، هل ترغب في معرفة السعر وخطة الدفع؟',
+		'يمكنك الاطلاع على موقع المشروع ومخططه من صفحة القطعة في التطبيق.',
+		'تتوفر خطة دفع بالأقساط، وسنرسل لك تفاصيلها الآن.',
+		'يسعدنا ترتيب معاينة للأرض، ما الوقت المناسب لك؟',
+		'شكراً لتواصلك، سيتصل بك أحد مستشارينا خلال وقت قصير.',
+	);
+}
+function oay_quick_list() { $q = get_option( 'oay_quick', null ); return is_array( $q ) && $q ? $q : oay_quick_default(); }
+function oay_hours() { $h = get_option( 'oay_hours', array() ); return array( 'from' => (int) ( $h['from'] ?? 9 ), 'to' => (int) ( $h['to'] ?? 21 ), 'on' => ! isset( $h['on'] ) || ! empty( $h['on'] ), 'text' => (string) ( $h['text'] ?? 'شكراً لتواصلك مع عمر الياسي للعقارات. وصلت رسالتك خارج أوقات العمل، وسيرد عليك فريقنا صباح يوم العمل التالي.' ) ); }
+function oay_acc_quick_replies() { oay_acc_need_perm( 'chats' ); oay_acc_ok( array( 'items' => oay_quick_list(), 'hours' => oay_hours() ) ); }
+function oay_acc_adm_quick_save() {
+	$me = oay_acc_need_admin(); $in = oay_acc_in();
+	if ( isset( $in['items'] ) ) { $q = array_values( array_filter( array_map( function ( $t ) { return trim( mb_substr( sanitize_textarea_field( (string) $t ), 0, 500 ) ); }, array_slice( (array) $in['items'], 0, 30 ) ) ) ); update_option( 'oay_quick', $q, false ); }
+	if ( isset( $in['hours'] ) && is_array( $in['hours'] ) ) { $h = $in['hours']; update_option( 'oay_hours', array( 'from' => max( 0, min( 23, (int) ( $h['from'] ?? 9 ) ) ), 'to' => max( 1, min( 24, (int) ( $h['to'] ?? 21 ) ) ), 'on' => ! empty( $h['on'] ) ? 1 : 0, 'text' => trim( mb_substr( sanitize_textarea_field( (string) ( $h['text'] ?? '' ) ), 0, 500 ) ) ), false ); }
+	oay_audit( $me->ID, 'settings', 'الردود الجاهزة وأوقات العمل' );
+	oay_acc_ok( array( 'items' => oay_quick_list(), 'hours' => oay_hours() ) );
+}
+/** called after a client's message: outside working hours (UAE time) one automatic reply, at most every 12 hours */
+function oay_after_hours( $tid ) {
+	$h = oay_hours(); if ( ! $h['on'] || '' === trim( $h['text'] ) || ! function_exists( 'oay_chat_add' ) ) { return; }
+	$now = (int) current_time( 'G' ); $open = $h['from'] < $h['to'] ? ( $now >= $h['from'] && $now < $h['to'] ) : ( $now >= $h['from'] || $now < $h['to'] );
+	if ( $open ) { return; }
+	$last = (int) get_post_meta( $tid, 'oay_auto_t', true ); if ( time() - $last < 12 * HOUR_IN_SECONDS ) { return; }
+	update_post_meta( $tid, 'oay_auto_t', time() );
+	$admin = get_users( array( 'capability' => 'manage_options', 'number' => 1, 'fields' => 'ID' ) );
+	oay_chat_add( $tid, $admin ? (int) $admin[0] : 0, 'admin', $h['text'], 0 );
+}
+
+/* ======================================================================================
+ * 12. Monthly targets per team member (posts, clients followed, holds, deals) — set by the admin; progress in «لوحة الأداء».
+ * ==================================================================================== */
+function oay_targets() { $t = get_option( 'oay_targets', array() ); return is_array( $t ) ? $t : array(); }
+function oay_acc_adm_targets_save() {
+	$me = oay_acc_need_admin(); $uid = absint( oay_acc_arg( 'user', 12 ) ); if ( ! $uid || ! get_userdata( $uid ) ) { oay_acc_err( 'اختر الموظف' ); }
+	$in = oay_acc_in(); $t = oay_targets(); $x = array();
+	foreach ( array( 'posts', 'clients', 'holds', 'deals' ) as $k ) { $v = max( 0, min( 9999, (int) ( $in[ $k ] ?? 0 ) ) ); if ( $v ) { $x[ $k ] = $v; } }
+	if ( $x ) { $t[ $uid ] = $x; } else { unset( $t[ $uid ] ); }
+	update_option( 'oay_targets', $t, false );
+	oay_audit( $me->ID, 'settings', 'الهدف الشهري لـ ' . get_userdata( $uid )->display_name );
+	oay_acc_ok( array( 'target' => (object) ( $t[ $uid ] ?? array() ) ) );
+}
+/** this month's counts per member from the team log, as the board groups them */
+function oay_month_counts() {
+	$since = strtotime( date( 'Y-m-01 00:00:00', current_time( 'timestamp' ) ) ) - ( current_time( 'timestamp' ) - time() ); $since *= 1000;
+	$G = array( 'posts' => array( 'design', 'share_design', 'save_img', 'share_land' ), 'clients' => array( 'lead', 'chat' ), 'holds' => array( 'hold' ), 'deals' => array( 'deal' ) );
+	$out = array();
+	foreach ( (array) get_option( 'oay_team_log', array() ) as $e ) {
+		if ( $e['t'] < $since ) { break; }
+		foreach ( $G as $g => $ks ) { if ( in_array( $e['k'], $ks, true ) ) { $out[ (int) $e['u'] ][ $g ] = ( $out[ (int) $e['u'] ][ $g ] ?? 0 ) + 1; } }
+	}
+	return $out;
+}
+
+/* ======================================================================================
+ * 13. «أراضي تحتاج تسويقاً»: available company plots nobody in the team designed a post for or shared in the last 7 days;
+ *     every morning the designers and marketing get the count.
+ * ==================================================================================== */
+function oay_marketed_since( $days ) {
+	$since = oay_g_ms() - $days * 86400000; $seen = array();
+	foreach ( (array) get_option( 'oay_team_log', array() ) as $e ) {
+		if ( $e['t'] < $since ) { break; }
+		if ( in_array( $e['k'], array( 'design', 'share_design', 'save_img', 'share_land' ), true ) && $e['r'] ) { $seen[ explode( '|', $e['r'] )[0] ] = max( $seen[ explode( '|', $e['r'] )[0] ] ?? 0, (int) $e['t'] ); }
+	}
+	return $seen;
+}
+function oay_acc_need_mkt() {
+	$me = oay_acc_need_office(); $all = array();   // the last time each plot was marketed (any time in the last 90 days); the app lists the available plots not in the last 7
+	foreach ( oay_marketed_since( 90 ) as $id => $t ) { $all[ $id ] = $t; }
+	oay_acc_ok( array( 'last' => (object) $all, 'days' => 7 ) );
+}
+add_action( 'init', function () { if ( ! wp_next_scheduled( 'oay_mkt_daily' ) ) { wp_schedule_event( strtotime( 'tomorrow 05:10 UTC' ), 'daily', 'oay_mkt_daily' ); } } );
+add_action( 'oay_mkt_daily', function () {
+	if ( ! function_exists( 'oay_push_to' ) || ! function_exists( 'dnp_projects' ) || ! function_exists( 'oay_plots' ) ) { return; }
+	$seen = oay_marketed_since( 7 ); $n = 0;
+	foreach ( (array) dnp_projects() as $slug => $p ) {
+		if ( empty( $p['opt'] ) ) { continue; }
+		foreach ( oay_plots( get_option( $p['opt'] ) ) as $pn => $q ) { if ( ( $q['s'] ?? '' ) === 'av' && ! isset( $seen[ $slug . ':' . $pn ] ) ) { $n++; } }
+	}
+	if ( ! $n ) { return; }
+	$to = array_values( array_filter( oay_admin_ids(), function ( $id ) { $u = get_userdata( $id ); return $u && ( oay_acc_can( $u, 'design' ) || ( function_exists( 'oay_role' ) && 'mkt' === oay_role( $u ) ) ); } ) );
+	oay_push_to( $to, '📣 ' . $n . ' أرض متاحة لم تُسوَّق منذ أسبوع', 'افتح «أراضٍ تحتاج تسويقاً» لتصميم منشوراتها', array( 'open' => 'needmkt' ) );
 } );

@@ -10,6 +10,8 @@ async function holds(force) {
   if (!force && cache && Date.now() - cacheAt < 30e3) return cache;
   cache = (await api('holds')).items || []; cacheAt = Date.now(); return cache;
 }
+/** the temporary hold on a plot (for the price quotation), or null */
+export async function holdFor(id) { if (!isOffice()) return null; return (await holds()).find((x) => x.id === id) || null; }
 const left = (ms) => { const m = Math.max(0, Math.round((ms - Date.now()) / 60e3)); return m >= 60 ? `${Math.floor(m / 60)} ساعة${m % 60 ? ` و${m % 60} دقيقة` : ''}` : `${m} دقيقة`; };
 
 export function holdSlot(l) { return isOffice() && (l.status === 'av' || l.status === 'res') ? `<div class="holdbox" data-holdid="${H.esc(l.id)}"></div>` : ''; }

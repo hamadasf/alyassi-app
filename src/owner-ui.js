@@ -467,6 +467,13 @@ export function initAdmAd(pg, id) {
 export const TPLS = { oy: 'قالب عمر الياسي', ar: 'قالب عبد الرحمن', co: 'قالب الشركة', gr: 'قالب عبادة', aya: 'قالب أمل', ayk: 'قالب آية كامل', wr: 'قالب لين واتس أب', wi: 'قالب لين إنستجرام' };
 export const STAFF = { chats: 'الرد على المحادثات', leads: 'متابعة العملاء وسجل التواصل', viewings: 'مواعيد المعاينة', listings: 'مراجعة الإعلانات وطلبات الشراء', news: 'الأخبار والدليل', push: 'الإشعارات الموجّهة', report: 'التقرير الأسبوعي', payplan: 'إرسال خطة السداد', design: 'تصميم البوستات', owners: 'رؤية اسم مالك الأرض', plots: 'إضافة / تعديل القطع (الحالة والسعر والدفعات)' };
 export const ROLES = { staff: 'موظف', mgr: 'مدير', mkt: 'مدير تسويق' };
+/** ready-made permission sets, so a new team member gets the right ones (and nothing more) */
+const PRESETS = {
+  sales: { name: 'موظف مبيعات', role: 'staff', perms: ['chats', 'leads', 'viewings', 'payplan', 'owners'] },
+  design: { name: 'مصمم', role: 'staff', perms: ['design'] },
+  mkt: { name: 'مدير تسويق', role: 'mkt', perms: ['design', 'news', 'push', 'report', 'listings'] },
+  mgr: { name: 'مدير', role: 'mgr', perms: ['chats', 'leads', 'viewings', 'listings', 'report', 'payplan', 'design', 'owners', 'plots', 'push'] },
+};
 /* ---------- the office team (admin only) ---------- */
 export function staffPage() { return '<div class="pad acc" id="staffl"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>'; }
 export async function initStaff(pg) {
@@ -531,6 +538,8 @@ export async function initAdmUser(pg, id) {
         ${u.admin ? '' : `<button class="btn ghost ${u.banned ? '' : 'danger'}" data-ban="${u.banned ? '0' : '1'}">${u.banned ? 'رفع الإيقاف' : '⛔ إيقاف الحساب'}</button>`}
       </div>
       ${u.admin ? '' : `<div class="ccard staffbox"><h4 class="lh">🧑‍💼 موظف في فريق المكتب</h4><p class="muted">اختر ما يستطيع هذا الحساب فعله نيابةً عن الإدارة. الرسائل التي يرسلها للعملاء تظهر باسم «عمر الياسي للعقارات».</p>
+        <h4 class="lh">قالب جاهز</h4><div class="presets">${Object.entries(PRESETS).map(([k, x]) => `<button type="button" class="btn ghost sm" data-preset="${k}">${x.name}</button>`).join('')}</div>
+        <p class="muted rolehint">يختار القالب الصفة والصلاحيات المناسبة، ويمكنك تعديلها بعد ذلك قبل الحفظ.</p>
         <h4 class="lh">الصفة</h4><div class="seg rolepick">${Object.entries(ROLES).map(([k, v]) => `<button type="button" data-role="${k}" class="${(u.role && u.role !== 'admin' ? u.role : 'staff') === k ? 'on' : ''}">${v}</button>`).join('')}</div>
         <p class="muted rolehint">المدير يرى «نشاط الفريق». تصاميم المدير ومدير التسويق تصل كإشعار لباقي الفريق.</p>
         ${Object.entries(STAFF).map(([k, v]) => `<label class="nrow"><span>${v}</span><input type="checkbox" class="nchk" data-perm="${k}" ${(u.staff || []).includes(k) ? 'checked' : ''}></label>`).join('')}
@@ -544,6 +553,15 @@ export async function initAdmUser(pg, id) {
   const load = async () => { try { draw(await api('adm_user', { id })); } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; } };
   box.onclick = async (e) => {
     const rp = e.target.closest('[data-role]'); if (rp) { box.querySelectorAll('[data-role]').forEach((b) => b.classList.toggle('on', b === rp)); return; }
+    const pr = e.target.closest('[data-preset]');
+    if (pr) {
+      const x = PRESETS[pr.dataset.preset];
+      box.querySelectorAll('[data-perm]').forEach((c) => { c.checked = x.perms.includes(c.dataset.perm); });
+      box.querySelectorAll('[data-role]').forEach((b) => b.classList.toggle('on', b.dataset.role === x.role));
+      const tb = box.querySelector('.tplbox'); if (tb) tb.hidden = !x.perms.includes('design');
+      box.querySelectorAll('[data-preset]').forEach((b) => b.classList.toggle('on', b === pr));
+      toast(`تم اختيار «${x.name}» — راجع الصلاحيات ثم اضغط «حفظ الصلاحيات»`); return;
+    }
     if (e.target.closest('[data-savestaff]')) {
       const perms = [...box.querySelectorAll('[data-perm]')].filter((c) => c.checked).map((c) => c.dataset.perm);
       const tpl = [...box.querySelectorAll('[data-tpl]')].filter((c) => c.checked).map((c) => c.dataset.tpl);

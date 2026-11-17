@@ -123,6 +123,7 @@ export function settingsPage() {
     ]) : ''}
     ${grp('التفضيلات', [
       row(I.bell, 'الإشعارات', 'data-notifs'),
+      row(I.map, 'المخططات بدون إنترنت', 'data-plansoff', '<small>احفظ مخططات المشاريع على الجهاز للعمل في الموقع</small>'),
       `<button class="mrow" data-lang><span class="mi">${I.globe}</span><b class="notr">${H.isEn() ? 'العربية' : 'English'}</b><small class="notr">${H.isEn() ? 'التغيير إلى العربية' : 'Switch to English'}</small><i class="chev">‹</i></button>`,
     ])}
     ${grp('الخصوصية والأمان', [
@@ -287,11 +288,13 @@ export function toolsPage() {
       t(can('listings'), I.shield, 'مراجعة الإعلانات', 'data-admin', 'ads'),
       t(!!u.admin, I.alert, 'البلاغات', 'data-admrep', 'reports'),
       t(can('plots'), I.grid, 'تعديل قطعة على المخطط', 'data-plotedit=""'),
+      t(!!u.admin, I.lock || I.shield, 'طلبات الموافقة', 'data-approvals'),
       t(!!u.admin, I.file, 'استيراد ملف الأراضي', 'data-limport=""'),
       t(can('listings'), I.scale, 'مقارنة بالسوق', 'data-market'),
     ])}
     ${sec('التسويق', [
       t(can('design'), I.image, 'تصميم البوستات', 'data-adgen=""'),
+      t(can('design') || u.role === 'mkt' || !!u.admin, I.trend, 'أراضٍ تحتاج تسويقاً', 'data-needmkt'),
       t(!!u.admin, I.video, 'استوديو الفيديو', 'data-studio'),
       t(can('design'), I.image, 'بوست مطلوب شراء ووساطة', 'data-adwant=""'),
       t(can('push'), I.bell, 'إشعار موجّه', 'data-pushc'),
@@ -303,6 +306,7 @@ export function toolsPage() {
       t(can('listings') || can('report'), I.chart, 'إحصائيات الإعلانات', 'data-mystats'),
       t(!!u.admin, I.verified, 'الموظفون والصلاحيات', 'data-staff'),
       t(!!u.admin || u.role === 'mgr', I.users || I.user, 'نشاط الفريق', 'data-team'),
+      t(!!u.admin, I.doc, 'سجل العمليات', 'data-audit'),
       t(!!u.admin, I.shield, 'النسخ الاحتياطية', 'data-backups'),
       t(!!u.admin, I.alert, 'أعطال التطبيق', 'data-errs'),
     ])}

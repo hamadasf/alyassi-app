@@ -85,6 +85,22 @@ async function gunzipIfNeeded(u8) {
 
 const cache = new Map();
 /** { img, V, VS } for a project — aerial photo (full size when available) and decoded line drawing. */
+/** «المخططات بدون إنترنت»: keeps every project's plan on the phone (the picture and the drawing), so the plan and
+ *  «موقعي على المخطط» work in the field with no signal. → number of plans saved */
+export async function savePlansOffline(projects, onStep) {
+  let ok = 0, i = 0;
+  for (const p of projects) {
+    i++; if (onStep) onStep(i, projects.length, p);
+    const m = p.map; if (!m) continue;
+    try {
+      const [raw, vec] = await Promise.all([getBytes(p.slug, 'bgraw', m.bgRaw).catch(() => null), getBytes(p.slug, 'vec', m.vec).catch(() => null)]);
+      if (!raw) await getBytes(p.slug, 'bg', m.bg).catch(() => null);
+      if (raw || vec) ok++;
+    } catch { /* the next one */ }
+  }
+  try { localStorage.setItem('oay:plansOffAt', JSON.stringify(Date.now())); } catch { /* private mode */ }
+  return ok;
+}
 export function loadPlan(project, map) {
   if (!map) return Promise.resolve(null);
   if (!cache.has(project)) {
