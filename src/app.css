@@ -1765,3 +1765,10 @@ html.oay-studio-on, html.oay-studio-on body { overflow: hidden; }
   box-shadow: 0 6px 20px rgba(0,0,0,.15); font-size: .92em; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .pvmetip[hidden] { display: none; } .pvmetip b { color: #2563eb; }
 .pvmego { margin-inline-start: auto; border: 0; background: #2563eb; color: #fff; border-radius: 999px; padding: 5px 12px; font: inherit; font-size: .9em; }
+/* «نشاط الفريق» never wider than the phone (big system fonts on Android): rows wrap and shrink instead of pushing the page sideways */
+.team { max-width: 100%; overflow-x: hidden; }
+.team .tm-top { flex-wrap: wrap; } .team .tm-days { flex: 1 1 auto; min-width: 0; }
+.tm-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .tm-kpis span { display: block; overflow-wrap: anywhere; }
+.tm-feed, .tm-list, .tm-board { min-width: 0; max-width: 100%; } .tm-ev { min-width: 0; }
+.tm-ev small { flex: 0 1 auto; white-space: normal; text-align: end; max-width: 34%; }
+.tm-head { min-width: 0; } .tm-head > div { min-width: 0; overflow-wrap: anywhere; }

@@ -15,7 +15,11 @@ const ago = (ms) => {
   if (s < 90) return 'الآن'; if (s < 3600) return `قبل ${Math.round(s / 60)} د`; if (s < 86400) return `قبل ${Math.round(s / 3600)} س`;
   const d = Math.round(s / 86400); return d === 1 ? 'أمس' : d < 30 ? `قبل ${d} يوم` : new Date(ms).toLocaleDateString('ar-AE');
 };
-const when = (ms) => new Date(ms).toLocaleString('ar-AE', { weekday: 'short', day: 'numeric', month: 'numeric', hour: 'numeric', minute: '2-digit' });
+const when = (ms) => {   // short: «10:27 ص» today, «أمس 9:11 ص», else «15/11 9:11 ص»
+  const d = new Date(ms), t = d.toLocaleTimeString('ar-AE', { hour: 'numeric', minute: '2-digit' }), n = new Date();
+  const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(), diff = Math.round((day(n) - day(d)) / 864e5);
+  return diff === 0 ? t : diff === 1 ? 'أمس ' + t : `${d.getDate()}/${d.getMonth() + 1} ${t}`;
+};
 
 export function teamPage() { return '<div class="pad team"><div class="ss-state"><i class="spin"></i><span>جارِ التحميل…</span></div></div>'; }
 export function initTeamPage(pg) {
