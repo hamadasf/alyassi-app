@@ -108,7 +108,7 @@ export const STATUS = {
   av: { label: 'متاحة', cls: 'av' },
   res: { label: 'محجوزة', cls: 'res' },
   sold: { label: 'مباعة', cls: 'sold' },
-  na: { label: 'غير متوفرة', cls: 'na' },
+  na: { label: 'غير معروضة', cls: 'na' },
 };
 
 export function category(use = '') {
@@ -363,6 +363,9 @@ export async function loadChanges() {
   return changes;
 }
 export const seen = {
-  get() { try { return +localStorage.getItem(NS + 'seenChanges') || 0; } catch { return 0; } },
+  get() {   // a first launch counts from now; after that, never older than 3 days (no «99+» for someone new or back after a long time)
+    const floor = Date.now() - 3 * 864e5;
+    try { const v = +localStorage.getItem(NS + 'seenChanges'); if (!v) { localStorage.setItem(NS + 'seenChanges', String(Date.now())); return Date.now(); } return Math.max(v, floor); } catch { return Date.now(); }
+  },
   set(t) { try { localStorage.setItem(NS + 'seenChanges', String(t)); } catch { /* ignore */ } },
 };

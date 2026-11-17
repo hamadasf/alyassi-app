@@ -230,7 +230,7 @@ const EN = {
   '🔔 نشر مع إشعار للهواتف': '🔔 Publish with a phone alert', 'نشر بدون تنبيه': 'Publish without an alert', 'نُشر الخبر — تعذّر إرسال الإشعار': "Published — the alert couldn't be sent",
   'تم نشر الخبر وإرسال إشعار للهواتف ✓': 'Published and sent to phones ✓', 'تم نشر الخبر بدون تنبيه ✓': 'Published without an alert ✓', 'أعلمني بالأخبار العقارية الجديدة': 'Notify me about new real estate news',
   // calculator, plan, packages, ratings, report
-  "غير متوفرة": "Not listed",
+  "غير معروضة": "Not listed",
   "غير معروضة للبيع": "Not for sale",
   "حاسبة الأقساط": "Installment calculator",
   "خطة المطوّر": "Developer's plan",

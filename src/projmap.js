@@ -58,7 +58,7 @@ export function mapItems(projects) {
     const P = projectParts(p); if (!P) return [{ ...p, key: p.slug }];
     return P.map((x) => {
       const lands = (p.lands || []).filter((l) => x.kinds.includes(l.t));
-      return { ...p, key: x.key, part: x, name: x.name, all: p.lands, lands, na: (p.na || []).filter((q) => x.kinds.includes(q[1])), available: lands.filter((l) => l.status === 'av').length };
+      return { ...p, key: x.key, part: x, name: x.name, all: p.lands, lands, na: (p.na || []).filter((q) => x.kinds.includes(q[1])), available: lands.filter((l) => l.status === 'av').length, sold: lands.filter((l) => l.status === 'sold').length };
     });
   });
 }
@@ -208,7 +208,7 @@ export async function initMapPage(pg) {
   const shortP = (n) => (n >= 1e6 ? (Math.round(n / 1e5) / 10) + ' مليون' : Math.round(n / 1e3) + ' ألف');
   const show = (p) => {
     const av = p.available || 0, from = fromP(p);
-    card.innerHTML = `<button class="pmap-x" data-pmx aria-label="إغلاق">✕</button><img src="${esc(p.poster)}" alt="" onerror="this.remove()"><div class="pmap-i"><b>${esc(p.name)}</b><span>${av ? `<em>${av}</em> أرض متاحة` : 'لا توجد أراضٍ متاحة حالياً'}</span>${from ? `<span class="pmap-from">تبدأ من <b>${H.money ? H.money(from) : from}</b> د.إ</span>` : ''}
+    card.innerHTML = `<button class="pmap-x" data-pmx aria-label="إغلاق">✕</button><img src="${esc(p.poster)}" alt="" onerror="this.remove()"><div class="pmap-i"><b>${esc(p.name)}</b><span>${av ? `<em>${av}</em> أرض متاحة` : p.sold ? `<em>${p.sold}</em> قطعة مباعة` : 'لا توجد أراضٍ متاحة حالياً'}</span>${from ? `<span class="pmap-from">تبدأ من <b>${H.money ? H.money(from) : from}</b> د.إ</span>` : ''}
       <div class="pmap-b"><button class="btn primary" data-project="${esc(p.slug)}">${I.building} تفاصيل المشروع</button>${p.map ? `<button class="btn ghost" data-pview="${esc(p.slug)}">${I.grid} المخطط</button>` : ''}</div></div>`;
     card.hidden = false;
   };

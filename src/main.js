@@ -135,6 +135,14 @@ document.addEventListener('click', (e) => {
   rd[it.dataset.chr] = Date.now();
   try { localStorage.setItem('oay:chread', JSON.stringify(rd)); } catch { /* private mode */ }
 }, true);
+/** a project's count on its card: the available plots, or — when none is offered — the sold ones / the plot count */
+function availText(p) {
+  if (p.available) return `${p.available} متاحة`;
+  if (p.sold) return `${p.sold} مباعة`;
+  const n = (p.lands || []).length + (p.na || []).length; return n ? `${n} قطعة` : 'تواصل للتفاصيل';
+}
+/** the projects filter: a project («slug») or one part of a project sold in parts («slug~B») */
+function inProj(l, v) { const [sl, pt] = v.split('~'); return l.project === sl && (!pt || (l.projectName || '').endsWith(' ' + pt)); }
 function unseenCount() { const s = seen.get(); return getChanges().filter((c) => c.t > s).length; }
 function updateBell() {
   const n = unseenCount(); const b = $('#bellN');
@@ -252,7 +260,7 @@ const push = {
   render() {
     const st = push.state();
     document.querySelectorAll('.notif-card').forEach((el) => {
-      el.hidden = st === 'on' || st === 'unsupported';
+      el.hidden = st === 'on' || st === 'unsupported' || (st === 'denied' && !el.closest('.settings, .notifs'));
       const p = el.querySelector('p');
       if (p) p.textContent = st === 'install' ? 'على الآيفون: أضف التطبيق للشاشة الرئيسية من زر المشاركة، ثم افتحه من الأيقونة وفعّل الإشعارات.'
         : st === 'denied' ? 'الإشعارات مرفوضة — فعّلها من إعدادات المتصفح لهذا الموقع.'
@@ -660,7 +668,7 @@ function landCard(l) {
 function projectCard(p, wide) {
   return `<article class="card proj${wide ? ' wide' : ''}" data-project="${esc(p.slug)}">
     <div class="ph"><img loading="lazy" decoding="async" src="${esc(p.poster)}" alt="" onerror="this.style.opacity=0">
-      <span class="badge av">${p.available} متاحة</span></div>
+      <span class="badge ${p.available ? 'av' : 'sold'}">${availText(p)}</span></div>
     <div class="body"><h3>${esc(p.name)}</h3>${p.sub ? `<div class="meta">${I.pin}<span>${esc(p.sub)}</span></div>` : ''}${ownPills(p.slug)}
       ${wide ? `<button class="btn wa block pshare" data-pshare="${esc(p.slug)}">${I.wa} مشاركة المشروع PDF</button>` : ''}</div>
   </article>`;
@@ -738,7 +746,7 @@ function oMiniCard(x) {
     <span class="mc-b"><span class="mc-top"><b>${esc(x.title || 'أرض للبيع')}</b></span><small>${esc(x.seller || '')}</small><span class="mc-sp">${I.area}${x.area ? money(x.area) + ' قدم²' : '—'}</span><em>${x.price ? money(x.price) + ' د.إ' : 'السعر عند الاستفسار'}</em></span></button>`;
 }
 function projMini(p) {
-  return `<button class="pmc" data-project="${esc(p.slug)}"><img loading="lazy" src="${esc(p.poster)}" alt="" onerror="this.style.opacity=0"><span><b>${esc(p.name)}</b><small>${p.available} متاحة</small></span></button>`;
+  return `<button class="pmc" data-project="${esc(p.slug)}"><img loading="lazy" src="${esc(p.poster)}" alt="" onerror="this.style.opacity=0"><span><b>${esc(p.name)}</b><small>${availText(p)}</small></span></button>`;
 }
 function homeLandsHTML(av, fresh, featured, best) {
   const own = ownerLands();
@@ -860,7 +868,7 @@ function ownPills(slug) {
 
 /* ---- lands with filters ---- */
 const F = { q: '', project: '', status: 'av', cat: '', minA: '', maxA: '', minP: '', maxP: '', sort: 'default', feat: false, offers: false, own: '', ready: false };
-/* plots the company does not list: searchable, opened as «غير متوفرة» */
+/* plots the company does not list: searchable, opened as «غير معروضة» */
 let naMemo = null, naFor = null;
 function naLands() {
   const d = DATA(); if (naFor === d) return naMemo; naFor = d;
@@ -879,7 +887,7 @@ function filtered() {
   const all = q && F.status === 'av';
   const pool = all || F.status === 'na' || F.status === '' ? DATA().lands.concat(naLands()) : DATA().lands;
   let a = pool.filter((l) =>
-    (all || !F.status || l.status === F.status) && (!F.project || l.project === F.project) && (!F.cat || l.cat === F.cat) &&
+    (all || !F.status || l.status === F.status) && (!F.project || inProj(l, F.project)) && (!F.cat || l.cat === F.cat) &&
     (!F.feat || l.featured) && (!F.offers || offerFor(l)) &&
     (!F.own || pinfo(l.project).own === F.own) && (!F.ready || pinfo(l.project).ready) &&
     (!F.minA || l.ft >= +F.minA) && (!F.maxA || l.ft <= +F.maxA) &&
@@ -911,7 +919,7 @@ function renderLandsHead() {
     cats.map((c) => `<button class="chip${F.cat === c ? ' on' : ''}" data-fcat="${esc(c)}">${esc(c)}</button>`).join('');
   const n = activeFilterCount();
   $('#filterBtn .n').textContent = n || ''; $('#filterBtn').classList.toggle('has', !!n);
-  $('#fProject').innerHTML = '<option value="">كل المشاريع</option>' + projects.map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join('');
+  $('#fProject').innerHTML = '<option value="">كل المشاريع</option>' + projects.map((p) => { const P = projectParts(p); return P ? P.map((x) => `<option value="${esc(p.slug)}~${x.letter}">${esc(x.name)}</option>`).join('') : `<option value="${esc(p.slug)}">${esc(p.name)}</option>`; }).join('');
   $('#fProject').value = F.project;
 }
 /* «ما يبحث عنه العملاء ولا يجدونه» (the office's demand numbers): a search / filter with no result, described in words —
@@ -921,7 +929,7 @@ function noteNoResult() {
   clearTimeout(nrT);
   nrT = setTimeout(() => {
     if (filtered().length) return;
-    const p = F.project && DATA().projects.find((x) => x.slug === F.project); const n = (v) => money(+v);
+    const p = F.project && DATA().projects.find((x) => x.slug === F.project.split('~')[0]); const n = (v) => money(+v);
     const parts = [F.q && `«${String(F.q).trim().slice(0, 40)}»`, F.cat, p && p.name, (F.minP || F.maxP) && `السعر ${F.minP ? 'من ' + n(F.minP) : ''}${F.minP && F.maxP ? ' ' : ''}${F.maxP ? 'حتى ' + n(F.maxP) : ''}`,
       (F.minA || F.maxA) && `المساحة ${F.minA ? 'من ' + n(F.minA) : ''}${F.minA && F.maxA ? ' ' : ''}${F.maxA ? 'حتى ' + n(F.maxA) : ''} قدم²`, F.own && 'تملّك: ' + F.own, F.ready && 'جاهزة للبناء'].filter(Boolean);
     const d = parts.join(' · ');
@@ -1425,13 +1433,13 @@ $('#scrim').addEventListener('click', closeSheet);
 $('#applyF').addEventListener('click', applySheet);
 $('#alertF').addEventListener('click', () => {
   applySheet();
-  pushPage('alerts', JSON.stringify({ project: F.project, cat: F.cat, maxPrice: +F.maxP || 0, minFt: +F.minA || 0, maxFt: +F.maxA || 0 }));
+  pushPage('alerts', JSON.stringify({ project: F.project.split('~')[0], cat: F.cat, maxPrice: +F.maxP || 0, minFt: +F.minA || 0, maxFt: +F.maxA || 0 }));
 });
 $('#saveF').addEventListener('click', () => {
   applySheet();
   const d = DATA(); const parts = [];
   if (F.q) parts.push(`«${F.q}»`);
-  if (F.project) { const p = d.projects.find((x) => x.slug === F.project); parts.push(p ? p.name : F.project); }
+  if (F.project) { const [sl, pt] = F.project.split('~'); const p = d.projects.find((x) => x.slug === sl); parts.push(p ? (pt ? (projectParts(p) || []).find((x) => x.letter === pt)?.name || p.name : p.name) : F.project); }
   if (F.cat) parts.push(F.cat);
   if (F.minA || F.maxA) parts.push(`مساحة ${F.minA || 0}–${F.maxA || '∞'} قدم²`);
   if (F.minP || F.maxP) parts.push(`سعر ${F.minP || 0}–${F.maxP || '∞'}`);
