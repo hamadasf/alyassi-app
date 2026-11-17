@@ -57,6 +57,13 @@ export function can(perm) {
   return st.includes(perm) || (perm === 'plots' && st.length > 0 && u.role === 'mgr');   // a manager (مدير) adds and edits plots on the plan
 }
 /** real-estate offices / brokers (and the company itself) have a wallet */
+/** the name people see: a verified office from outside the company by its office name; the company's own team (admin,
+ *  managers, marketing, staff) and ordinary users by their own name */
+export function shownName(u) {
+  if (!u) return '';
+  const team = u.team || u.admin || (Array.isArray(u.staff) && u.staff.length > 0) || !!u.role;
+  return u.verified && u.company && !team ? u.company : u.name || u.company || '';
+}
 export function isBroker(u = session.user()) { return !!u && (!!u.admin || !!u.verified || !!(u.adv && u.adv.kind === 'company')); }
 export function isOffice() { const u = session.user(); return !!u && (!!u.admin || (Array.isArray(u.staff) && u.staff.length > 0)); }
 export async function refreshMe() { if (!session.token()) return null; try { const j = await api('me'); ls.set('acc_user', j.user); return j.user; } catch { return session.user(); } }

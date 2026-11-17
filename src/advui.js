@@ -2,7 +2,7 @@
 // · «صورة المعلن وشعار الشركة» (admin, from Settings): the office's name, photo and logo → every office listing at once
 // · the member's own photo + company logo (asked at sign-up, or from the account page) → approved by the admin
 // · the admin's list of pictures waiting for approval (a tab of the admin panel)
-import { api, session, refreshMe } from './owner.js';
+import { api, session, refreshMe, shownName } from './owner.js';
 import { office, setBrand, advStrip } from './adv.js';
 import { ADVERTISER } from './config.js';
 import { uiConfirm, uiPrompt } from './dialog.js';
@@ -147,7 +147,7 @@ export async function renderAdvReqs(list, countEl) {
   list.innerHTML = j.items.length ? j.items.map((u) => `<div class="vreq advreq">
       <div class="advpair"><span class="adv-ph"><img src="${esc(u.photo || u.cur.photo || ADVERTISER.photo)}" alt="" data-web="${esc(u.photo)}"></span>
         ${u.logo || u.cur.logo ? `<span class="adv-logo big"><img src="${esc(u.logo || u.cur.logo)}" alt="" data-web="${esc(u.logo)}"></span>` : ''}</div>
-      <b>${esc((u.name || u.company))}</b><span>${esc(u.email)}${u.photo ? ' · صورة جديدة' : ''}${u.logo ? ' · شعار جديد' : ''}</span>
+      <b>${esc(shownName(u))}</b><span>${esc(u.email)}${u.photo ? ' · صورة جديدة' : ''}${u.logo ? ' · شعار جديد' : ''}</span>
       <div class="admact"><button class="btn wa" data-aok="${u.id}">✓ اعتماد</button><button class="btn ghost" data-ano="${u.id}">✕ رفض</button></div></div>`).join('')
     : '<p class="muted">لا توجد صور بانتظار الاعتماد.</p>';
 }

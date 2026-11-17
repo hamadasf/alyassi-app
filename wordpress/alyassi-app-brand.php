@@ -104,7 +104,7 @@ function oay_acc_adm_advs() {
 	$users = get_users( array( 'meta_key' => 'oay_adv_status', 'meta_value' => 'pending', 'number' => 200 ) );
 	oay_acc_ok( array( 'items' => array_map( function ( $u ) {
 		$p = get_user_meta( $u->ID, 'oay_adv_pending', true ); if ( ! is_array( $p ) ) { $p = array(); }
-		return array( 'id' => $u->ID, 'kind' => oay_acct_kind( $u->ID ), 'name' => $u->display_name, 'email' => $u->user_email, 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ),
+		return array( 'id' => $u->ID, 'kind' => oay_acct_kind( $u->ID ), 'name' => $u->display_name, 'email' => $u->user_email, 'team' => function_exists( 'oay_is_team' ) && oay_is_team( $u ), 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ),
 			'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'photo' => (string) ( $p['photo'] ?? '' ), 'logo' => (string) ( $p['logo'] ?? '' ), 't' => (int) ( $p['t'] ?? 0 ),
 			'cur' => array( 'photo' => (string) get_user_meta( $u->ID, 'oay_adv_photo', true ), 'logo' => (string) get_user_meta( $u->ID, 'oay_adv_logo', true ) ) );
 	}, $users ), 'count' => count( $users ) ) );

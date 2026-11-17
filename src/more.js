@@ -2,7 +2,7 @@ import { canCheckUpdate } from './update.js';
 import { phoneField } from './phone.js';
 import { LEGAL, LEGAL_EN } from './legal.js';
 // «المزيد» tab: profile, my activity, account & settings, support, terms & privacy.
-import { api, session, refreshMe, logout, resizePhoto, can, isOffice, isBroker } from './owner.js';
+import { api, session, refreshMe, logout, resizePhoto, can, isOffice, isBroker, shownName } from './owner.js';
 import { uiConfirm, uiPrompt } from './dialog.js';
 import { profileHead } from './owner-ui.js';
 
@@ -24,7 +24,7 @@ export function renderMore(el) {
   const { I, esc } = H; const u = session.user();
   const nSaved = saved.all().length;
   el.innerHTML = `
-    ${u ? `<button class="mprof" data-profile>${avatar(u, 'mav')}<div><b><span class="notr">${esc((u.name || u.company || ''))}</span>${u.verified && u.company || u.name ? '' : 'حسابي'} ${vb(u)}</b><span>${esc(u.email || '')}</span></div><i class="chev">‹</i></button>`
+    ${u ? `<button class="mprof" data-profile>${avatar(u, 'mav')}<div><b><span class="notr">${esc(shownName(u) || '')}</span>${u.verified && u.company || u.name ? '' : 'حسابي'} ${vb(u)}</b><span>${esc(u.email || '')}</span></div><i class="chev">‹</i></button>`
       : `<button class="mprof" data-account>${avatar(null, 'mav')}<div><b>تسجيل الدخول / حساب جديد</b><span>مجاناً ويأخذ ثوانٍ</span></div><i class="chev">‹</i></button>`}
     <div class="mtiles">
       ${tile(I.heart, 'المفضلة', 'data-tab="favs"')}

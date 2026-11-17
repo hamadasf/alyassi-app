@@ -37,7 +37,7 @@ function oay_lead_add( $uid, $src, $lid = '', $name = '' ) {
 function oay_lead_row( $u ) {
 	$l = oay_lead_get( $u->ID ); $v = function_exists( 'oay_verify_get' ) ? oay_verify_get( $u->ID ) : null;
 	return array( 'id' => $u->ID, 'name' => $u->display_name, 'email' => $u->user_email, 'phone' => (string) get_user_meta( $u->ID, 'oay_phone', true ) ?: ( $v ? (string) ( $v['phone'] ?? '' ) : '' ),
-		'company' => (string) get_user_meta( $u->ID, 'oay_company', true ), 'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ),
+		'team' => function_exists( 'oay_is_team' ) && oay_is_team( $u ), 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ), 'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ),
 		'status' => $l['status'], 'next' => (int) $l['next'], 'last' => (int) $l['last'], 'count' => count( $l['items'] ), 'top' => $l['items'] ? $l['items'][0] : null, 'notes' => count( $l['notes'] ),
 		'online' => function_exists( 'oay_is_online' ) ? oay_is_online( $u->ID ) : false );
 }

@@ -4,7 +4,7 @@ import { phoneField } from './phone.js';
 import { advStrip } from './adv.js';
 import { pickersHTML, bindPickers, pickersError, submitAdv, advMissing, renderAdvReqs, advReqClick } from './advui.js';
 import { Capacitor } from '@capacitor/core';
-import { api, signIn, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands, loadOwnerLands, can, isBroker } from './owner.js';
+import { api, signIn, session, refreshMe, logout, meta, googleNative, googleWebButton, resizePhoto, ownerLands, loadOwnerLands, can, isBroker, shownName } from './owner.js';
 import { contactBar, refLine } from './contact.js';
 import { APP_URL } from './config.js';
 import { renderDealReqs, dealReqClick } from './wallet.js';
@@ -40,7 +40,7 @@ export function profileHead(u, o = {}) {
     <div class="prof-cover"></div>
     <div class="prof-av${pic ? ' img' : ''}">${pic ? `<img src="${esc(pic)}" alt="" referrerpolicy="no-referrer" onerror="this.parentNode.classList.remove('img');this.replaceWith(document.createTextNode('${ini}'))">` : ini}
       ${u.verified ? '<i class="prof-vf" title="موثّق"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.2 4.2L19 7"/></svg></i>' : ''}${logo ? `<img class="prof-logo" src="${esc(logo)}" alt="">` : ''}</div>
-    <h2 class="prof-name"><span class="notr">${esc((u.name || u.company || '—'))}</span></h2>
+    <h2 class="prof-name"><span class="notr">${esc(shownName(u) || '—')}</span></h2>
     ${u.verified && u.company && u.name ? `<div class="prof-co"><span class="notr">${esc(u.name)}</span></div>` : ''}
     <div class="prof-tags">${role ? `<i class="pt r-${role}">${ROLE_LB[role]}</i>` : ''}${u.verified ? '<i class="pt vf">حساب موثّق</i>' : ''}${o.status ? (u.banned ? '<i class="pt bad">موقوف</i>' : '<i class="pt ok">نشط</i>') : ''}${u.google ? '<i class="pt">دخول بجوجل</i>' : ''}</div>
     ${o.pending && adv.pending && adv.pending.photo && adv.pending.photo !== pic ? '<p class="prof-note">صورة جديدة بانتظار موافقتك</p>' : ''}
@@ -381,7 +381,7 @@ export function initAdmin(pg) {
       } else if (ADM.tab === 'users') {
         const j = await api('adm_users', { q: q.value.trim() });
         list.innerHTML = j.items.length ? j.items.map((u) => `<div class="strow" data-auser="${u.id}">${u.avatar ? `<img class="stav" src="${esc(u.avatar)}" alt="">` : `<div class="stav">${esc((u.name || u.email || '?').charAt(0).toUpperCase())}</div>`}
-          <div class="stinfo"><b>${esc((u.name || u.company || '—'))} ${u.verified ? I.verified : ''}</b><span class="stmail"><bdi>${esc(u.email)}</bdi></span>
+          <div class="stinfo"><b>${esc(shownName(u) || '—')} ${u.verified ? I.verified : ''}</b><span class="stmail"><bdi>${esc(u.email)}</bdi></span>
           <span class="stperms">${u.admin ? '<i class="adm">مدير</i>' : ''}${(u.staff || []).length ? '<i class="emp">موظف</i>' : ''}${u.banned ? '<i class="ban">موقوف</i>' : ''}<i>${u.ads} إعلان</i><i>${u.admin ? '∞' : u.points} نقطة</i>${u.google ? '<i>جوجل</i>' : ''}</span></div><i class="chev">‹</i></div>`).join('')
           : '<p class="muted">لا يوجد مستخدمون.</p>';
       } else {
@@ -537,7 +537,7 @@ export async function initAdmUser(pg, id) {
         <div class="tplbox"${(u.staff || []).includes('design') ? '' : ' hidden'}><h4 class="lh">🖼️ القوالب التي يصمم بها</h4><p class="muted">اختر قالباً أو أكثر — لا تظهر له إلا هذه القوالب.</p>
           ${Object.entries(TPLS).map(([k, v]) => `<label class="nrow"><span>${v}</span><input type="checkbox" class="nchk" data-tpl="${k}" ${(u.tpl && u.tpl.length ? u.tpl : ['oy']).includes(k) ? 'checked' : ''}></label>`).join('')}</div>
         <button class="btn primary block" data-savestaff>حفظ الصلاحيات</button></div>`}` : ''}
-      ${can('listings') ? `<button class="btn block wbtn" data-wallet="${u.id}">💼 محفظة ${esc((u.name || u.company || ''))}</button>` : ''}
+      ${can('listings') ? `<button class="btn block wbtn" data-wallet="${u.id}">💼 محفظة ${esc(shownName(u) || '')}</button>` : ''}
       <h2 class="h2">إعلاناته (${j.ads.length})</h2>
       ${j.ads.length ? j.ads.map(admCard).join('') : '<p class="muted">لا توجد إعلانات.</p>'}`;
   };

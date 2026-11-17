@@ -1,7 +1,7 @@
 // «المحادثات»: the public group (signed-in members) and each member's private chat with the office.
 // Listings from offices are asked about through the office, which forwards the advertiser's WhatsApp number when
 // it sees fit — members never reach each other directly, and phone numbers are not allowed in chats.
-import { api, session, resizePhoto, can, isOffice } from './owner.js';
+import { api, session, resizePhoto, can, isOffice, shownName } from './owner.js';
 import { oLandCard } from './owner-ui.js';
 import { uiConfirm, uiPrompt } from './dialog.js';
 
@@ -247,7 +247,7 @@ function bindChat(root, { admin, uid }) {
     if (j.peer) setSub(root, seenText(j.peer) || (admin ? '' : 'نرد عليك في أقرب وقت'));
     if (admin && j.user) {
       const u = j.user;
-      root.querySelector('.waid b').innerHTML = `<span class="notr">${H.esc((u.name || u.company))}</span> ${u.verified ? H.I.verified : ''}`;
+      root.querySelector('.waid b').innerHTML = `<span class="notr">${H.esc(shownName(u))}</span> ${u.verified ? H.I.verified : ''}`;
       root.querySelector('.waid .acc-av').outerHTML = userAv({ ...u, online: j.peer && j.peer.online });
     }
   };
@@ -338,7 +338,7 @@ export function initGroup(pg) {
   const box = pg.querySelector('#gmsgs');
   let items = [], admin = false, lastId = 0, sending = false;
   const { esc, I } = H;
-  const who = (u) => ((u.name || u.company));
+  const who = (u) => shownName(u);
   const draw = (keep) => {
     const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
     let h = notice('يُمنع مشاركة أرقام الهواتف والروابط في المجموعة — التواصل بين الأعضاء والمعلنين يتم عن طريق الإدارة.');
@@ -415,7 +415,7 @@ async function loadInbox(box) {
     const j = await api('adm_chats');
     box.innerHTML = j.items.length ? j.items.map((c) => `<button class="cthread${c.unread ? ' new' : ''}" data-chat="${c.user.id}">
         ${userAv(c.user)}
-        <div><b class="notr">${esc((c.user.name || c.user.company))} ${c.user.verified ? H.I.verified : ''}</b><span>${c.lastFrom === 'admin' ? 'أنت: ' : ''}<span class="notr">${esc(c.lastText)}</span></span></div>
+        <div><b class="notr">${esc(shownName(c.user))} ${c.user.verified ? H.I.verified : ''}</b><span>${c.lastFrom === 'admin' ? 'أنت: ' : ''}<span class="notr">${esc(c.lastText)}</span></span></div>
         <div class="cmeta"><time>${c.last ? tm(c.last) : ''}</time>${c.unread ? `<i>${c.unread}</i>` : ''}</div></button>`).join('')
       : `<div class="cempty">${H.I.chat}<p>لا توجد محادثات بعد</p></div>`;
   } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
