@@ -15,3 +15,5 @@ www/icons/
 .og/
 www/pdfjs/
 www/leaflet/
+.mapimg/
+.mapcache/
