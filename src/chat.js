@@ -247,7 +247,7 @@ function bindChat(root, { admin, uid }) {
     if (j.peer) setSub(root, seenText(j.peer) || (admin ? '' : 'نرد عليك في أقرب وقت'));
     if (admin && j.user) {
       const u = j.user;
-      root.querySelector('.waid b').innerHTML = `<span class="notr">${H.esc(u.verified && u.company ? u.company : u.name)}</span> ${u.verified ? H.I.verified : ''}`;
+      root.querySelector('.waid b').innerHTML = `<span class="notr">${H.esc((u.name || u.company))}</span> ${u.verified ? H.I.verified : ''}`;
       root.querySelector('.waid .acc-av').outerHTML = userAv({ ...u, online: j.peer && j.peer.online });
     }
   };
@@ -338,7 +338,7 @@ export function initGroup(pg) {
   const box = pg.querySelector('#gmsgs');
   let items = [], admin = false, lastId = 0, sending = false;
   const { esc, I } = H;
-  const who = (u) => (u.verified && u.company ? u.company : u.name);
+  const who = (u) => ((u.name || u.company));
   const draw = (keep) => {
     const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
     let h = notice('يُمنع مشاركة أرقام الهواتف والروابط في المجموعة — التواصل بين الأعضاء والمعلنين يتم عن طريق الإدارة.');
@@ -415,7 +415,7 @@ async function loadInbox(box) {
     const j = await api('adm_chats');
     box.innerHTML = j.items.length ? j.items.map((c) => `<button class="cthread${c.unread ? ' new' : ''}" data-chat="${c.user.id}">
         ${userAv(c.user)}
-        <div><b class="notr">${esc(c.user.verified && c.user.company ? c.user.company : c.user.name)} ${c.user.verified ? H.I.verified : ''}</b><span>${c.lastFrom === 'admin' ? 'أنت: ' : ''}<span class="notr">${esc(c.lastText)}</span></span></div>
+        <div><b class="notr">${esc((c.user.name || c.user.company))} ${c.user.verified ? H.I.verified : ''}</b><span>${c.lastFrom === 'admin' ? 'أنت: ' : ''}<span class="notr">${esc(c.lastText)}</span></span></div>
         <div class="cmeta"><time>${c.last ? tm(c.last) : ''}</time>${c.unread ? `<i>${c.unread}</i>` : ''}</div></button>`).join('')
       : `<div class="cempty">${H.I.chat}<p>لا توجد محادثات بعد</p></div>`;
   } catch (e) { box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
@@ -437,7 +437,7 @@ export async function initProf(pg, id) {
       <div class="pbtns">${isOffice() ? '' : `<button class="btn primary" data-mychat>${I.chat} مراسلة الإدارة</button>`}<button class="btn ghost" data-contactpg>الاتصال بنا</button></div>`;
     return;
   }
-  const name = p.verified && p.company ? p.company : p.name;
+  const name = (p.name || p.company);
   const joined = new Date(p.joined).toLocaleDateString(loc(), { month: 'long', year: 'numeric' });
   let h = `<div class="ptop">${userAv(p, 'big')}<h2><span class="notr">${esc(name)}</span> ${p.verified ? I.verified : ''}</h2>
     ${p.verified && p.company && p.company !== p.name ? `<p class="psub notr">${esc(p.name)}</p>` : ''}

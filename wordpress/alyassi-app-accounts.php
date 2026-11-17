@@ -750,7 +750,7 @@ function oay_chat_ref( $lid, $admin ) {
 	$c = oay_acc_card( $p );
 	$r = array( 'id' => $p->ID, 'title' => $c['title'], 'price' => $c['price'], 'area' => $c['area'], 'photo' => $c['photos'][0] ?? '', 'seller' => $c['seller'], 'live' => 'publish' === $p->post_status );
 	if ( $admin ) { $o = get_userdata( $p->post_author ); $ph = (string) get_post_meta( $p->ID, '_oay_owner_phone', true ); if ( ! $ph && $o ) { $v = oay_verify_get( $o->ID ); $ph = $v ? $v['phone'] : (string) get_user_meta( $o->ID, 'oay_phone', true ); }
-		$r['ownerPhone'] = $ph; $r['owner'] = $o ? ( get_user_meta( $o->ID, 'oay_company', true ) ?: $o->display_name ) : ''; }
+		$r['ownerPhone'] = $ph; $r['owner'] = $o ? ( ( $o->display_name ?: get_user_meta( $o->ID, 'oay_company', true ) ) ) : ''; }
 	return $r;
 }
 /* ---- «رد» on a message (long-press in the app): the reply keeps a pointer to the message it answers ---- */
@@ -765,7 +765,7 @@ function oay_reply_out( $cid ) {
 	$t = $c->comment_content; if ( '' === trim( $t ) && get_comment_meta( $rid, 'files', true ) ) { $t = '📎 مرفق'; }
 	$u = $c->user_id ? get_userdata( $c->user_id ) : null;
 	return array( 'id' => $rid, 'text' => mb_substr( $t, 0, 160 ), 'from' => get_comment_meta( $rid, 'from', true ) ?: 'user', 'uid' => (int) $c->user_id,
-		'name' => $u ? ( get_user_meta( $u->ID, 'oay_verified', true ) && get_user_meta( $u->ID, 'oay_company', true ) ? get_user_meta( $u->ID, 'oay_company', true ) : $u->display_name ) : '' );
+		'name' => $u ? ( $u->display_name ?: get_user_meta( $u->ID, 'oay_company', true ) ) : '' );
 }
 function oay_chat_msgs( $tid, $admin ) {
 	$cs = get_comments( array( 'post_id' => $tid, 'type' => 'oay_msg', 'order' => 'ASC', 'number' => 300, 'status' => 'all' ) );
@@ -778,7 +778,7 @@ function oay_chat_msgs( $tid, $admin ) {
 			$owner = (int) get_post_field( 'post_author', $lid ); $ou = $owner ? get_userdata( $owner ) : null;
 			if ( $ou && ! user_can( $ou, 'manage_options' ) ) {
 				$mine = oay_rating_by( $owner, (int) get_post_field( 'post_author', $c->comment_post_ID ), $lid );
-				$m['rate'] = array( 'listing' => $lid, 'owner' => $owner, 'name' => get_user_meta( $owner, 'oay_company', true ) ?: $ou->display_name, 'stars' => $mine ? (int) $mine['stars'] : 0 );
+				$m['rate'] = array( 'listing' => $lid, 'owner' => $owner, 'name' => ( $ou->display_name ?: get_user_meta( $owner, 'oay_company', true ) ), 'stars' => $mine ? (int) $mine['stars'] : 0 );
 			}
 		}
 		return $m;
@@ -830,7 +830,7 @@ function oay_acc_chat_send() {
 	$first = 0 === oay_chat_unread_count( $tid, 'admin' );
 	oay_chat_add( $tid, $u->ID, 'user', oay_acc_arg( 'text', 2000 ), $lid );
 	if ( function_exists( 'oay_lead_add' ) ) { oay_lead_add( $u->ID, 'chat', $lid ? (string) $lid : '', $lid ? get_the_title( $lid ) : 'محادثة مع الإدارة' ); }
-	$who = get_user_meta( $u->ID, 'oay_company', true ) ?: $u->display_name;
+	$who = ( $u->display_name ?: get_user_meta( $u->ID, 'oay_company', true ) );
 	oay_push_to( oay_notif_filter( oay_admin_ids(), $first ? 'chat_first' : 'chat_all' ), 'رسالة جديدة · ' . $who, mb_substr( oay_acc_arg( 'text', 2000 ) ?: 'استفسار عن إعلان', 0, 120 ), array( 'user' => $u->ID ) );
 	oay_acc_ok( array( 'items' => oay_chat_msgs( $tid, false ) ) + oay_chat_peer_office( $tid ) );
 }
@@ -911,7 +911,7 @@ function oay_group_msgs( $after = 0, $me = 0 ) {
 	return array_map( function ( $c ) use ( $me ) {
 		$u = get_userdata( $c->user_id ); $uid = (int) $c->user_id;
 		return array( 'id' => (int) $c->comment_ID, 't' => strtotime( $c->comment_date_gmt . ' UTC' ) * 1000, 'text' => $c->comment_content, 'mine' => $uid === $me, 'files' => oay_chat_files_out( $c->comment_ID ), 'reply' => oay_reply_out( $c->comment_ID ),
-			'user' => array( 'id' => $uid, 'name' => $u ? ( get_user_meta( $uid, 'oay_verified', true ) && get_user_meta( $uid, 'oay_company', true ) ? get_user_meta( $uid, 'oay_company', true ) : $u->display_name ) : 'عضو',
+			'user' => array( 'id' => $uid, 'name' => $u ? ( $u->display_name ?: get_user_meta( $uid, 'oay_company', true ) ) : 'عضو',
 				'avatar' => (string) get_user_meta( $uid, 'oay_avatar', true ), 'verified' => (bool) get_user_meta( $uid, 'oay_verified', true ), 'admin' => $u && user_can( $u, 'manage_options' ), 'online' => oay_is_online( $uid ) ) );
 	}, $cs );
 }
@@ -932,7 +932,7 @@ function oay_acc_group_send() {
 	if ( $files ) { update_comment_meta( $cid, 'files', $files ); if ( '' === $text ) { $text = oay_files_label( $files ); } }
 	update_user_meta( $u->ID, 'oay_group_read', $cid );
 	update_option( 'oay_group_last', array( 't' => (int) round( microtime( true ) * 1000 ), 'text' => mb_substr( $text, 0, 120 ), 'id' => $cid ), false );
-	$who = get_user_meta( $u->ID, 'oay_company', true ) ?: $u->display_name;
+	$who = ( $u->display_name ?: get_user_meta( $u->ID, 'oay_company', true ) );
 	$fans = get_users( array( 'meta_key' => 'oay_notif_group', 'meta_value' => '1', 'fields' => 'ID', 'number' => 1900, 'exclude' => array( $u->ID ) ) );
 	if ( $fans ) { oay_push_to( $fans, 'المجموعة العامة · ' . $who, mb_substr( $text, 0, 120 ), array( 'open' => 'group' ) ); }
 	oay_acc_ok( array( 'items' => oay_group_msgs( absint( oay_acc_arg( 'after', 12 ) ), $u->ID ), 'online' => oay_online_count() ) );
@@ -971,7 +971,7 @@ function oay_acc_block() {
 function oay_acc_blocked() {
 	$u = oay_acc_need_user();
 	$items = array();
-	foreach ( oay_blocked_ids( $u->ID ) as $id ) { $t = get_userdata( $id ); if ( $t ) { $items[] = array( 'id' => $id, 'name' => get_user_meta( $id, 'oay_company', true ) ?: $t->display_name ); } }
+	foreach ( oay_blocked_ids( $u->ID ) as $id ) { $t = get_userdata( $id ); if ( $t ) { $items[] = array( 'id' => $id, 'name' => ( $t->display_name ?: get_user_meta( $id, 'oay_company', true ) ) ); } }
 	oay_acc_ok( array( 'items' => $items ) );
 }
 /** Report a group message, a member's listing or a member. The office is told at once (e-mail + notification);

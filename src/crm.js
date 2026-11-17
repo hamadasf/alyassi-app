@@ -140,7 +140,7 @@ export function initLeads(pg) {
       const j = await api('adm_leads', { status: st });
       pg.querySelectorAll('[data-ls]').forEach((b) => { const i = b.querySelector('i'); if (i) i.textContent = b.dataset.ls === 'due' ? j.due || '' : j.counts[b.dataset.ls] || ''; });
       box.innerHTML = j.items.length ? j.items.map((r) => `<button class="lrow${r.due ? ' due' : ''}" data-lead="${r.id}">${avatar(r)}
-        <div><b class="notr">${H.esc(r.verified && r.company ? r.company : r.name)} ${r.verified ? H.I.verified : ''}</b>
+        <div><b class="notr">${H.esc((r.name || r.company))} ${r.verified ? H.I.verified : ''}</b>
           <span>${r.top ? `${(SRC[r.top.src] || ['•'])[0]} <span class="notr">${H.esc(r.top.name || (SRC[r.top.src] || ['', ''])[1])}</span>` : ''}</span>
           <small>${r.count} اهتمام · ${ago(r.last)}${r.next ? ` · ${ei('calendar')} ${day(r.next)}` : ''}</small></div>
         <i class="lst ${r.status}">${ST[r.status]}</i></button>`).join('') : `<div class="cempty">${H.I.user || ''}<p>لا يوجد عملاء في هذه القائمة</p></div>`;
@@ -156,7 +156,7 @@ export async function initLead(pg, id) {
   let j;
   const render = () => {
     const u = j.user, l = j.lead; const ph = u.phone;
-    el.innerHTML = `<div class="ccard lcard">${avatar(u)}<div><b class="notr">${esc(u.verified && u.company ? u.company : u.name)} ${u.verified ? I.verified : ''}</b><span dir="ltr">${esc(ph || u.email)}</span></div></div>
+    el.innerHTML = `<div class="ccard lcard">${avatar(u)}<div><b class="notr">${esc((u.name || u.company))} ${u.verified ? I.verified : ''}</b><span dir="ltr">${esc(ph || u.email)}</span></div></div>
       <div class="lbtns">${ph ? `<a class="btn ghost" href="tel:${esc(ph)}">${ei('phone')} اتصال</a><a class="btn wa" href="${esc(waUrl(ph))}" data-ext>${I.wa} واتساب</a>` : ''}
         <button class="btn primary" data-chat="${u.id}">${ei('chat')} محادثة</button><button class="btn ghost" data-prof="${u.id}">${ei('user')} الملف</button><button class="btn ghost" data-apush="${u.id}">${ei('bell')} إشعار له</button></div>
       <div class="ccard"><h4 class="lh">الحالة</h4><div class="lstates">${Object.entries(ST).map(([k, v]) => `<button class="${l.status === k ? 'on ' : ''}${k}" data-st="${k}">${v}</button>`).join('')}</div>

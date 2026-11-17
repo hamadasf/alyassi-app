@@ -147,7 +147,7 @@ export async function renderAdvReqs(list, countEl) {
   list.innerHTML = j.items.length ? j.items.map((u) => `<div class="vreq advreq">
       <div class="advpair"><span class="adv-ph"><img src="${esc(u.photo || u.cur.photo || ADVERTISER.photo)}" alt="" data-web="${esc(u.photo)}"></span>
         ${u.logo || u.cur.logo ? `<span class="adv-logo big"><img src="${esc(u.logo || u.cur.logo)}" alt="" data-web="${esc(u.logo)}"></span>` : ''}</div>
-      <b>${esc(u.verified && u.company ? u.company : u.name)}</b><span>${esc(u.email)}${u.photo ? ' · صورة جديدة' : ''}${u.logo ? ' · شعار جديد' : ''}</span>
+      <b>${esc((u.name || u.company))}</b><span>${esc(u.email)}${u.photo ? ' · صورة جديدة' : ''}${u.logo ? ' · شعار جديد' : ''}</span>
       <div class="admact"><button class="btn wa" data-aok="${u.id}">✓ اعتماد</button><button class="btn ghost" data-ano="${u.id}">✕ رفض</button></div></div>`).join('')
     : '<p class="muted">لا توجد صور بانتظار الاعتماد.</p>';
 }
