@@ -1800,3 +1800,19 @@ html.oay-studio-on, html.oay-studio-on body { overflow: hidden; }
 .tm-gr small { color: var(--mute); } .tm-board td.tm-pc { color: #1f7a3f; }
 .ppq span { display: flex; flex-direction: column; } .ppq small { font-size: 11.5px; color: var(--mute); }
 .ppqd { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; font-size: 13px; } .ppqd .seg { display: flex; gap: 4px; } .pphold { color: #b45309; }
+/* «تصميم عدة أراضٍ مرة واحدة» */
+.adb { display: flex; flex-direction: column; gap: 10px; padding-bottom: 170px; } .adb-hint { margin: 0; font-size: 13px; }
+.adb-f { display: flex; gap: 8px; } .adb-f select { flex: 1; min-width: 0; } .adb-f input { width: 120px; }
+.adb-f select, .adb-f input, .adb-opts select { font: inherit; border: 1px solid var(--line); border-radius: 12px; padding: 9px 10px; background: #fff; }
+.adb-q { display: flex; gap: 6px; flex-wrap: wrap; }
+.adb-list { display: grid; gap: 6px; }
+.adb-it { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; font-size: 13.5px; }
+.adb-it.on { border-color: #0e1c36; background: #eef1f6; } .adb-it input { width: 18px; height: 18px; } .adb-it span { color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .adb-it small { color: #0e1c36; font-weight: 700; }
+.adb-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--card, #fff); border-top: 1px solid var(--line); padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; }
+.adb-opts { display: flex; gap: 8px; align-items: center; } .adb-opts select { flex: 1; min-width: 0; } .adb-opts .seg { display: flex; gap: 2px; } .adb-opts .seg button { white-space: nowrap; font-size: 12px; padding: 6px 8px; }
+.adb-prog { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 60px 10px; text-align: center; } .adb-prog small { color: var(--mute); }
+.adb-pb { width: 100%; height: 8px; background: #eee7da; border-radius: 8px; overflow: hidden; } .adb-pb s { display: block; height: 100%; width: 0; background: #0e1c36; transition: width .2s; }
+.adb-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.adb-card { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+.adb-card img { width: 100%; display: block; } .adb-card span { font-size: 11.5px; padding: 6px 8px; } .adb-card em { font-style: normal; font-size: 11px; color: #b45309; padding: 0 8px 6px; }
+.adb-card.warn { border-color: #f59e0b; } .adb-x { position: absolute; top: 6px; inset-inline-start: 6px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; }

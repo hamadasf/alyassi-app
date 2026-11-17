@@ -1211,6 +1211,7 @@ export function adgenPage(l, projects) {
       <label class="fld">١. المشروع<select id="adgProj">${projects.filter((p) => p.map).map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join('')}</select></label>
       ${H.ownerOf && H.ownerOf('*') ? '<label class="fld">المالك<select id="adgOwn"><option value="">كل الملاك</option></select></label>' : ''}
       <button class="btn gold block wt-go" data-adwant="">${ei('image')} بوست عام: مطلوب شراء ووساطة</button>
+      <button class="btn block adb-go" data-adbatch="">${ei('grid')} تصميم عدة أراضٍ مرة واحدة (حتى 20)</button>
       <button class="btn primary block" id="adgPlan">${ei('map')} اختر القطعة من المخطط</button>
       <div class="adg-or"><span>أو</span></div>
       <label class="fld">٢. رقم القطعة<input id="adgN" inputmode="numeric" placeholder="اكتب الرقم أو اختر من القائمة"></label>
@@ -1924,3 +1925,130 @@ export async function initAdwant(pg, projects) {
   $('wtShare').onclick = () => wtOut(true); $('wtSave').onclick = () => wtOut(false);
 }
 export function closeAdwant(pg) { if (PG === pg) { PG = null; wt = null; } }
+
+/* ======================================================================================
+ * «تصميم عدة أراضٍ مرة واحدة»: choose up to 20 plots, one template, post and/or story → every post drawn by itself
+ * (prices, area, payment plan, corner / lane filled in), reviewed in a grid, then saved or shared together.
+ * ==================================================================================== */
+const BATCH_MAX = 20;
+const pplCache = new Map();   // project → its two white lines (once per batch)
+/** everything the designer needs for one plot, without its page (the same rules as opening the designer on it) */
+async function batchState(l, proj) {
+  const raw = rawPlots(l.project);
+  const all = raw ? raw.filter((q) => q[6] && q[6].length > 2).map(([n, t, , m2, , , poly, pc]) => ({ n: String(n), t, p: poly, c: pc || centreOf(poly), m2 })) : proj.lands.filter((x) => x.poly).map(plotOf);
+  const P = await loadPlan(l.project, proj.map).catch(() => null);
+  if (!l.poly && raw) { const q = raw.find((r) => String(r[0]) === String(l.n)); if (q && q[6] && q[6].length > 2) l = { ...l, poly: q[6], pc: q[7] || l.pc || centreOf(q[6]), pr: q[8] || 0 }; }
+  if (!pplCache.has(l.project)) { try { pplCache.set(l.project, (await H.api('proj_lines', { slug: l.project })).lines || null); } catch { pplCache.set(l.project, null); } }
+  return { p: plotOf(l), proj, P, plots: proj.lands.filter((x) => x.poly).map(plotOf), all, rawOk: !!raw, img: [null, null, null], hits: [], pl: pplCache.get(l.project) };
+}
+/** draws the plots one after another → [{ l, b, name, warn }] (onStep(i, n) for the counter) */
+async function batchRender(lands, projects, theme, kinds, onStep) {
+  const keep = ad, out = [], cv = document.createElement('canvas');
+  await Promise.all([ayaLoad(), Promise.all(['500', '600', '700', '800'].map((w) => document.fonts.load(`${w} 40px Tajawal`, 'أرض 0123')).concat(['700', '800'].map((w) => document.fonts.load(`${w} 40px OYF`, 'أرض 0123')))).catch(() => {}),
+    Promise.all(Object.values(PZ_THEMES).map((t) => (t.logo && !t.logo.complete ? new Promise((r) => { t.logo.onload = t.logo.onerror = r; }) : null)))]);
+  try {
+    for (let i = 0; i < lands.length; i++) {
+      const l = lands[i], proj = projects.find((x) => x.slug === l.project); if (onStep) onStep(i + 1, lands.length, l);
+      if (!proj) continue;
+      try {
+        ad = await batchState(l, proj);
+        let sv = null; try { const j = await H.api('design_get', { id: l.id }); sv = j.items && j.items[theme]; } catch { /* a fresh design */ }
+        const v = adDefaults(ad.p); v.theme = theme; v.phone = pzPhone(theme); if (layoutOf(theme) === 'aya') v.lab = false; if (theme === 'wi') v.w_name = 'Leen AL Halabi';
+        ad.v = sv ? Object.assign(v, sv.v, { theme }) : v;
+        try { ad.img = await adPictures(ad.p); } catch { /* without pictures */ }
+        ad.export = true; drawAd(cv); ad.export = false;
+        const warn = [!l.total && 'بدون سعر', !l.ft && 'بدون مساحة', l.status !== 'av' && 'غير متاحة'].filter(Boolean).join(' · ');
+        for (const k of kinds) {
+          const src = k === 'story' ? storyOf(cv) : cv;
+          const b = await new Promise((ok) => src.toBlob(ok, 'image/jpeg', 0.9));
+          if (b) out.push({ l, b, k, warn, name: `post-${l.project}-${l.n}${k === 'story' ? '-story' : ''}.jpg` });
+        }
+      } catch { /* the next plot */ }
+      await new Promise((r) => setTimeout(r, 0));   // let the counter paint
+    }
+  } finally { ad = keep; if (ad && PG) adRedraw(); }
+  return out;
+}
+async function shareBlobs(list, share, title) {
+  if (native) {
+    const uris = [];
+    for (const x of list) { const u8 = new Uint8Array(await x.b.arrayBuffer()); uris.push((await Filesystem.writeFile({ path: x.name, data: b64(u8), directory: Directory.Cache })).uri); }
+    if (!share) {
+      try {
+        for (const x of list) { const u8 = new Uint8Array(await x.b.arrayBuffer()); await Filesystem.writeFile({ path: 'عمر الياسي/' + x.name.replace('.jpg', '-' + Date.now().toString(36) + '.jpg'), data: b64(u8), directory: Directory.Documents, recursive: true }); }
+        H.toast(`تم حفظ ${list.length} صورة في: المستندات ← عمر الياسي`); return;
+      } catch { /* no access to the phone's folders: the share sheet has «حفظ» */ }
+    }
+    await Share.share({ title, files: uris, dialogTitle: share ? 'مشاركة المنشورات' : 'حفظ المنشورات' }); return;
+  }
+  const files = list.map((x) => new File([x.b], x.name, { type: 'image/jpeg' }));
+  if (share && navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files, title }); return; }
+  for (const x of list) { const a = document.createElement('a'), u = URL.createObjectURL(x.b); a.href = u; a.download = x.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000); await new Promise((r) => setTimeout(r, 350)); }
+  H.toast(`تم تجهيز ${list.length} صورة`);
+}
+
+export function adbatchPage() { return '<div class="pad adb"></div>'; }
+/** pre: 'mkt' → start with the plots that need marketing */
+export async function initAdbatch(pg, projects, pre) {
+  const box = pg.querySelector('.adb'); const T = allowed();
+  const st = { proj: '', sel: new Set(), theme: T.includes(store().theme) ? store().theme : T[0], kinds: ['post'], q: '' };
+  const lands = () => projects.flatMap((p) => p.lands).filter((l) => (l.poly || l.pc) && l.status === 'av');
+  let mkt = null;
+  if (pre === 'mkt') {
+    try { const j = await H.api('need_mkt', {}); const last = j.last || {}, cut = Date.now() - (j.days || 7) * 864e5; mkt = new Set(lands().filter((l) => !(last[l.id] > cut)).sort((a, b) => (last[a.id] || 0) - (last[b.id] || 0)).map((l) => l.id)); [...mkt].slice(0, BATCH_MAX).forEach((id) => st.sel.add(id)); } catch { mkt = null; }
+  }
+  const pick = () => {
+    const pool = lands().filter((l) => (!st.proj || l.project === st.proj) && (!st.q || l.n.startsWith(st.q)));
+    box.innerHTML = `<p class="muted adb-hint">اختر حتى ${BATCH_MAX} أرضاً متاحة، ثم القالب والمقاس — يصمّم التطبيق منشور كل أرض ببياناتها، وتراجعها قبل الحفظ أو المشاركة.</p>
+      <div class="adb-f"><select data-bproj><option value="">كل المشاريع</option>${projects.filter((p) => p.lands.some((l) => l.status === 'av')).map((p) => `<option value="${esc(p.slug)}"${p.slug === st.proj ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+        <input data-bq inputmode="numeric" placeholder="رقم القطعة" value="${esc(st.q)}"></div>
+      <div class="adb-q"><button class="btn ghost sm" data-ball>تحديد المعروض (حتى ${BATCH_MAX})</button>${mkt ? `<button class="btn ghost sm" data-bmkt>التي تحتاج تسويقاً</button>` : ''}<button class="btn ghost sm" data-bnone>إلغاء التحديد</button></div>
+      <div class="adb-list">${pool.slice(0, 300).map((l) => `<label class="adb-it${st.sel.has(l.id) ? ' on' : ''}"><input type="checkbox" data-bid="${esc(l.id)}"${st.sel.has(l.id) ? ' checked' : ''}><b>${esc(l.n)}</b><span>${esc(l.projectName)}</span><small>${l.total ? H.money ? H.money(l.total) : l.total : 'بدون سعر'}</small></label>`).join('') || '<p class="muted">لا توجد أراضٍ متاحة هنا.</p>'}</div>
+      <div class="adb-bar"><div class="adb-opts"><select data-btheme>${T.map((k) => `<option value="${k}"${k === st.theme ? ' selected' : ''}>${esc(PZ_THEMES[k].name)}</option>`).join('')}</select>
+        <div class="seg">${[['post', 'منشور'], ['story', 'ستوري 9:16'], ['both', 'الاثنان']].map(([k, l]) => `<button data-bkind="${k}" class="${(k === 'both' ? st.kinds.length === 2 : st.kinds.length === 1 && st.kinds[0] === k) ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+        <button class="btn primary block" data-bgo${st.sel.size ? '' : ' disabled'}>${ei('image')} تصميم ${st.sel.size} ${st.sel.size === 1 ? 'أرض' : 'أرض'}</button></div>`;
+  };
+  let res = [];
+  const review = () => {
+    box.innerHTML = `<p class="muted adb-hint">راجع المنشورات: اضغط ✕ لإزالة منشور، أو اضغط على المنشور لفتحه وتعديله وحده.</p>
+      <div class="adb-grid">${res.map((x, i) => `<div class="adb-card${x.warn ? ' warn' : ''}"><img src="${x.u}" alt="" data-bopen="${esc(x.l.id)}"><button class="adb-x" data-bx="${i}" aria-label="إزالة">✕</button>
+        <span>${esc(x.l.n)} · ${esc(x.l.projectName)}${x.k === 'story' ? ' · ستوري' : ''}</span>${x.warn ? `<em>⚠ ${esc(x.warn)}</em>` : ''}</div>`).join('')}</div>
+      <div class="adb-bar"><button class="btn primary block" data-bshare>${ei('share')} مشاركة الكل (${res.length})</button><button class="btn ghost block" data-bsave>${ei('pdf')} حفظ الكل</button><button class="btn block" data-bback>اختيار أراضٍ أخرى</button></div>`;
+  };
+  pick();
+  box.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t.dataset.bid) { if (t.checked) { if (st.sel.size >= BATCH_MAX) { t.checked = false; H.toast(`الحد الأقصى ${BATCH_MAX} أرضاً في المرة`); return; } st.sel.add(t.dataset.bid); } else st.sel.delete(t.dataset.bid); pick(); }
+    if (t.dataset.bproj !== undefined) { st.proj = t.value; pick(); }
+    if (t.dataset.btheme !== undefined) st.theme = t.value;
+  });
+  box.addEventListener('input', (e) => { if (e.target.dataset.bq !== undefined) { st.q = e.target.value.trim(); const pos = e.target.selectionStart; pick(); const i = box.querySelector('[data-bq]'); i.focus(); i.setSelectionRange(pos, pos); } });
+  box.addEventListener('click', async (e) => {
+    const t = e.target.closest('button, img'); if (!t) return; const d = t.dataset;
+    if (d.ball !== undefined) { lands().filter((l) => (!st.proj || l.project === st.proj) && (!st.q || l.n.startsWith(st.q))).forEach((l) => { if (st.sel.size < BATCH_MAX) st.sel.add(l.id); }); pick(); return; }
+    if (d.bmkt !== undefined) { st.sel.clear(); [...mkt].slice(0, BATCH_MAX).forEach((id) => st.sel.add(id)); pick(); return; }
+    if (d.bnone !== undefined) { st.sel.clear(); pick(); return; }
+    if (d.bkind) { st.kinds = d.bkind === 'both' ? ['post', 'story'] : [d.bkind]; pick(); return; }
+    if (d.bgo !== undefined) {
+      const ls = lands().filter((l) => st.sel.has(l.id)); if (!ls.length) return;
+      pzKeep((s) => { s.theme = st.theme; });
+      box.innerHTML = `<div class="adb-prog"><i class="spin"></i><b>جارِ التصميم <span data-bn>0</span> / ${ls.length}</b><small data-bl></small><i class="adb-pb"><s data-bp></s></i></div>`;
+      res.forEach((x) => URL.revokeObjectURL(x.u));
+      res = (await batchRender(ls, projects, st.theme, st.kinds, (i, n, l) => { const a = box.querySelector('[data-bn]'); if (!a) return; a.textContent = i; box.querySelector('[data-bl]').textContent = `قطعة ${l.n} · ${l.projectName}`; box.querySelector('[data-bp]').style.width = (i * 100 / n) + '%'; }))
+        .map((x) => ({ ...x, u: URL.createObjectURL(x.b) }));
+      if (!pg.isConnected) return;
+      if (!res.length) { H.toast('تعذّر تصميم المنشورات'); pick(); return; }
+      review(); return;
+    }
+    if (d.bx !== undefined) { const [x] = res.splice(+d.bx, 1); if (x) URL.revokeObjectURL(x.u); if (res.length) review(); else pick(); return; }
+    if (d.bopen) { if (H.openDesign) H.openDesign(d.bopen); return; }
+    if (d.bback !== undefined) { pick(); return; }
+    if (d.bshare !== undefined || d.bsave !== undefined) {
+      const share = d.bshare !== undefined;
+      try {
+        await shareBlobs(res, share, `منشورات ${res.length} أرض · عمر الياسي للعقارات`);
+        if (H.teamEv) [...new Set(res.map((x) => x.l.id))].forEach((id) => H.teamEv(share ? 'share_design' : 'save_img', id, st.theme));   // each plot counts as marketed
+      } catch (ex) { if (!/cancel|abort/i.test(String(ex && (ex.message || ex)))) H.toast('تعذّر الحفظ: ' + String((ex && ex.message) || ex).slice(0, 80)); }
+    }
+  });
+}

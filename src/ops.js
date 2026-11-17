@@ -60,7 +60,7 @@ export async function initNeedMkt(pg) {
   try {
     const j = await api('need_mkt', {}); const last = j.last || {}, cut = Date.now() - (j.days || 7) * 864e5;
     const items = H.DATA().lands.filter((l) => l.status === 'av' && !(last[l.id] > cut)).sort((a, b) => (last[a.id] || 0) - (last[b.id] || 0));
-    list.innerHTML = items.length ? `<p class="ops-n"><b>${items.length}</b> أرض</p>` + items.slice(0, 150).map((l) => `<div class="ccard op-mk">
+    list.innerHTML = items.length ? `<p class="ops-n"><b>${items.length}</b> أرض</p>${can('design') ? `<button class="btn primary block" data-adbatch="mkt">صمّم منشوراتها دفعة واحدة (حتى 20)</button>` : ''}` + items.slice(0, 150).map((l) => `<div class="ccard op-mk">
         <div><b>قطعة ${esc(l.n)} · ${esc(l.projectName)}</b><span>${l.ft ? money(l.ft) + ' قدم²' : ''}${l.total ? ' · ' + money(l.total) + ' د.إ' : ''}</span>
         <small>${last[l.id] ? 'آخر تسويق: ' + new Date(last[l.id]).toLocaleDateString('ar-AE') : 'لم تُسوَّق من التطبيق بعد'}</small></div>
         <div class="hold-b">${can('design') && (l.poly || l.pc) ? `<button class="btn primary sm" data-adgen="${esc(l.id)}">صمّم منشوراً</button>` : ''}<button class="btn ghost sm" data-land="${esc(l.id)}">التفاصيل</button></div></div>`).join('')

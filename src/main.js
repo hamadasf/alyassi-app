@@ -13,7 +13,7 @@ import { initNotifs, notifsPage } from './notifs.js';
 import { initNews, loadNews, renderTicker, newsPage, initNewsPage } from './news.js';
 import { initCalc, calcPage, initCalc2 } from './calc.js';
 import { initPlanView, planViewPage, initPlanView2 } from './planview.js';
-import { initAdgen, adgenPage, initAdgen2, initAdgenPick, closeAdgen, adgenWant, adwantPage, initAdwant, closeAdwant } from './adgen.js';
+import { initAdgen, adgenPage, initAdgen2, initAdgenPick, closeAdgen, adgenWant, adwantPage, initAdwant, closeAdwant , adbatchPage, initAdbatch } from './adgen.js';
 import { initTeam, teamPage, initTeamPage } from './team.js';
 import { initSafety, backupsPage, initBackups, errsPage, initErrs, startErrorReports } from './safety.js';
 import { track, deviceId } from './track.js';
@@ -1083,6 +1083,7 @@ function pushPage(kind, id) {
   else if (kind === 'plotedit') { html = plotEditPage(); }
   else if (kind === 'team') { html = teamPage(); }
   else if (kind === 'audit') { html = auditPage(); }
+  else if (kind === 'adbatch') { html = adbatchPage(); }
   else if (kind === 'approvals') { html = approvalsPage(); }
   else if (kind === 'needmkt') { html = needMktPage(); }
   else if (kind === 'backups') { html = backupsPage(); }
@@ -1127,7 +1128,7 @@ function pushPage(kind, id) {
   else if (kind === 'oland') { const o = ownerLands().find((x) => String(x.id) === String(id)); if (!o) return; html = oLandPage(o); }
   else { l = findLand(id); if (!l) return; html = glock() ? guestLandPage(l) : landPage(l); }
   const pg = document.createElement('section');
-  const TITLE = { audit: 'سجل العمليات', approvals: 'طلبات الموافقة', needmkt: 'أراضٍ تحتاج تسويقاً', adwant: 'بوست مطلوب شراء ووساطة', backups: 'النسخ الاحتياطية', errs: 'أعطال التطبيق', team: 'نشاط الفريق', tools: 'لوحة العمل', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', plotedit: 'إضافة / تعديل قطعة', limport: 'استيراد ملف الأراضي', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', blocked: 'المحظورون', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
+  const TITLE = { adbatch: 'تصميم عدة أراضٍ مرة واحدة', audit: 'سجل العمليات', approvals: 'طلبات الموافقة', needmkt: 'أراضٍ تحتاج تسويقاً', adwant: 'بوست مطلوب شراء ووساطة', backups: 'النسخ الاحتياطية', errs: 'أعطال التطبيق', team: 'نشاط الفريق', tools: 'لوحة العمل', rates: 'تقييمات الخدمة', prereg: 'التسجيل المسبق «قريباً»', map: 'خريطة المشاريع', project: 'المشروع', changes: 'آخر التحديثات', account: 'حسابي', addland: 'أضف أرضك', sell: 'لدي أرض للبيع', admin: 'لوحة الإدارة', aad: 'إعلان', auser: 'ملف المستخدم', profile: 'الملف', editprofile: 'تعديل الملف', settings: 'الإعدادات', notifs: 'خيارات الإشعارات', contactpg: 'الاتصال بنا', about: 'من نحن', mylands: 'أرضي', invite: 'ادعُ أصدقاءك', refs: 'دعوات العملاء', plotedit: 'إضافة / تعديل قطعة', limport: 'استيراد ملف الأراضي', saved: 'بحث محفوظ', verify: 'توثيق حسابك', chat: 'محادثة', mychat: 'عمر الياسي للعقارات', group: 'المجموعة العامة', blocked: 'المحظورون', uprof: 'الملف الشخصي', news: 'الأخبار العقارية', calc: 'حاسبة الأقساط', brand: 'صورة المعلن وشعار الشركة', stats: 'إحصائيات الإعلان', mailadm: 'النشرة البريدية', wallet: 'محفظتي', market: 'مقارنة بالسوق', compare: 'مقارنة الأراضي', mystats: 'إحصائيات الإعلانات', advmine: 'صورتي على الإعلانات', adgen: 'تصميم البوستات', plan: 'المخطط التفاعلي', report: 'التقرير الأسبوعي', wanted: 'مطلوب أرض', wantedadd: 'أضف طلب شراء', alerts: 'أرض تناسبني', leads: 'متابعة العملاء', lead: 'ملف العميل', apush: 'إشعار موجّه', guide: 'دليل الإجراءات العقارية', contacts: 'سجل التواصل', book: 'حجز معاينة', myviews: 'مواعيد المعاينة', views: 'مواعيد المعاينة', staff: 'الموظفون', legal: legalTitle(id), olands: 'أراضٍ معروضة للبيع', oland: 'تفاصيل الأرض' };
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
@@ -1144,6 +1145,7 @@ function pushPage(kind, id) {
   if (kind === 'plotedit') initPlotEditPage(pg, id || '');
   if (kind === 'team') initTeamPage(pg);
   if (kind === 'audit') initAudit(pg);
+  if (kind === 'adbatch') { pg.classList.add('adgpg'); initAdbatch(pg, d.projects, id); }
   if (kind === 'approvals') initApprovals(pg);
   if (kind === 'needmkt') initNeedMkt(pg);
   if (kind === 'backups') initBackups(pg);
@@ -1319,6 +1321,7 @@ document.addEventListener('click', (e) => {
   if (ds.staff !== undefined) { pushPage('staff'); return; }
   if (ds.team !== undefined) { pushPage('team'); return; }
   if (ds.audit !== undefined) { pushPage('audit'); return; }
+  if (ds.adbatch !== undefined) { pushPage('adbatch', ds.adbatch); return; }
   if (ds.plansoff !== undefined) { (async () => {
     const ps = DATA().projects.filter((p) => p.map); if (!ps.length) { toast('لا توجد مخططات بعد'); return; }
     if (!(await uiConfirm(`سيُحفظ ${ps.length} مخططاً على جهازك (قد يستهلك ذلك بعض بيانات الإنترنت، ويُفضَّل استخدام الواي فاي). بعدها يعمل المخطط و«موقعي على المخطط» دون اتصال.`, { title: 'حفظ المخططات بدون إنترنت', ok: 'حفظ الآن' }))) return;
@@ -1501,7 +1504,7 @@ initCalc({ esc, toast, I, money, waLink });
 initContact({ esc, toast, I, waLink, CONTACT });
 initViews({ esc, toast, I, money });
 initPlanView({ project: (slug) => DATA().projects.find((x) => x.slug === slug), esc, toast, I, money, canDesign: () => can('design'), canPlots: () => !!session.token() && can('plots'), guest: () => glock() });
-initAdgen({ teamEv: (k, id, th) => teamEv(k, id, th), ownerOf: (id) => ownerOf(id), toast, api: accApi, myName: () => (session.user() || {}).name || '', landsOf: (slug) => DATA().lands.concat(naLands()).filter((x) => x.project === slug), openPlan: (slug) => pushPage('plan', slug), isAdmin: () => !!(session.user() || {}).admin, tpls: () => (session.user() || {}).tpl || [] });
+initAdgen({ money, openDesign: (id) => pushPage('adgen', id), teamEv: (k, id, th) => teamEv(k, id, th), ownerOf: (id) => ownerOf(id), toast, api: accApi, myName: () => (session.user() || {}).name || '', landsOf: (slug) => DATA().lands.concat(naLands()).filter((x) => x.project === slug), openPlan: (slug) => pushPage('plan', slug), isAdmin: () => !!(session.user() || {}).admin, tpls: () => (session.user() || {}).tpl || [] });
 initReport({ esc, toast, I, money, findLand: (id) => findLand(id) });
 initTeam({ esc, I, openLand: (id) => openLandId(id) });
 initSafety({ esc, I, toast, refreshData: () => refresh(true), saveFile: async (blob, name) => {   // a backup file: Documents/عمر الياسي on the phone, a download on the web

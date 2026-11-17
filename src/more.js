@@ -294,6 +294,7 @@ export function toolsPage() {
     ])}
     ${sec('التسويق', [
       t(can('design'), I.image, 'تصميم البوستات', 'data-adgen=""'),
+      t(can('design'), I.grid, 'تصميم عدة أراضٍ مرة واحدة', 'data-adbatch=""'),
       t(can('design') || u.role === 'mkt' || !!u.admin, I.trend, 'أراضٍ تحتاج تسويقاً', 'data-needmkt'),
       t(!!u.admin, I.video, 'استوديو الفيديو', 'data-studio'),
       t(can('design'), I.image, 'بوست مطلوب شراء ووساطة', 'data-adwant=""'),
