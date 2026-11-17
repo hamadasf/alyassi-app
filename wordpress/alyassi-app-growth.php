@@ -469,13 +469,13 @@ function oay_acc_adm_audit() {
 }
 
 /* ======================================================================================
- * 10. Approvals: a team member's price cut bigger than the admin's limit (10% unless changed), or marking a plot «مباعة»,
+ * 10. Approvals: a team member's price cut bigger than the admin's limit (10% unless changed)
  *     waits for the admin; the plot stays as it was until then.
  * ==================================================================================== */
 function oay_cut_pct() { return max( 1, min( 90, (int) get_option( 'oay_cut_pct', 10 ) ) ); }
 function oay_approval_needed( $i, $in ) {
 	$c = is_array( $i['cur'] ?? null ) ? $i['cur'] : array(); $was = (string) ( $c['s'] ?? '' ); $s = (string) ( $in['s'] ?? '' );
-	if ( 'sold' === $s && 'sold' !== $was ) { return 'تحويل القطعة إلى «مباعة»'; }
+	unset( $was, $s );   // «محجوزة» and «مباعة» need no approval — only a big price cut does
 	$area = (float) ( $in['ft'] ?? 0 ) ?: ( (float) ( $c['ft'] ?? 0 ) ?: (float) ( $i['plot']['ft'] ?? 0 ) );
 	$old = (int) ( $c['total'] ?? 0 ) ?: ( ! empty( $c['ppf'] ) && $area ? (int) round( $c['ppf'] * $area ) : 0 );
 	$new = (int) round( (float) ( $in['total'] ?? 0 ) ) ?: ( ! empty( $in['ppf'] ) && $area ? (int) round( (float) $in['ppf'] * $area ) : 0 );

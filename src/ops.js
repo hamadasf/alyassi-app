@@ -34,7 +34,7 @@ export function approvalsPage() { return `<div class="pad ops"><div class="ccard
 export async function initApprovals(pg) {
   const { esc, money } = H; const list = pg.querySelector('.ops-list'), top = pg.querySelector('.ops-pct');
   const draw = (j) => {
-    top.innerHTML = `<b>متى يحتاج التعديل موافقتك؟</b><p class="muted">عند تحويل أي قطعة إلى «مباعة»، أو عند تخفيض السعر بأكثر من <b>${j.pct}%</b> من قِبل أحد أعضاء الفريق. تبقى القطعة كما هي حتى توافق.</p><button class="btn ghost sm" data-pct>تغيير النسبة</button>`;
+    top.innerHTML = `<b>متى يحتاج التعديل موافقتك؟</b><p class="muted">عند تخفيض السعر بأكثر من <b>${j.pct}%</b> من قِبل أحد أعضاء الفريق، ويبقى السعر كما هو حتى توافق. أما تغيير الحالة إلى «محجوزة» أو «مباعة» فلا يحتاج موافقة.</p><button class="btn ghost sm" data-pct>تغيير النسبة</button>`;
     list.innerHTML = j.items.length ? j.items.map((x) => `<div class="ccard op-apr">
         <div class="op-h"><b>قطعة ${esc(x.n)} · ${esc(x.proj)}</b><small>${when(x.t)}</small></div>
         <p>${esc(x.why)}</p><p class="muted">طلب: <span class="notr">${esc(x.by)}</span>${x.in && x.in.total ? ` · السعر الجديد ${money(+x.in.total)} د.إ` : ''}</p>
