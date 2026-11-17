@@ -2,7 +2,7 @@
 // project's coordinates once from its Google Maps link (proj_geo) and the phone keeps them.
 import { api } from './owner.js';
 import { loadPlan, drawPlanView } from './planloc.js';
-import { rawPlots } from './data.js';
+import { rawPlots, projectParts } from './data.js';
 
 let H = null;
 export function initProjMap(h) { H = h; }
@@ -21,11 +21,12 @@ function loadLeaflet() {
  *  website reads each project's Google Maps link, finds named places, and the admin's own pins win) */
 async function coords(projects, force) {
   const have = lsGet('pgeo2', {}), at = lsGet('pgeoAt', 0);
-  const stale = force || Date.now() - at > 3600e3 || projects.some((p) => !have[p.slug] || have[p.slug].loc !== (p.loc || ''));
+  const stale = force || Date.now() - at > 3600e3 || projects.some((p) => !have[p.key] || have[p.key].loc !== (p.loc || ''));
   if (stale) {
     try {
-      const j = await api('proj_geo', { items: projects.slice(0, 60).map((p) => ({ slug: p.slug, loc: p.loc || '' })) });
-      for (const p of projects) { const c = (j.items || {})[p.slug]; have[p.slug] = { loc: p.loc || '', c: c || (have[p.slug] && have[p.slug].loc === (p.loc || '') ? have[p.slug].c : null) }; }
+      const j = await api('proj_geo', { items: projects.slice(0, 60).map((p) => ({ slug: p.key, loc: p.loc || '' })) });
+      for (const p of projects) { const I = j.items || {}, pinned = j.pinned || [];   // a part not placed by hand yet starts where the whole project was placed
+        const c = p.part && !pinned.includes(p.key) && pinned.includes(p.slug) ? I[p.slug] : I[p.key]; have[p.key] = { loc: p.loc || '', c: c || (have[p.key] && have[p.key].loc === (p.loc || '') ? have[p.key].c : null) }; }
       lsSet('pgeo2', have); lsSet('pgeoAt', Date.now());
     } catch { /* offline: show what we have */ }
   }
@@ -35,7 +36,7 @@ async function coords(projects, force) {
 /* ---- the project's own plan laid on the map at its real size (from the plots' areas), turned as the admin set it ---- */
 function planMpp(p) {   // metres per plan unit, from the plots whose area is known
   const r = [];
-  for (const l of p.lands || []) {
+  for (const l of p.all || p.lands || []) {   // a part: the whole project's plots (both parts at one scale)
     if (!l.poly || l.poly.length < 3 || !(+l.ft > 0)) continue;
     let a = 0; for (let i = 0, j = l.poly.length - 1; i < l.poly.length; j = i++) a += (l.poly[j][0] + l.poly[i][0]) * (l.poly[j][1] - l.poly[i][1]);
     a = Math.abs(a / 2); if (a > 4) r.push(Math.sqrt(l.ft * 0.09290304 / a));
@@ -46,10 +47,34 @@ function planMpp(p) {   // metres per plan unit, from the plots whose area is kn
    their status colour, on a see-through picture */
 const SCOL = { av: [22, 163, 74], res: [217, 119, 6], sold: [220, 38, 38] };
 async function plotOutlines(p) {
-  const raw = rawPlots(p.slug);
-  if (raw && raw.length) return raw.filter((q) => Array.isArray(q[6]) && q[6].length > 2).map((q) => [String(q[0]), q[1], q[6].flat()]);
-  const r = await fetch(`outlines/${encodeURIComponent(p.slug)}.json`, { cache: 'no-cache' }); if (!r.ok) throw new Error('outlines');
-  return r.json();
+  const raw = rawPlots(p.slug); let O;
+  if (raw && raw.length) O = raw.filter((q) => Array.isArray(q[6]) && q[6].length > 2).map((q) => [String(q[0]), q[1], q[6].flat()]);
+  else { const r = await fetch(`outlines/${encodeURIComponent(p.slug)}.json`, { cache: 'no-cache' }); if (!r.ok) throw new Error('outlines'); O = await r.json(); }
+  return p.part ? O.filter((o) => p.part.kinds.includes(o[1])) : O;   // a project sold in parts: this part's plots only
+}
+/** the map items: one per project, or one per part of a project sold in parts (مزيرعة A / B — each placed on its own) */
+export function mapItems(projects) {
+  return projects.flatMap((p) => {
+    const P = projectParts(p); if (!P) return [{ ...p, key: p.slug }];
+    return P.map((x) => {
+      const lands = (p.lands || []).filter((l) => x.kinds.includes(l.t));
+      return { ...p, key: x.key, part: x, name: x.name, all: p.lands, lands, na: (p.na || []).filter((q) => x.kinds.includes(q[1])), available: lands.filter((l) => l.status === 'av').length };
+    });
+  });
+}
+/** the middle of a part's plots on its plan (plan units), from every plot's centre */
+function partMid(p) {
+  const C = [...(p.lands || []).map((l) => l.pc), ...(p.na || []).map((q) => q[3])].filter((c) => c && c.length > 1);
+  if (!C.length) return null; const xs = C.map((c) => c[0]), ys = C.map((c) => c[1]);
+  return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+}
+/** a point of the plan (plan units) on the map, for the plan laid at g */
+function planLL(map, p, g, x, y) {
+  const mpp = planMpp(p); if (!mpp || !p.map) return g.c;
+  const z = 16, mppMap = 40075016.686 * Math.cos(g.c[0] * Math.PI / 180) / (256 * Math.pow(2, z)), k = (g.k || 1) * mpp / mppMap;
+  const dx = (x - p.map.w / 2) * k, dy = (y - p.map.h / 2) * k, a = (g.rot || 0) * Math.PI / 180;
+  const c = map.project(g.c, z); const ll = map.unproject([c.x + dx * Math.cos(a) - dy * Math.sin(a), c.y + dx * Math.sin(a) + dy * Math.cos(a)], z);
+  return [ll.lat, ll.lng];
 }
 const size = (f) => { let a = Infinity, b = -Infinity, c2 = Infinity, d = -Infinity; for (let i = 0; i < f.length; i += 2) { a = Math.min(a, f[i]); b = Math.max(b, f[i]); c2 = Math.min(c2, f[i + 1]); d = Math.max(d, f[i + 1]); } return [b - a, d - c2]; };
 /** does the plan's drawing carry the plot numbers? (many tiny shapes — the digits — for every plot) */
@@ -101,7 +126,7 @@ async function planPicture(p) {
     const VS = P.VS.map((v) => (v.h ? null : v));   // no hatching over the solid colour — it dulls it
     drawPlanView(c, { V: P.V, VS }, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false, bg: false, clip });
     if (!vecHasNumbers(P.V, O)) plotNumbers(c, O, s);   // some plans keep the plot numbers in their picture only: write them
-    return { src: cv.toDataURL('image/png'), cut: true };
+    return crop(cv, s, p.part && clip, m);
   }
   if (!O || !O.length) {   // nothing else to be had: the plan as before
     drawPlanView(c, P, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false });
@@ -115,7 +140,16 @@ async function planPicture(p) {
     c.fillStyle = `rgb(${k[0]},${k[1]},${k[2]})`; c.fill();
     c.strokeStyle = 'rgba(40,52,30,.85)'; c.stroke();
   }
-  return { src: cv.toDataURL('image/png'), cut: true };
+  return crop(cv, s, p.part && O.flatMap((o) => { const r = []; for (let i = 0; i < o[2].length; i += 2) r.push([o[2][i], o[2][i + 1]]); return r; }), m);
+}
+/** a part of a plan: keep only the box around its own plots (so the other part's picture does not cover it) */
+function crop(cv, s, pts, m) {
+  if (!pts || !pts.length) return { src: cv.toDataURL('image/png'), cut: true };
+  const xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
+  const b = [Math.max(0, Math.min(...xs)), Math.max(0, Math.min(...ys)), Math.min(m.w, Math.max(...xs)), Math.min(m.h, Math.max(...ys))].map((v, i) => (i < 2 ? Math.floor(v) : Math.ceil(v)));
+  const o = document.createElement('canvas'); o.width = Math.max(1, Math.round((b[2] - b[0]) * s)); o.height = Math.max(1, Math.round((b[3] - b[1]) * s));
+  o.getContext('2d').drawImage(cv, b[0] * s, b[1] * s, o.width, o.height, 0, 0, o.width, o.height);
+  return { src: o.toDataURL('image/png'), cut: true, box: b };
 }
 function planLayer(L, p, g) {   // g: { c: [lat, lng], rot, k }
   const mpp = planMpp(p); if (!p.map || !mpp) return null;
@@ -123,7 +157,7 @@ function planLayer(L, p, g) {   // g: { c: [lat, lng], rot, k }
     onAdd(map) {
       this._map = map; const el = this._el = L.DomUtil.create('img', 'pplan'); el.alt = ''; el.style.opacity = 0;
       map.getPanes().overlayPane.appendChild(el);
-      planPicture(p).then((r) => { el.src = r.src; this._cut = r.cut; this._ok = 1; this._reset(); }).catch(() => el.remove());
+      planPicture(p).then((r) => { el.src = r.src; this._cut = r.cut; this._box = r.box || null; this._ok = 1; this._reset(); }).catch(() => el.remove());
       map.on('zoomend viewreset moveend', this._reset, this); map.on('zoomstart', this._hide, this);
       L.DomEvent.on(el, 'click', (e) => { L.DomEvent.stopPropagation(e); this.fire('click'); });
     },
@@ -134,8 +168,10 @@ function planLayer(L, p, g) {   // g: { c: [lat, lng], rot, k }
       const map = this._map, el = this._el; if (!map || !el || !this._ok) return;
       const z = map.getZoom(); if (z < 13) { el.style.opacity = 0; el.style.pointerEvents = 'none'; return; }
       const mppMap = 40075016.686 * Math.cos(g.c[0] * Math.PI / 180) / (256 * Math.pow(2, z));
-      const k = (g.k || 1) * mpp / mppMap, w = p.map.w * k, h = p.map.h * k, pt = map.latLngToLayerPoint(g.c);
-      Object.assign(el.style, { width: w + 'px', height: h + 'px', left: pt.x - w / 2 + 'px', top: pt.y - h / 2 + 'px', transform: `rotate(${g.rot || 0}deg)`, opacity: this._cut ? 1 : z >= 15 ? 0.92 : 0.8, pointerEvents: 'auto' });
+      const k = (g.k || 1) * mpp / mppMap, W = p.map.w * k, Hh = p.map.h * k, pt = map.latLngToLayerPoint(g.c);
+      const [x0, y0, x1, y1] = this._box || [0, 0, p.map.w, p.map.h];   // g.c is always the whole plan's middle; a part is a box of it
+      Object.assign(el.style, { width: (x1 - x0) * k + 'px', height: (y1 - y0) * k + 'px', left: pt.x - W / 2 + x0 * k + 'px', top: pt.y - Hh / 2 + y0 * k + 'px',
+        transformOrigin: `${(p.map.w / 2 - x0) * k}px ${(p.map.h / 2 - y0) * k}px`, transform: `rotate(${g.rot || 0}deg)`, opacity: this._cut ? 1 : z >= 15 ? 0.92 : 0.8, pointerEvents: 'auto' });
       el.classList.toggle('cut', !!this._cut);
     },
   });
@@ -146,11 +182,11 @@ export function mapPage() {
   return `<div class="pmap"><div id="pmapEl"></div><div class="pmap-load">${H.I.map}<span>جارِ تحميل الخريطة…</span></div><div class="pmap-card" hidden></div></div>`;
 }
 export async function initMapPage(pg) {
-  const { esc, I } = H; const projects = H.projects(); const admin = H.isAdmin && H.isAdmin();
+  const { esc, I } = H; const projects = mapItems(H.projects()); const admin = H.isAdmin && H.isAdmin();
   const loadEl = pg.querySelector('.pmap-load'), card = pg.querySelector('.pmap-card');
   let L, have;
   try { [L, have] = await Promise.all([loadLeaflet(), coords(projects)]); } catch { loadEl.innerHTML = `${I.wifi}<span>تعذّر تحميل الخريطة — تأكد من الاتصال بالإنترنت</span>`; return; }
-  const pins = projects.map((p) => { const v = have[p.slug] && have[p.slug].c; return v ? { p, c: [v[0], v[1]], g: { c: [v[0], v[1]], rot: +v[2] || 0, k: +v[3] || 1 } } : null; }).filter(Boolean);
+  const pins = projects.map((p) => { const v = have[p.key] && have[p.key].c; return v ? { p, c: [v[0], v[1]], g: { c: [v[0], v[1]], rot: +v[2] || 0, k: +v[3] || 1 } } : null; }).filter(Boolean);
   if (!pins.length && !admin) { loadEl.innerHTML = `${I.map}<span>مواقع المشاريع غير متوفرة بعد — حاول لاحقاً</span>`; return; }
   loadEl.remove();
   const map = L.map(pg.querySelector('#pmapEl'), { zoomControl: false, attributionControl: true }).setView(pins.length ? pins[0].c : [25.33, 55.55], 11);
@@ -178,8 +214,9 @@ export async function initMapPage(pg) {
   };
   const bounds = [], marks = [];
   const layers = {};
-  for (const { p, c, g } of pins) {
-    const lay = planLayer(L, p, g); if (lay) { lay.addTo(map).on('click', () => { if (!(H.editing && H.editing())) show(p); }); layers[p.slug] = lay; }
+  for (let { p, c, g } of pins) {
+    const lay = planLayer(L, p, g); if (lay) { lay.addTo(map).on('click', () => { if (!(H.editing && H.editing())) show(p); }); layers[p.key] = lay; }
+    const mid = p.part && partMid(p); if (mid) c = planLL(map, p, g, mid[0], mid[1]);   // a part's label in the middle of its own plots
     const av = p.available || 0;
     const from = fromP(p);   // the price bubble: «من 365 ألف»
     const icon = L.divIcon({ className: 'pmk-w', html: `<div class="pmk${av ? '' : ' none'}"><b>${esc(p.name)}</b>${from ? `<i class="pr">من ${shortP(from)}</i>` : av ? `<i>${av}</i>` : ''}</div>`, iconSize: null, iconAnchor: [0, 0] });
@@ -212,17 +249,17 @@ export async function initMapPage(pg) {
 /* management: put a project on the map by hand — pick it, tap its place on the map, save */
 function adminPins(pg, map, L, projects, have, layers) {
   const { esc, I } = H;
-  const missing = projects.filter((p) => !(have[p.slug] && have[p.slug].c));
+  const missing = projects.filter((p) => !(have[p.key] && have[p.key].c));
   const bar = document.createElement('div'); bar.className = 'pmap-adm';
   const closed = () => `<button class="pmap-admb" data-pmadm>${I.pin || I.map} تحديد موقع مشروع${missing.length ? ` <em>${missing.length} بدون موقع</em>` : ''}</button>`;
   bar.innerHTML = closed(); pg.querySelector('.pmap').appendChild(bar);
   let pos = null, tmp = null, rot = 0, k = 1;   // the chosen project's centre, turn and size while editing
   const $ = (q) => bar.querySelector(q);
   const open = () => {
-    const first = (missing[0] || projects[0] || {}).slug;
+    const first = (missing[0] || projects[0] || {}).key;
     bar.innerHTML = `<div class="pmap-admf"><div class="pmap-admh"><b>تحديد موقع مشروع <small>للإدارة</small></b><button class="pmap-min" data-pmmin aria-label="تصغير">—</button></div>
       <div class="pmap-body">
-      <select data-pmsel>${projects.map((p) => `<option value="${esc(p.slug)}"${p.slug === first ? ' selected' : ''}>${esc(p.name)}${have[p.slug] && have[p.slug].c ? '' : ' — بدون موقع'}</option>`).join('')}</select>
+      <select data-pmsel>${projects.map((p) => `<option value="${esc(p.key)}"${p.key === first ? ' selected' : ''}>${esc(p.name)}${have[p.key] && have[p.key].c ? '' : ' — بدون موقع'}</option>`).join('')}</select>
       <p class="muted" data-pmhint>اسحب المخطط بإصبعك أو حرّكه بالأسهم (مشروع بدون موقع: اضغط مكانه في الخريطة أولاً)</p></div>
       <div class="pmap-ctl">
         <div class="pmap-pad"><button data-mv="0,-1" aria-label="فوق">▲</button><button data-mv="1,0" aria-label="يمين">▶</button><button data-mv="0,1" aria-label="تحت">▼</button><button data-mv="-1,0" aria-label="يسار">◀</button><span data-step title="الخطوة">${'خطوة'}<b data-stepv>صغيرة</b></span></div>
@@ -240,7 +277,7 @@ function adminPins(pg, map, L, projects, have, layers) {
   const live = () => {
     outs(); if (!pos) return;
     let lay = layers[cur()];
-    if (!lay) { const p = projects.find((x) => x.slug === cur()); lay = p && planLayer(L, p, { c: pos, rot, k }); if (lay) { lay.addTo(map); layers[cur()] = lay; } }
+    if (!lay) { const p = projects.find((x) => x.key === cur()); lay = p && planLayer(L, p, { c: pos, rot, k }); if (lay) { lay.addTo(map); layers[cur()] = lay; } }
     if (lay) { lay.set({ c: pos, rot, k }); bindDrag(lay); }
     if (tmp) tmp.setLatLng(pos); else tmp = L.marker(pos, { icon: L.divIcon({ className: 'pmk-w', html: '<div class="pmk new"><b>وسط المشروع</b></div>', iconSize: null, iconAnchor: [0, 0] }), interactive: false }).addTo(map);
     $('[data-pmsave]').disabled = false;

@@ -42,7 +42,7 @@ import { initWallet, walletPage, initWalletPage, dealFromLand, dealFromOwn, home
 import { initStats, statsPage, initStatsPage, myStatsPage, initMyStats } from './stats.js';
 import { initAdvUI, brandPage, initBrand, advMinePage, initAdvMine } from './advui.js';
 import { SITE, CONTACT, LOGO, EMBLEM, ONESIGNAL_APP_ID, APP_URL } from './config.js';
-import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen, offerFor, patchPlot } from './data.js';
+import { loadAll, loadFromCache, cached, favs, STATUS, getChanges, loadChanges, seen, offerFor, patchPlot, nameFor, projectParts } from './data.js';
 import { I } from './icons.js';
 import { mountRange } from './range.js';
 import { initProjMap, mapPage, initMapPage } from './projmap.js';
@@ -856,7 +856,7 @@ function naLands() {
   naMemo = d.projects.flatMap((p) => (p.na || []).map(([n, t, ft, pc]) => {
     const ty = (p.types && p.types[t]) || {};
     const like = p.lands.find((x) => x.t === t && !x.ownImg && x.img && x.img !== p.poster);   // the building picture of the offered plots of its kind
-    return { id: p.slug + ':' + n, n, t, project: p.slug, projectName: p.name, status: 'na', featured: false, use: ty.use || 'أرض', tag: ty.tag || '', loc: '', floors: ty.floors || '',
+    return { id: p.slug + ':' + n, n, t, project: p.slug, projectName: nameFor(p, t), status: 'na', featured: false, use: ty.use || 'أرض', tag: ty.tag || '', loc: '', floors: ty.floors || '',
       color: ty.c || [190, 190, 190], cat: '', ft, m2: Math.round(ft / 10.7639), approx: true, ppf: 0, total: 0, inst: [], first: 0, img: like ? like.img : /استثمار/.test(ty.use || '') && /سكن|فلل|فيلا/.test(ty.use || '') && /اثنين|طابقين|\+\s*2/.test(ty.floors || '') ? './assets/villa-invest.jpg' : p.poster, sketch: '', doc: '', docId: 0, dims: null, poly: null, pc: pc || null, pr: 0, lo: '', projectLoc: p.loc || '' };
   }));
   return naMemo;

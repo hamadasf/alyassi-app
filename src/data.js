@@ -129,6 +129,23 @@ function typeImage(l) {
   return l;
 }
 
+/** a project the website keeps as one plan but sells in parts (مزيرعة A / مزيرعة B): its plot kinds' tags end in the
+ *  part's letter. → [{ letter, name, key, kinds }] (the first part keeps the project's own slug on the map), or null */
+export function projectParts(p) {
+  const by = {};
+  for (const [k, v] of Object.entries((p && p.types) || {})) {
+    const m = /^(.+?)\s+([A-Z])$/.exec(String(v.tag || '').trim()); if (!m) continue;
+    (by[m[2]] = by[m[2]] || { letter: m[2], name: m[1] + ' ' + m[2], kinds: [] }).kinds.push(k);
+  }
+  const L = Object.values(by).sort((a, b) => (a.letter < b.letter ? -1 : 1)); if (L.length < 2) return null;
+  L.forEach((x, i) => { x.key = i ? p.slug + '-' + x.letter.toLowerCase() : p.slug; }); return L;
+}
+/** the name a plot goes by: its part's («مزيرعة B») in a project sold in parts, else the project's */
+export function nameFor(p, t, base) {
+  const P = projectParts(p), x = P && P.find((q) => q.kinds.includes(t));
+  return x ? x.name : base || p.name;
+}
+
 const RAW = new Map();   // slug → every plot of the plan (with outlines), kept for the ad designer's «زاوية / سكة» reading
 export const rawPlots = (slug) => RAW.get(slug) || null;
 function buildProject(p, plan, state) {
@@ -146,7 +163,7 @@ function buildProject(p, plan, state) {
     const sketch = (s.plan && s.plan.sk && s.plan.sk.u) || '';
     const img = (s.img && s.img.u) || (ty.b && bld[ty.b] && bld[ty.b].u) || (ty.b && plan.bldImg[ty.b]) || sketch || plan.bldImg.reg || plan.poster;
     return {
-      id: p.slug + ':' + n, n: String(n), t, project: p.slug, projectName: plan.name || p.title,
+      id: p.slug + ':' + n, n: String(n), t, project: p.slug, projectName: nameFor({ slug: p.slug, types: plan.types }, t, plan.name || p.title),
       status: s.s, featured: !!s.fe, use: ty.use || '', tag: ty.tag || '', loc: ty.loc || '',
       floors: fixFloors(ty.floors), color: ty.c || [200, 200, 200], cat: category(ty.use),
       ft: Math.round(area || 0), m2: Math.round((s.ft ? s.ft / 10.7639 : m2) || 0), approx: !exact && !s.ft,
@@ -183,7 +200,7 @@ function landFromPlot(p, n, st) {   // a listed plot that this data does not hav
   const like = p.lands.find((x) => x.t === t && !x.ownImg && x.img && x.img !== p.poster);
   const pc = row ? (row[7] || null) : na[3];
   return typeImage({
-    id: p.slug + ':' + n, n: String(n), t, project: p.slug, projectName: p.name, status: st.s, featured: !!st.fe, use: ty.use || '', tag: ty.tag || '', loc: ty.loc || '',
+    id: p.slug + ':' + n, n: String(n), t, project: p.slug, projectName: nameFor(p, t), status: st.s, featured: !!st.fe, use: ty.use || '', tag: ty.tag || '', loc: ty.loc || '',
     floors: fixFloors(ty.floors), color: ty.c || [200, 200, 200], cat: category(ty.use), ft: Math.round(st.ft || ft0 || 0), m2: Math.round((st.ft || ft0 || 0) / 10.7639), approx: !st.ft,
     ppf: 0, total: 0, inst: [], first: 0, img: like ? like.img : p.poster, sketch: '', ownImg: false, doc: '', docId: 0, docTitle: '',
     dims: row ? row[5] || null : null, poly: row ? row[6] || null : null, pc, pr: row ? row[8] || 0 : 0, lo: '', projectLoc: p.loc || '',
@@ -243,7 +260,7 @@ export function patchPlot(slug, plot) {
 /* Web (iPhone) version: the website data is collected every few minutes into data.json next to the app. */
 const SNAPSHOT = typeof __SNAPSHOT__ !== 'undefined' ? __SNAPSHOT__ : '';
 function fromSnapshot(j) {
-  j.projects.forEach((p) => p.lands.forEach(typeImage));
+  j.projects.forEach((p) => p.lands.forEach((l) => { typeImage(l); l.projectName = nameFor(p, l.t, l.projectName); }));
   return { projects: j.projects, lands: j.projects.flatMap((p) => p.lands), at: j.at };
 }
 async function loadSnapshot() {
