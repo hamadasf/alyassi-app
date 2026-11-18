@@ -721,13 +721,15 @@ function adFeats(p) {
 }
 /** the project's ownership line in the form the older templates write it */
 const ownSub = (s) => (/جميع الجنسيات/.test(s || '') ? 'تملك حر لجميع الجنسيات' : /للعرب|العرب/.test(s || '') ? 'تملك حر لجميع الجنسيات العربية' : '');
+/** «أراضي سكنية» → «سكنية»: the use as the plan names it, without its own «أرض / أراضي» (so a title never reads «أرض أراضي …») */
+const bareUse = (u) => String(u || '').trim().replace(/^(أراضي|أراضٍ|أراض|أرض)\s+/, '').trim();
 function adDefaults(p) {
-  const l = p.l, PROJECT = l.projectName, T = { use: l.use || 'أرض', floors: l.floors || '' };
+  const l = p.l, PROJECT = l.projectName, T = { use: l.use || 'أرض', floors: l.floors || '' }, U = bareUse(T.use) || T.use;
   const pr = priceOf(p), inst = pr ? pr.inst : [];
   const fl = (T.floors === 'أرضي + اثنين' ? 'أرضي + طابقين' : T.floors).replace(/\s*\([^()]*\)\s*$/, ''), last = inst.length ? String(inst[inst.length - 1].d || '').slice(0, 4) : '';
   let side = ''; if (ad.rawOk) { try { side = adSide(p); } catch { side = ''; } }   // only with the whole plan's plots (the phone app), never guessed from the listed ones alone
   const v = {
-    mode: inst.length ? 'inst' : 'cash', side, title: 'أرض ' + T.use, proj: PROJECT, sub: 'تملك حر لجميع الجنسيات العربية',
+    mode: inst.length ? 'inst' : 'cash', side, title: 'أرض ' + U, proj: PROJECT, sub: 'تملك حر لجميع الجنسيات العربية',
     area: p.ft ? fmt(p.ft) : '', pay: 'كاش', until: last ? 'حتى ' + last : '', down: pr && inst.length ? fmt(Math.max(0, pr.down)) : '',
     each: inst.length ? fmt(inst[0].a) : '', every: adEvery(inst.length > 1 ? monthsBetween(inst[0].d, inst[1].d) : 0),
     price: pr ? fmt(pr.total) : '', ppf: (p.l && p.l.ppf) ? String(Math.round(p.l.ppf)) : pr && p.ft ? String(Math.round(pr.total / p.ft)) : '', nInst: inst.length, feat: adFeats(p).slice(0, 3).join('\n'),
@@ -737,13 +739,13 @@ function adDefaults(p) {
   };
   v.auto = v.side; if (v.side) v.title += ' ' + v.side;
   const n = inst.length, code = /\(([^()]+)\)\s*$/.exec(T.floors || '');
-  Object.assign(v, { a_kick: 'فرصة إستثمارية مميزة', a_title: 'أرض ' + T.use + (v.side ? ' ' + v.side : '') + ' في', a_use: T.use, a_fl: code ? code[1] : fl,
+  Object.assign(v, { a_kick: 'فرصة إستثمارية مميزة', a_title: 'أرض ' + U + (v.side ? ' ' + v.side : '') + ' في', a_use: T.use, a_fl: code ? code[1] : fl,
     a_loc: PROJECT, a_city: 'الشارقة', a_ps: 'درهم فقط', a_iT: n === 1 ? 'قسط واحد' : n === 2 ? 'قسطان' : n ? n + ' أقساط' : 'أقساط', a_iS: 'شيكات',
     a_cT: 'الدفعات', a_cV: 'كاش', a_cS: 'نقداً',
     o_proj: PROJECT, o_area: p.ft ? fmt(p.ft) + ' قدم' : '', o_use1: oyUse(T.use), o_use2: oyFloors(code ? code[1] : fl),
     o_priceC: pr ? fmt(pr.total) + ' Dhs, Cash' : 'للاستفسار', o_priceI: pr ? fmt(pr.total) + ' Dhs, ' + (n ? n + ' Installments' : 'Installments') : 'للاستفسار',
     o_p1: (ad && ad.pl && ad.pl.p1) || '', o_p2: (ad && ad.pl && ad.pl.p2) || '', o_p3: inst.length ? '' : adFeats(p).slice(0, 2).join(' · '), oFlag: true, oLogo: false, oP1: false, oP2: false,
-    w_kick: 'أراضي ' + T.use + ' للبيع', w_proj: PROJECT, w_rib: (ad && ad.pl && ad.pl.p1) || 'موقع مميز في الشارقة',   // never «جاهزة للبناء» unless the project's own line says so
+    w_kick: 'أراضي ' + U + ' للبيع', w_proj: PROJECT, w_rib: (ad && ad.pl && ad.pl.p1) || 'موقع مميز في الشارقة',   // never «جاهزة للبناء» unless the project's own line says so
     w_c1t: 'المساحة', w_area: p.ft ? fmt(p.ft) : '', w_unit: 'قدم مربع', w_c2t: 'تصريح بناء ' + T.use, w_c2s: fl ? '( ' + fl + ' )' : '',
     w_c3t: 'السعر كاش', w_c3tI: n ? 'السعر · ' + (n === 1 ? 'قسط واحد' : n === 2 ? 'قسطان' : n + ' أقساط') : 'السعر بالتقسيط', w_price: pr ? fmt(pr.total) : 'للاستفسار', w_cur: 'درهم إماراتي',
     w_own: (ad && ad.pl && (ownSub(ad.pl.p2) || ad.pl.p2)) || 'تملك حر لجميع الجنسيات العربية', wCol: 'gold', wLogo: true, wAv: true, w_name: 'مستشارتك العقارية', w_nameS: 'للتواصل والاستفسار عبر واتساب', w_phone: '056 500 0069', gSt: '1',   // the project's own lines (set by the office), none when unknown
@@ -1406,10 +1408,10 @@ function capOf() {
   const fl = String(v.cap2 || '').trim(), tag = (t) => '#' + String(t).trim().replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '');
   const phone = String((layoutOf(v.theme) === 'wa' ? v.w_phone : v.phone) || '').trim();
   return [
-    `🏡 ${String(v.title || 'أرض').trim()} للبيع في ${l.projectName} – الشارقة`,
+    `🏡 ${String(v.title || 'أرض').trim().replace(/^أرض\s+(أراضي|أراضٍ|أراض|أرض)\s+/, 'أرض ')} للبيع في ${l.projectName} – الشارقة`,
     `📍 قطعة رقم ${ad.p.n}`,
     v.area ? `📐 المساحة: ${v.area} قدم مربع${l.m2 ? ` (${fmt(Math.round(l.m2))} م²)` : ''}` : '',
-    l.use ? `🏗️ الاستخدام: ${l.use}${fl ? ' · ' + fl : ''}` : '',
+    l.use ? `🏗️ الاستخدام: ${bareUse(l.use) || l.use}${fl ? ' · ' + fl : ''}` : '',
     price ? (inst ? `💰 السعر: ${price} درهم${v.down ? ` — الدفعة الأولى ${v.down} درهم` : ''} والباقي على ${v.nInst} ${v.nInst > 2 && v.nInst < 11 ? 'أقساط' : 'قسط'}` : `💰 السعر: ${price} درهم كاش`) : '💰 السعر عند الاستفسار',
     ...String(v.feat || '').split('\n').map((x) => x.trim()).filter(Boolean).map((x) => '✅ ' + x),
     phone ? `📞 للتواصل والاستفسار: ${phone}` : '',
