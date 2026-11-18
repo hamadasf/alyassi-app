@@ -584,20 +584,27 @@ function oay_marketed_since( $days ) {
 	}
 	return $seen;
 }
+/** when each plot was last designed / shared by the team (kept apart from the activity log, which is trimmed) */
+function oay_mkt_mark( $id ) {
+	if ( ! preg_match( '/^[a-z0-9-]{2,40}:[A-Za-z0-9-]{1,12}$/', (string) $id ) ) { return; }
+	$m = get_option( 'oay_mkt_last', array() ); $m = is_array( $m ) ? $m : array(); $now = oay_g_ms();
+	$m[ $id ] = $now; $cut = $now - 120 * 86400000; $m = array_filter( $m, function ( $t ) use ( $cut ) { return $t >= $cut; } );
+	update_option( 'oay_mkt_last', $m, false );
+}
 function oay_acc_need_mkt() {
-	$me = oay_acc_need_office(); $all = array();   // the last time each plot was marketed (any time in the last 90 days); the app lists the available plots not in the last 7
-	foreach ( oay_marketed_since( 90 ) as $id => $t ) { $all[ $id ] = $t; }
-	oay_acc_ok( array( 'last' => (object) $all, 'days' => 7 ) );
+	oay_acc_need_office(); $all = oay_marketed_since( 90 );
+	foreach ( (array) get_option( 'oay_mkt_last', array() ) as $id => $t ) { $all[ $id ] = max( (int) ( $all[ $id ] ?? 0 ), (int) $t ); }
+	oay_acc_ok( array( 'last' => (object) $all, 'days' => 14 ) );
 }
 add_action( 'init', function () { if ( ! wp_next_scheduled( 'oay_mkt_daily' ) ) { wp_schedule_event( strtotime( 'tomorrow 05:10 UTC' ), 'daily', 'oay_mkt_daily' ); } } );
 add_action( 'oay_mkt_daily', function () {
 	if ( ! function_exists( 'oay_push_to' ) || ! function_exists( 'dnp_projects' ) || ! function_exists( 'oay_plots' ) ) { return; }
-	$seen = oay_marketed_since( 7 ); $n = 0;
+	$seen = oay_marketed_since( 14 ); $cut = oay_g_ms() - 14 * 86400000; foreach ( (array) get_option( 'oay_mkt_last', array() ) as $id => $t ) { if ( $t >= $cut ) { $seen[ $id ] = $t; } } $n = 0;
 	foreach ( (array) dnp_projects() as $slug => $p ) {
 		if ( empty( $p['opt'] ) ) { continue; }
 		foreach ( oay_plots( get_option( $p['opt'] ) ) as $pn => $q ) { if ( ( $q['s'] ?? '' ) === 'av' && ! isset( $seen[ $slug . ':' . $pn ] ) ) { $n++; } }
 	}
 	if ( ! $n ) { return; }
 	$to = array_values( array_filter( oay_admin_ids(), function ( $id ) { $u = get_userdata( $id ); return $u && ( oay_acc_can( $u, 'design' ) || ( function_exists( 'oay_role' ) && 'mkt' === oay_role( $u ) ) ); } ) );
-	oay_push_to( $to, '📣 ' . $n . ' أرض متاحة لم تُسوَّق منذ أسبوع', 'افتح «أراضٍ تحتاج تسويقاً» لتصميم منشوراتها', array( 'open' => 'needmkt' ) );
+	oay_push_to( $to, '📣 ' . $n . ' أرض متاحة لم تُسوَّق منذ أسبوعين', 'افتح «أراضٍ تحتاج تسويقاً» لتصميم منشوراتها', array( 'open' => 'needmkt' ) );
 } );

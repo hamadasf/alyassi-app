@@ -50,6 +50,7 @@ add_action( 'oay_office_reply', function ( $me, $client ) { if ( oay_team_once( 
 
 /* a design saved / shared: logged; when the designer is a manager, a marketing manager or the admin → the rest of the team */
 function oay_team_design( $u, $id, $theme, $kind ) {
+	if ( function_exists( 'oay_mkt_mark' ) ) { oay_mkt_mark( $id ); }   // «أراضٍ تحتاج تسويقاً» leaves it out for a while
 	$p = oay_team_plot_label( $id ); $tpl = defined( 'OAY_TPLS' ) && isset( OAY_TPLS[ $theme ] ) ? OAY_TPLS[ $theme ] : ( 'wa' === $theme ? 'قالب واتس أب' : $theme );
 	$what = 'قطعة ' . $p['n'] . ' · ' . $p['proj'];
 	if ( oay_team_once( $kind . $u->ID . $id . $theme, 600 ) ) { oay_team_log( $u->ID, $kind, $what . ' · ' . $tpl, $id . '|' . $theme ); }
@@ -80,7 +81,7 @@ function oay_acc_team_ev() {
 	$k = sanitize_key( oay_acc_arg( 'kind', 20 ) ); $id = (string) oay_acc_arg( 'id', 60 ); $theme = sanitize_key( oay_acc_arg( 'theme', 12 ) );
 	if ( ! preg_match( '/^[a-z0-9-]{2,40}:[A-Za-z0-9-]{1,12}$/', $id ) ) { oay_acc_err( 'غير معروف' ); }
 	if ( 'share_design' === $k || 'save_img' === $k ) { oay_team_design( $u, $id, $theme, $k ); }
-	elseif ( 'share_land' === $k ) { $p = oay_team_plot_label( $id ); if ( oay_team_once( 'sl' . $u->ID . $id, 600 ) ) { oay_team_log( $u->ID, 'share_land', 'قطعة ' . $p['n'] . ' · ' . $p['proj'], $id ); } }
+	elseif ( 'share_land' === $k ) { if ( function_exists( 'oay_mkt_mark' ) ) { oay_mkt_mark( $id ); } $p = oay_team_plot_label( $id ); if ( oay_team_once( 'sl' . $u->ID . $id, 600 ) ) { oay_team_log( $u->ID, 'share_land', 'قطعة ' . $p['n'] . ' · ' . $p['proj'], $id ); } }
 	oay_acc_ok( array() );
 }
 

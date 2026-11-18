@@ -1819,3 +1819,9 @@ html.oay-studio-on, html.oay-studio-on body { overflow: hidden; }
 /* chat: a long press opens «رد» — never the phone's text-selection menu on the messages or the reply bar */
 .cmsgs, .cmsgs *, .wareply, .wareply * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .wareply .wcopy { width: auto; padding: 0 10px; border-radius: 15px; font-size: 12px; font-weight: 700; }
+/* «أراضٍ تحتاج تسويقاً»: how many posts, and why each plot */
+.mk-go { display: flex; flex-direction: column; gap: 10px; } .mk-n b { font-size: 1.2em; }
+.mk-cnt { display: flex; align-items: center; gap: 10px; } .mk-cnt span { flex: 1; font-weight: 700; } .mk-cnt b { min-width: 28px; text-align: center; font-size: 1.2em; }
+.mk-q { display: flex; gap: 4px; } .mk-q button { flex: 1; }
+.op-mk.pick { border-color: #0e1c36; } .mk-i { font-style: normal; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #0e1c36; color: #fff; font-size: 11px; margin-inline-end: 6px; }
+.mk-why { display: flex; flex-wrap: wrap; gap: 4px; } .mk-why em { font-style: normal; font-size: 11px; background: #fff7e0; color: #8a5a00; border-radius: 999px; padding: 2px 8px; }

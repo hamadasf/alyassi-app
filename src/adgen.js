@@ -1,3 +1,4 @@
+import { markMarketed, lastMarketed, pickForMarketing } from './mktpick.js';
 import { ei } from './icons.js';
 // «مولّد منشورات الإعلانات»: the website's ad designer (alyassi-dabdaba-plan → advertisement designer) inside the app.
 // The same four templates (الشركة · عبادة · آية الرفاعي · أمل), cash and instalment versions, filled from the plot
@@ -1373,6 +1374,7 @@ async function finishAll(share) {
   H.toast(`جارِ تجهيز ${allowed().length} صور…`);
   const list = await allBlobs().catch(() => []);
   if (!list.length) { H.toast('تعذّر تجهيز الصور'); return; }
+  markMarketed(ad.p.l.id); if (H.teamEv) H.teamEv(share ? 'share_design' : 'save_img', ad.p.l.id, ad.v.theme);   // every template of this plot: it counts as marketed
   const title = `قطعة رقم ${ad.p.n} · ${ad.p.l.projectName}`;
   try {
     if (native) {
@@ -1399,7 +1401,8 @@ async function finish(share, story) {
   if (!ad) return;
   const b = await exportBlob(story).catch(() => null);
   if (!b) { H.toast('تعذّر تجهيز الصورة'); return; }
-  if (H.teamEv) H.teamEv(share ? 'share_design' : 'save_img', ad.p.l.id, ad.v.theme);   // the team's activity (and, for a manager, the team is told)
+  if (H.teamEv) H.teamEv(share ? 'share_design' : 'save_img', ad.p.l.id, ad.v.theme);
+  markMarketed(ad.p.l.id);   // the team's activity (and, for a manager, the team is told)
   const name = `post-${ad.p.l.project}-${ad.p.n}${story ? '-story' : ''}.jpg`, title = `قطعة رقم ${ad.p.n} · ${ad.p.l.projectName}`;
   try {
     if (native) {
@@ -1994,8 +1997,12 @@ export async function initAdbatch(pg, projects, pre) {
   const st = { proj: '', sel: new Set(), theme: T.includes(store().theme) ? store().theme : T[0], kinds: ['post'], q: '' };
   const lands = () => projects.flatMap((p) => p.lands).filter((l) => (l.poly || l.pc) && l.status === 'av');
   let mkt = null;
-  if (pre === 'mkt') {
-    try { const j = await H.api('need_mkt', {}); const last = j.last || {}, cut = Date.now() - (j.days || 7) * 864e5; mkt = new Set(lands().filter((l) => !(last[l.id] > cut)).sort((a, b) => (last[a.id] || 0) - (last[b.id] || 0)).map((l) => l.id)); [...mkt].slice(0, BATCH_MAX).forEach((id) => st.sel.add(id)); } catch { mkt = null; }
+  let mktN = BATCH_MAX;
+  if (pre && String(pre).startsWith('mkt')) {   // from «أراضٍ تحتاج تسويقاً»: the same smart, varied pick, the first N chosen
+    mktN = Math.max(1, Math.min(BATCH_MAX, +String(pre).split(':')[1] || BATCH_MAX));
+    let server = {}; try { server = (await H.api('need_mkt', {})).last || {}; } catch { /* this phone's record only */ }
+    const ranked = pickForMarketing(projects.flatMap((p) => p.lands), lastMarketed(server)).map((x) => x.l.id);
+    mkt = new Set(ranked); ranked.slice(0, mktN).forEach((id) => st.sel.add(id));
   }
   const pick = () => {
     const pool = lands().filter((l) => (!st.proj || l.project === st.proj) && (!st.q || l.n.startsWith(st.q)));
@@ -2026,7 +2033,7 @@ export async function initAdbatch(pg, projects, pre) {
   box.addEventListener('click', async (e) => {
     const t = e.target.closest('button, img'); if (!t) return; const d = t.dataset;
     if (d.ball !== undefined) { lands().filter((l) => (!st.proj || l.project === st.proj) && (!st.q || l.n.startsWith(st.q))).forEach((l) => { if (st.sel.size < BATCH_MAX) st.sel.add(l.id); }); pick(); return; }
-    if (d.bmkt !== undefined) { st.sel.clear(); [...mkt].slice(0, BATCH_MAX).forEach((id) => st.sel.add(id)); pick(); return; }
+    if (d.bmkt !== undefined) { st.sel.clear(); [...mkt].slice(0, mktN).forEach((id) => st.sel.add(id)); pick(); return; }
     if (d.bnone !== undefined) { st.sel.clear(); pick(); return; }
     if (d.bkind) { st.kinds = d.bkind === 'both' ? ['post', 'story'] : [d.bkind]; pick(); return; }
     if (d.bgo !== undefined) {
@@ -2048,6 +2055,7 @@ export async function initAdbatch(pg, projects, pre) {
       try {
         await shareBlobs(res, share, `منشورات ${res.length} أرض · عمر الياسي للعقارات`);
         if (H.teamEv) [...new Set(res.map((x) => x.l.id))].forEach((id) => H.teamEv(share ? 'share_design' : 'save_img', id, st.theme));   // each plot counts as marketed
+        markMarketed(res.map((x) => x.l.id));
       } catch (ex) { if (!/cancel|abort/i.test(String(ex && (ex.message || ex)))) H.toast('تعذّر الحفظ: ' + String((ex && ex.message) || ex).slice(0, 80)); }
     }
   });

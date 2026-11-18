@@ -2,6 +2,7 @@
 // the chat's ready replies, monthly targets helpers. All wording in Modern Standard Arabic.
 import { api, session, can } from './owner.js';
 import { uiConfirm, uiPrompt } from './dialog.js';
+import { COOL, lastMarketed, pickForMarketing } from './mktpick.js';
 
 let H = null;
 export function initOps(h) { H = h; }
@@ -54,18 +55,29 @@ export async function initApprovals(pg) {
 }
 
 /* ---------------- «أراضٍ تحتاج تسويقاً» ---------------- */
-export function needMktPage() { return `<div class="pad ops"><p class="muted ops-hint">الأراضي المتاحة التي لم يصمّم لها أحد من الفريق منشوراً ولم يشاركها منذ 7 أيام — الأقدم أولاً.</p><div class="ops-list">${loadingHTML}</div></div>`; }
+export function needMktPage() { return `<div class="pad ops"><p class="muted ops-hint">أراضٍ متاحة منوّعة من مشاريع مختلفة، الأفضل أولاً (المميزة، والأقل من سعر مشروعها، والزوايا والسكك). الأرض التي يُصمَّم لها منشور أو تُشارَك لا تظهر هنا ${COOL} يوماً.</p><div class="ops-list">${loadingHTML}</div></div>`; }
 export async function initNeedMkt(pg) {
   const { esc, money } = H; const list = pg.querySelector('.ops-list');
-  try {
-    const j = await api('need_mkt', {}); const last = j.last || {}, cut = Date.now() - (j.days || 7) * 864e5;
-    const items = H.DATA().lands.filter((l) => l.status === 'av' && !(last[l.id] > cut)).sort((a, b) => (last[a.id] || 0) - (last[b.id] || 0));
-    list.innerHTML = items.length ? `<p class="ops-n"><b>${items.length}</b> أرض</p>${can('design') ? `<button class="btn primary block" data-adbatch="mkt">صمّم منشوراتها دفعة واحدة (حتى 20)</button>` : ''}` + items.slice(0, 150).map((l) => `<div class="ccard op-mk">
-        <div><b>قطعة ${esc(l.n)} · ${esc(l.projectName)}</b><span>${l.ft ? money(l.ft) + ' قدم²' : ''}${l.total ? ' · ' + money(l.total) + ' د.إ' : ''}</span>
+  let server = {}; try { server = (await api('need_mkt', {})).last || {}; } catch { /* this phone's record only */ }
+  const last = lastMarketed(server), items = pickForMarketing(H.DATA().lands, last);
+  let n = Math.min(10, items.length) || 0;
+  const draw = () => {
+    list.innerHTML = items.length ? `<div class="ccard mk-go"><div class="mk-n"><b>${items.length}</b> أرض جاهزة للتسويق</div>
+        ${can('design') ? `<div class="mk-cnt"><span>عدد المنشورات</span><button class="btn ghost sm" data-mkd="-1" aria-label="أقل">−</button><b data-mkn>${n}</b><button class="btn ghost sm" data-mkd="1" aria-label="أكثر">+</button></div>
+        <div class="seg mk-q">${[5, 10, 15, 20].filter((k) => k <= Math.max(5, items.length)).map((k) => `<button data-mkset="${Math.min(k, items.length)}" class="${n === Math.min(k, items.length) ? 'on' : ''}">${k}</button>`).join('')}</div>
+        <button class="btn primary block" data-adbatch="mkt:${n}">صمّم أول ${n} ${n === 1 ? 'منشور' : 'منشورات'} دفعة واحدة</button>` : ''}</div>`
+      + items.slice(0, 150).map(({ l, why }, i) => `<div class="ccard op-mk${i < n ? ' pick' : ''}">
+        <div><b>${i < n && can('design') ? `<i class="mk-i">${i + 1}</i>` : ''}قطعة ${esc(l.n)} · ${esc(l.projectName)}</b><span>${l.ft ? money(l.ft) + ' قدم²' : ''}${l.total ? ' · ' + money(l.total) + ' د.إ' : ' · بدون سعر'}</span>
+        ${why.length ? `<div class="mk-why">${why.map((w) => `<em>${esc(w)}</em>`).join('')}</div>` : ''}
         <small>${last[l.id] ? 'آخر تسويق: ' + new Date(last[l.id]).toLocaleDateString('ar-AE') : 'لم تُسوَّق من التطبيق بعد'}</small></div>
-        <div class="hold-b">${can('design') && (l.poly || l.pc) ? `<button class="btn primary sm" data-adgen="${esc(l.id)}">صمّم منشوراً</button>` : ''}<button class="btn ghost sm" data-land="${esc(l.id)}">التفاصيل</button></div></div>`).join('')
-      : '<div class="cempty"><p>ممتاز — كل الأراضي المتاحة سُوِّقت خلال الأسبوع</p></div>';
-  } catch (e) { list.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+        <div class="hold-b">${can('design') ? `<button class="btn primary sm" data-adgen="${esc(l.id)}">صمّم منشوراً</button>` : ''}<button class="btn ghost sm" data-land="${esc(l.id)}">التفاصيل</button></div></div>`).join('')
+      : `<div class="cempty"><p>ممتاز — كل الأراضي المتاحة سُوِّقت خلال آخر ${COOL} يوماً</p></div>`;
+  };
+  draw();
+  list.addEventListener('click', (e) => {
+    const d = e.target.closest('[data-mkd],[data-mkset]'); if (!d) return;
+    n = d.dataset.mkset ? +d.dataset.mkset : Math.max(1, Math.min(20, items.length, n + +d.dataset.mkd)); draw();
+  });
 }
 
 /* ---------------- ready replies in the office chat ---------------- */
