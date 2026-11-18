@@ -1248,7 +1248,7 @@ export function adgenPage(l, projects) {
     <input type="file" id="pzFile" accept="image/*,application/pdf" hidden>
     <div class="adg-bar pzbar"><button class="btn primary" id="pzShare">${ei('share')} مشاركة</button><button class="btn" id="pzSave">${ei('pdf')} حفظ الصورة</button><button class="btn pz-more" id="pzMore" aria-label="المزيد">⋯</button></div>
     <div class="adg-allpop" id="pzMorePop" hidden><div class="adg-allin"><b>خيارات أخرى</b>
-      <button class="btn block" id="pzStory">${ei('image')} ستوري 9:16</button><button class="btn block" id="pzKeep">${ei('bookmark')} حفظ التصميم</button><button class="btn gold block" id="pzAll" hidden>${ei('grid')} كل القوالب مرة واحدة</button><button class="btn ghost block" id="pzMoreNo">إغلاق</button></div></div>
+      <button class="btn block" id="pzCap">${ei('doc')} نسخ نص البوست</button><button class="btn block" id="pzStory">${ei('image')} ستوري 9:16</button><button class="btn block" id="pzKeep">${ei('bookmark')} حفظ التصميم</button><button class="btn gold block" id="pzAll" hidden>${ei('grid')} كل القوالب مرة واحدة</button><button class="btn ghost block" id="pzMoreNo">إغلاق</button></div></div>
     <div class="adg-allpop" id="pzAllPop" hidden><div class="adg-allin"><b>كل القوالب مرة واحدة</b><p class="muted" id="pzAllTxt"></p>
       <button class="btn primary block" id="pzAllShare">${ei('share')} مشاركة الكل</button><button class="btn ghost block" id="pzAllSave">${ei('pdf')} حفظ الكل</button><button class="btn block" id="pzAllNo">إلغاء</button></div></div>
     <div class="adg-crop" id="pzCropBox" hidden><div class="adg-cropin">
@@ -1287,7 +1287,10 @@ function pzForm() {
     ${oy ? `<p class="help">السطران الأبيضان خاصّان بكل مشروع (جاهز للبناء، تملّك حر للعرب أو لكل الجنسيات، البنية التحتية…)${ad.pl ? '' : ' — لم تُحدَّد بعد لهذا المشروع'}.</p>${H.isAdmin && H.isAdmin() ? `<button type="button" class="btn sm" data-pzpl>${ei('bookmark')} اجعل السطرين الأبيضين لكل بوستات مشروع ${esc(ad.p.l.projectName)}</button>` : ''}` : ''}
     <h3${wg ? ' hidden' : ''}>موقع القطعة في العنوان</h3>
     <div class="seg pz-side"${wg ? ' hidden' : ''}>${[['', 'عادية'], ['زاوية', 'زاوية'], ['سكة', 'سكة']].map(([k, l]) => `<button type="button" data-pzside="${k}" class="${(v.side || '') === k ? 'on' : ''}">${l}${ad.rawOk && (v.auto || '') === k ? ' ✓' : ''}</button>`).join('')}</div>
-    <p class="help"${wg ? ' hidden' : ''}>${ad.rawOk ? `✓ = ما قرأته من المخطط${v.auto ? ': ' + v.auto : ': ليست زاوية ولا على سكة'}. ` : ''}الاختيار يضيف الكلمة إلى آخر العنوان.</p>`, false)
+    <p class="help"${wg ? ' hidden' : ''}>${ad.rawOk ? `✓ = ما قرأته من المخطط${v.auto ? ': ' + v.auto : ': ليست زاوية ولا على سكة'}. ` : ''}الاختيار يضيف الكلمة إلى آخر العنوان.</p>
+    <h3>نص البوست</h3><p class="help">يُنسخ تلقائياً عند «مشاركة» أو «حفظ الصورة» — الصقه مع الصورة في إنستقرام أو واتساب.</p>
+    <textarea class="pz-cap" data-cap rows="8">${esc(capNow())}</textarea>
+    <span class="rowbtns"><button type="button" class="btn sm" data-capcopy>${ei('doc')} نسخ النص</button><button type="button" class="btn sm" data-capreset>إرجاع النص التلقائي</button></span>`, false)
     + (aya || oy || ar || wa || wr || wg ? '' : sec('im', '٣. الصور', `${slots}<p class="help">الصور التي تضيفها هنا للبوست فقط ولا تُرفع إلى الموقع. يمكنك اختيار صورة أو ملف PDF.</p>`, false))
     + (wg ? '' : sec('mp', (aya || oy || ar || wa || wr || wg ? '٣' : '٤') + '. الخريطة والدبوس', `
     <label>تكبير الخريطة<input type="range" data-k="zoom" min="0.5" max="3" step="0.1" value="${v.zoom}"></label>
@@ -1396,8 +1399,30 @@ async function allBlobs() {
   } finally { ad.v = keep; ad.sel = sel; ad.export = false; adRedraw(); }
   return out;
 }
-async function finishAll(share) {
-  if (!ad) return;
+/* ---------- the post's caption: written from the post itself, copied when it is shared or saved (Instagram / WhatsApp keep only the picture) ---------- */
+function capOf() {
+  const v = ad.v, l = ad.p.l, inst = v.mode === 'inst' && v.nInst > 0;
+  const price = v.price || ((String(inst ? v.o_priceI || '' : v.o_priceC || '').match(/\d[\d,]*/) || [''])[0]);
+  const fl = String(v.cap2 || '').trim(), tag = (t) => '#' + String(t).trim().replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '');
+  const phone = String((layoutOf(v.theme) === 'wa' ? v.w_phone : v.phone) || '').trim();
+  return [
+    `🏡 ${String(v.title || 'أرض').trim()} للبيع في ${l.projectName} – الشارقة`,
+    `📍 قطعة رقم ${ad.p.n}`,
+    v.area ? `📐 المساحة: ${v.area} قدم مربع${l.m2 ? ` (${fmt(Math.round(l.m2))} م²)` : ''}` : '',
+    l.use ? `🏗️ الاستخدام: ${l.use}${fl ? ' · ' + fl : ''}` : '',
+    price ? (inst ? `💰 السعر: ${price} درهم${v.down ? ` — الدفعة الأولى ${v.down} درهم` : ''} والباقي على ${v.nInst} ${v.nInst > 2 && v.nInst < 11 ? 'أقساط' : 'قسط'}` : `💰 السعر: ${price} درهم كاش`) : '💰 السعر عند الاستفسار',
+    ...String(v.feat || '').split('\n').map((x) => x.trim()).filter(Boolean).map((x) => '✅ ' + x),
+    phone ? `📞 للتواصل والاستفسار: ${phone}` : '',
+    '',
+    [tag('عقارات الشارقة'), tag('أراضي للبيع'), tag('أراضي ' + l.projectName), tag('الشارقة'), tag('عمر الياسي للعقارات')].join(' '),
+  ].filter((x, i, a) => x !== '' || (i && a[i - 1] !== '')).join('\n');
+}
+const capNow = () => (ad && ad.cap != null ? ad.cap : ad ? capOf() : '');
+/** copied right on the tap (iPhone allows the clipboard only then); the answer comes later */
+function copyCap() { const t = capNow(); try { return navigator.clipboard.writeText(t).then(() => true, () => false); } catch { return Promise.resolve(false); } }
+const capToast = async (p) => { if (await p) H.toast('📋 نُسخ نص البوست — الصقه مع الصورة'); };
+async function finishAll(share, cp) {
+  if (!ad) return; capToast(cp);
   H.toast(`جارِ تجهيز ${allowed().length} صور…`);
   const list = await allBlobs().catch(() => []);
   if (!list.length) { H.toast('تعذّر تجهيز الصور'); return; }
@@ -1424,8 +1449,8 @@ async function finishAll(share) {
     if (!/cancel/i.test(String(e && (e.message || e)))) H.toast('تعذّر الحفظ: ' + String((e && e.message) || e).slice(0, 80));
   }
 }
-async function finish(share, story) {
-  if (!ad) return;
+async function finish(share, story, cp) {
+  if (!ad) return; capToast(cp); const text = capNow();
   const b = await exportBlob(story).catch(() => null);
   if (!b) { H.toast('تعذّر تجهيز الصورة'); return; }
   if (H.teamEv) H.teamEv(share ? 'share_design' : 'save_img', ad.p.l.id, ad.v.theme);
@@ -1436,7 +1461,7 @@ async function finish(share, story) {
       const u8 = new Uint8Array(await b.arrayBuffer());
       if (share) {
         const w = await Filesystem.writeFile({ path: name, data: b64(u8), directory: Directory.Cache });
-        await Share.share({ title, files: [w.uri], dialogTitle: 'مشاركة الإعلان' });
+        await Share.share({ title, text, files: [w.uri], dialogTitle: 'مشاركة الإعلان' });
       } else {
         try {
           await Filesystem.writeFile({ path: 'عمر الياسي/' + name.replace('.jpg', '-' + Date.now().toString(36) + '.jpg'), data: b64(u8), directory: Directory.Documents, recursive: true });
@@ -1449,7 +1474,7 @@ async function finish(share, story) {
       return;
     }
     const file = new File([b], name, { type: 'image/jpeg' });
-    if (share && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title }); return; }
+    if (share && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title, text }); return; }
     const a = document.createElement('a'), u = URL.createObjectURL(b); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(u), 60000); H.toast('تم تجهيز الإعلان بصيغة JPEG');
   } catch (e) {
@@ -1534,6 +1559,7 @@ export async function initAdgen2(pg, l, proj) {
       ['price', 'o_priceC', 'o_priceI', 'r_priceC', 'r_priceI'].forEach((f) => { const el = form.querySelector(`[data-k="${f}"]`); if (el) el.value = ad.v[f]; });
       const h = $('pzTot'); if (h) h.innerHTML = ppfHelp(); adRedraw(); return;
     }
+    if (t.dataset.cap !== undefined) { ad.cap = t.value; return; }
     if (t.dataset.exk) { const [i, f] = t.dataset.exk.split('|'), e = (ad.v.ex || [])[+i]; if (e) { e[f] = f === 'text' ? t.value : +t.value; adRedraw(); } return; }
     if (!k) return;
     ad.v[k] = t.type === 'checkbox' ? t.checked : t.type === 'range' ? +t.value : t.value;
@@ -1542,6 +1568,7 @@ export async function initAdgen2(pg, l, proj) {
     if (k === 'o_two' && t.value && !/متجاور|متلاصق/.test(ad.v.o_p3 || '')) { ad.v.o_p3 = 'أرضين متجاورتين'; const el = form.querySelector('[data-k="o_p3"]'); if (el) el.value = ad.v.o_p3; }
     if (k === 'phone') pzKeep((s) => { (s.phones = s.phones || {})[ad.v.theme] = t.value; });
     if (AD_KEEP.includes(k)) pzKeep((s) => { s[k] = t.value; });
+    if (ad.cap == null) { const ta = form.querySelector('[data-cap]'); if (ta) ta.value = capOf(); }
     adRedraw();
   });
   form.addEventListener('change', (e) => {
@@ -1699,11 +1726,12 @@ export async function initAdgen2(pg, l, proj) {
   { const n = allowed().length, all = $('pzAll'), pop = $('pzAllPop');
     all.hidden = n < 2;
     const more = $('pzMorePop'); $('pzMore').onclick = () => { more.hidden = false; }; $('pzMoreNo').onclick = () => { more.hidden = true; };
-    more.onclick = (e) => { if (e.target === more || e.target.closest('#pzStory,#pzKeep,#pzAll')) more.hidden = true; };
+    more.onclick = (e) => { if (e.target === more || e.target.closest('#pzStory,#pzKeep,#pzAll,#pzCap')) more.hidden = true; };
+    $('pzCap').onclick = () => capToast(copyCap());
     all.onclick = () => { $('pzAllTxt').textContent = `${n} صور — صورة بكل قالب (${allowed().map((k) => PZ_THEMES[k].name.replace('قالب ', '')).join('، ')}). القالب المحفوظ يُستخدم كما حفظته.`; pop.hidden = false; };
     $('pzAllNo').onclick = () => { pop.hidden = true; };
-    $('pzAllShare').onclick = () => { pop.hidden = true; finishAll(true); };
-    $('pzAllSave').onclick = () => { pop.hidden = true; finishAll(false); };
+    $('pzAllShare').onclick = () => { pop.hidden = true; finishAll(true, copyCap()); };
+    $('pzAllSave').onclick = () => { pop.hidden = true; finishAll(false, copyCap()); };
   }
   $('pzUndo').onclick = () => undo(false); $('pzRedo').onclick = () => undo(true);
   const box = pg.querySelector('.adg'), sc = pg.querySelector('.scroller') || pg;
@@ -1713,12 +1741,15 @@ export async function initAdgen2(pg, l, proj) {
   const typing = (el) => el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && /^(text|search|tel|number|)$/.test(el.type)));
   $('pzForm').addEventListener('focusin', (e) => { if (typing(e.target)) box.classList.add('typing'); });
   $('pzForm').addEventListener('focusout', () => { setTimeout(() => { if (!typing(document.activeElement)) box.classList.remove('typing'); }, 60); });
-  $('pzForm').addEventListener('click', (e) => { const b = e.target.closest('[data-pztab]'); if (!b) return; ad.tab = b.dataset.pztab;
+  $('pzForm').addEventListener('click', (e) => {
+    if (e.target.closest('[data-capcopy]')) { capToast(copyCap()); return; }
+    if (e.target.closest('[data-capreset]')) { ad.cap = null; const ta = $('pzForm').querySelector('[data-cap]'); if (ta) ta.value = capOf(); return; }
+    const b = e.target.closest('[data-pztab]'); if (!b) return; ad.tab = b.dataset.pztab;
     $('pzForm').querySelectorAll('[data-pztab]').forEach((x) => x.classList.toggle('on', x === b)); $('pzForm').querySelectorAll('.pz-pan').forEach((x) => { x.hidden = x.dataset.sec !== ad.tab; });
     b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); });
-  $('pzShare').onclick = () => finish(true);
-  $('pzSave').onclick = () => finish(false);
-  $('pzStory').onclick = () => finish(true, true);
+  $('pzShare').onclick = () => finish(true, false, copyCap());
+  $('pzSave').onclick = () => finish(false, false, copyCap());
+  $('pzStory').onclick = () => finish(true, true, copyCap());
 }
 /** the page was closed */
 export function closeAdgen(pg) { if (PG === pg) { PG = null; ad = null; pzc = null; } }

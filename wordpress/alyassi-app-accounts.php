@@ -1307,7 +1307,8 @@ function oay_report_range( $end ) {
 function oay_acc_adm_report() {
 	oay_acc_need_perm( 'report' ); $w = min( 52, absint( oay_acc_arg( 'weeks', 3 ) ) );
 	$end = time() - $w * WEEK_IN_SECONDS;
-	oay_acc_ok( array( 'cur' => oay_report_range( $end ), 'prev' => oay_report_range( $end - WEEK_IN_SECONDS ), 'weeks' => $w ) );
+	$biz = function_exists( 'oay_week_biz' ) ? array( 'biz' => oay_week_biz( $end ), 'bizPrev' => oay_week_biz( $end - WEEK_IN_SECONDS ) ) : array();
+	oay_acc_ok( array( 'cur' => oay_report_range( $end ), 'prev' => oay_report_range( $end - WEEK_IN_SECONDS ), 'weeks' => $w ) + $biz );
 }
 // every Sunday morning: a push to the office with the week's headline numbers
 add_action( 'init', function () {
@@ -1318,5 +1319,8 @@ add_action( 'init', function () {
 add_action( 'oay_weekly_report', function () {
 	$r = oay_report_range( time() - DAY_IN_SECONDS );
 	$body = $r['visitors'] . ' زائر · ' . (int) ( $r['c']['view'] ?? 0 ) . ' مشاهدة أرض · ' . (int) ( $r['c']['wa'] ?? 0 ) . ' تواصل واتساب · ' . $r['users'] . ' عضو جديد';
-	oay_push_to( oay_admin_ids(), '📊 تقريرك الأسبوعي جاهز', $body, array( 'open' => 'report' ) );
+	if ( function_exists( 'oay_week_biz' ) ) { $body = oay_week_biz_text( oay_week_biz( time() ) ) . "\n" . $body; }
+	// the admin and the managers (and anyone given «التقرير الأسبوعي»), not the whole team
+	$to = array_values( array_filter( oay_admin_ids(), function ( $id ) { $u = get_userdata( $id ); return $u && ( user_can( $u, 'manage_options' ) || ( function_exists( 'oay_team_lead' ) && oay_team_lead( $u ) ) || ( function_exists( 'oay_acc_can' ) && oay_acc_can( $u, 'report' ) ) ); } ) );
+	oay_push_to( $to, '📊 ملخص الأسبوع', $body, array( 'open' => 'report' ) );
 } );

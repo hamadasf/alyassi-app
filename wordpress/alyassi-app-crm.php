@@ -33,25 +33,53 @@ function oay_lead_add( $uid, $src, $lid = '', $name = '' ) {
 	$l['items'] = array_slice( $l['items'], 0, 60 ); $l['last'] = $now;
 	if ( 'lost' === $l['status'] ) { $l['status'] = 'new'; }   // came back
 	update_user_meta( $uid, 'oay_lead', $l ); update_user_meta( $uid, 'oay_lead_last', $now );
+	oay_lead_heat_push( $u, $l );
+}
+/* «عميل ساخن»: what a client did in the last 7 days, weighed; 4 or more = hot (one push to whoever follows them, at most every 3 days) */
+const OAY_HEAT_W = array( 'hot' => 4, 'view2' => 2, 'fav' => 2, 'wa' => 4, 'call' => 4, 'form' => 4, 'chat' => 3, 'wanted' => 3, 'calc' => 2, 'alert' => 1 );
+function oay_lead_heat( $l, $list = false ) {
+	if ( ! $l || in_array( $l['status'], array( 'won', 'lost' ), true ) ) { return $list ? array() : 0; }
+	$since = oay_crm_ms() - 7 * DAY_IN_SECONDS * 1000; $s = 0; $seen = array(); $did = array();
+	foreach ( $l['items'] as $it ) {   // newest first
+		if ( (int) $it['t'] < $since ) { break; }
+		$k = $it['src'] . '|' . $it['lid']; if ( isset( $seen[ $k ] ) || ! isset( OAY_HEAT_W[ $it['src'] ] ) ) { continue; }
+		if ( 'view2' === $it['src'] && isset( $seen[ 'hot|' . $it['lid'] ] ) ) { continue; }
+		$seen[ $k ] = 1; $s += OAY_HEAT_W[ $it['src'] ]; $did[] = $it;
+	}
+	return $list ? $did : min( 20, $s );
+}
+function oay_lead_heat_push( $u, $l ) {
+	if ( ! function_exists( 'oay_push_to' ) || oay_lead_heat( $l ) < 4 ) { return; }
+	if ( oay_crm_ms() - (int) ( $l['heatPush'] ?? 0 ) < 3 * DAY_IN_SECONDS * 1000 ) { return; }
+	$l['heatPush'] = oay_crm_ms(); update_user_meta( $u->ID, 'oay_lead', $l );
+	$T = array( 'hot' => 'فتح %s أكثر من 3 مرات', 'view2' => 'فتح %s مرتين', 'fav' => 'أضاف %s إلى المفضلة', 'wa' => 'ضغط واتساب على %s', 'call' => 'ضغط اتصال على %s',
+		'form' => 'أرسل طلب اتصال', 'chat' => 'راسل المكتب', 'wanted' => 'أرسل طلب شراء', 'calc' => 'حسب أقساط %s', 'alert' => 'فعّل تنبيهاً' );
+	$parts = array();
+	foreach ( array_slice( oay_lead_heat( $l, true ), 0, 3 ) as $it ) { $parts[] = sprintf( $T[ $it['src'] ], $it['name'] ?: 'أرض' ); }
+	$owner = (int) ( $l['owner'] ?? 0 );
+	$to = $owner && get_userdata( $owner ) ? array( $owner ) : ( function_exists( 'oay_g_leads_staff' ) ? oay_g_leads_staff() : oay_admin_ids() );
+	oay_push_to( $to, '🔥 عميل ساخن · ' . $u->display_name, implode( ' · ', $parts ) . ' — تواصل معه الآن', array( 'open' => 'lead', 'id' => (string) $u->ID ) );
 }
 function oay_lead_row( $u ) {
 	$l = oay_lead_get( $u->ID ); $v = function_exists( 'oay_verify_get' ) ? oay_verify_get( $u->ID ) : null;
 	return array( 'id' => $u->ID, 'name' => $u->display_name, 'email' => $u->user_email, 'phone' => (string) get_user_meta( $u->ID, 'oay_phone', true ) ?: ( $v ? (string) ( $v['phone'] ?? '' ) : '' ),
 		'team' => function_exists( 'oay_is_team' ) && oay_is_team( $u ), 'company' => (string) get_user_meta( $u->ID, 'oay_company', true ), 'verified' => (bool) get_user_meta( $u->ID, 'oay_verified', true ), 'avatar' => (string) get_user_meta( $u->ID, 'oay_avatar', true ),
-		'status' => $l['status'], 'next' => (int) $l['next'], 'last' => (int) $l['last'], 'stale' => oay_lead_stale( $l ),
+		'status' => $l['status'], 'next' => (int) $l['next'], 'last' => (int) $l['last'], 'stale' => oay_lead_stale( $l ), 'heat' => oay_lead_heat( $l ),
 		'owner' => (int) ( $l['owner'] ?? 0 ), 'ownerName' => ! empty( $l['owner'] ) && ( $o = get_userdata( (int) $l['owner'] ) ) ? $o->display_name : '', 'count' => count( $l['items'] ), 'top' => $l['items'] ? $l['items'][0] : null, 'notes' => count( $l['notes'] ),
 		'online' => function_exists( 'oay_is_online' ) ? oay_is_online( $u->ID ) : false );
 }
 function oay_acc_adm_leads() {
 	oay_acc_need_perm( 'leads' ); $st = oay_acc_arg( 'status', 10 );
 	$us = get_users( array( 'meta_key' => 'oay_lead_last', 'orderby' => 'meta_value_num', 'order' => 'DESC', 'number' => 400 ) );
-	$rows = array(); $counts = array_fill_keys( array_keys( OAY_LEAD_ST ), 0 ); $due = 0; $end = strtotime( 'tomorrow', current_time( 'timestamp' ) ) - ( current_time( 'timestamp' ) - time() );
+	$rows = array(); $counts = array_fill_keys( array_keys( OAY_LEAD_ST ), 0 ); $due = 0; $hot = 0; $end = strtotime( 'tomorrow', current_time( 'timestamp' ) ) - ( current_time( 'timestamp' ) - time() );
 	foreach ( $us as $u ) {
 		$r = oay_lead_row( $u ); $counts[ $r['status'] ] = ( $counts[ $r['status'] ] ?? 0 ) + 1;
 		$isDue = $r['next'] && $r['next'] <= $end * 1000 && in_array( $r['status'], array( 'new', 'follow' ), true ); if ( $isDue ) { $due++; }
-		if ( 'due' === $st ? $isDue : ( ! $st || $st === $r['status'] ) ) { $rows[] = $r + array( 'due' => $isDue ); }
+		$isHot = $r['heat'] >= 4; if ( $isHot ) { $hot++; }
+		if ( 'due' === $st ? $isDue : ( 'hot' === $st ? $isHot : ( ! $st || $st === $r['status'] ) ) ) { $rows[] = $r + array( 'due' => $isDue ); }
 	}
-	oay_acc_ok( array( 'items' => $rows, 'counts' => $counts, 'due' => $due, 'labels' => OAY_LEAD_ST ) );
+	if ( 'hot' === $st ) { usort( $rows, function ( $a, $b ) { return $b['heat'] <=> $a['heat'] ?: $b['last'] <=> $a['last']; } ); }
+	oay_acc_ok( array( 'items' => $rows, 'counts' => $counts, 'due' => $due, 'hot' => $hot, 'labels' => OAY_LEAD_ST ) );
 }
 function oay_acc_adm_lead() {
 	oay_acc_need_perm( 'leads' ); $u = get_userdata( absint( oay_acc_arg( 'id', 12 ) ) ); if ( ! $u ) { oay_acc_err( 'غير موجود', 404 ); }

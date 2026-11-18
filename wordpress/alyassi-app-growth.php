@@ -35,21 +35,20 @@ add_action( 'oay_tracked', function ( $uid, $dev, $ev ) {
 	if ( ! $views ) { return; }
 	$vc = get_user_meta( $uid, 'oay_viewc', true ); $vc = is_array( $vc ) ? $vc : array(); $now = time();
 	foreach ( $vc as $id => $v ) { if ( $now - (int) ( $v['t'] ?? 0 ) > 14 * DAY_IN_SECONDS ) { unset( $vc[ $id ] ); } }
-	$hot = array();
+	$hot = array(); $two = array();
 	foreach ( $views as $id => $k ) {
 		$v = $vc[ $id ] ?? array( 'n' => 0, 't' => $now, 'h' => 0, 'l' => 0 );
 		if ( $now - (int) ( $v['l'] ?? 0 ) > 10 * MINUTE_IN_SECONDS ) { $v['n']++; }   // opening it again within 10 minutes is the same visit
 		$v['l'] = $now;
 		if ( $v['n'] >= 3 && ! $v['h'] ) { $v['h'] = 1; $hot[] = $id; }
+		elseif ( 2 === $v['n'] && empty( $v['t2'] ) ) { $v['t2'] = 1; $two[] = $id; }   // a second visit: counts toward «عميل ساخن» with a favourite or a call
 		$vc[ $id ] = $v;
 	}
 	if ( count( $vc ) > 80 ) { uasort( $vc, function ( $a, $b ) { return $b['t'] <=> $a['t']; } ); $vc = array_slice( $vc, 0, 80, true ); }
 	update_user_meta( $uid, 'oay_viewc', $vc );
-	foreach ( $hot as $id ) {
-		$name = function_exists( 'oay_land_name' ) ? oay_land_name( $id ) : $id;
-		if ( function_exists( 'oay_lead_add' ) ) { oay_lead_add( $uid, 'hot', $id, $name ); }
-		if ( function_exists( 'oay_push_to' ) ) { oay_push_to( oay_g_leads_staff(), '🔥 عميل مهتم · ' . oay_g_who( $uid ), 'فتح ' . $name . ' أكثر من 3 مرات — اتصل به الآن', array( 'open' => 'lead', 'id' => $uid ) ); }
-	}
+	// the push («عميل ساخن») goes from oay_lead_add() to whoever follows the client
+	foreach ( $two as $id ) { if ( function_exists( 'oay_lead_add' ) ) { oay_lead_add( $uid, 'view2', $id, function_exists( 'oay_land_name' ) ? oay_land_name( $id ) : $id ); } }
+	foreach ( $hot as $id ) { if ( function_exists( 'oay_lead_add' ) ) { oay_lead_add( $uid, 'hot', $id, function_exists( 'oay_land_name' ) ? oay_land_name( $id ) : $id ); } }
 }, 10, 3 );
 
 /* a member saved a land: noted; if they have not got in touch a day later, the office gets one push a day listing them */

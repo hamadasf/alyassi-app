@@ -17,8 +17,17 @@ export async function initReportPage(pg, weeks = 0) {
   const C = (o, k) => (o.c && o.c[k]) || 0;
   const name = (x) => { const l = H.findLand(x.id); return l ? `قطعة ${l.n} · ${l.projectName}` : x.name; };
   const list = (title, arr, unit) => `<div class="pcard"><h4>${title}</h4>${arr.length ? arr.map((x, i) => `<button class="rrow" ${/^\d+$/.test(x.id) ? `data-oland="${esc(x.id)}"` : `data-land="${esc(x.id)}"`}><i>${i + 1}</i><span class="notr">${esc(name(x))}</span><b>${money(x.n)} ${unit}</b></button>`).join('') : '<p class="muted">لا توجد بيانات بعد</p>'}</div>`;
+  const short = (v) => (v >= 1e6 ? `${(Math.round(v / 1e4) / 100).toLocaleString('en-US')} مليون` : v >= 1e3 ? `${Math.round(v / 1e3).toLocaleString('en-US')} ألف` : String(v));
+  const PART = { deals: 'صفقة', holds: 'حجز', posts: 'بوست', clients: 'متابعة عميل' };
+  const bizCard = (b, q) => `<div class="pcard rbiz"><h4>${ei('chart')} ملخص الأسبوع</h4>
+    <div class="kpis">${kpi('أراضٍ بيعت', b.sold, q.sold, ei('tag') + ' ')}${kpi('أراضٍ حُجزت', b.res, q.res, ei('calendar') + ' ')}${kpi('بوستات صُمّمت', b.posts, q.posts, ei('image') + ' ')}
+      ${kpi('عملاء جدد', b.leads, q.leads, ei('plusc') + ' ')}${kpi('عملاء ساخنون', b.hot, q.hot, ei('flame') + ' ')}<div class="kpi"><span>${ei('tag')} قيمة المبيعات</span><b>${b.soldV ? short(b.soldV) : '—'}</b>${b.soldV ? '<em>درهم</em>' : ''}</div></div>
+    ${b.team && b.team.length ? `<div class="rbest">${b.team.map((x, i) => `<div class="rrow"><i>${['🥇', '🥈', '🥉'][i]}</i><span class="notr">${esc(x.name)}</span><b>${Object.entries(x.parts || {}).map(([k, n]) => `${n} ${PART[k] || k}`).join(' · ') || '—'}</b></div>`).join('')}</div>` : '<p class="muted">لا يوجد نشاط للفريق في هذا الأسبوع</p>'}
+    <p class="muted cnote">الأفضل حسب: الصفقات، ثم الحجوزات، ثم متابعة العملاء والبوستات. تُحسب الحجوزات والمبيعات من تغيير حالة الأرض في التطبيق.</p></div>`;
   const maxV = Math.max(1, ...c.daily.map((d) => d.dev));
   el.innerHTML = `<div class="rnav"><button data-w="${weeks + 1}">‹ الأسبوع السابق</button><b>${dmy(c.from)} – ${dmy(c.to)}</b><button data-w="${weeks - 1}" ${weeks ? '' : 'disabled'}>التالي ›</button></div>
+    ${j.biz ? bizCard(j.biz, j.bizPrev || {}) : ''}
+    <h4 class="rep-h">${ei('user')} استخدام التطبيق</h4>
     <div class="kpis">${kpi('زوار التطبيق', c.visitors, p.visitors, '' + ei('user') + ' ')}${kpi('مرات الفتح', C(c, 'open'), C(p, 'open'), '' + ei('phone') + ' ')}${kpi('مشاهدات الأراضي', C(c, 'view'), C(p, 'view'), '' + ei('eye') + ' ')}
       ${kpi('تواصل واتساب', C(c, 'wa'), C(p, 'wa'), '' + ei('chat') + ' ')}${kpi('اتصالات', C(c, 'call'), C(p, 'call'), '' + ei('phone') + ' ')}${kpi('مشاركات', C(c, 'share'), C(p, 'share'), '' + ei('share') + ' ')}
       ${kpi('فتح المخطط', C(c, 'plan'), C(p, 'plan'), '' + ei('map') + ' ')}${kpi('حاسبة الأقساط', C(c, 'calc'), C(p, 'calc'), '' + ei('calc') + ' ')}${kpi('أعضاء جدد', c.users, p.users, '' + ei('plusc') + ' ')}

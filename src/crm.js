@@ -125,12 +125,12 @@ export function initAlerts(pg) {
 }
 
 /* =============================== client follow-up (office) =============================== */
-const SRC = { sell: ['' + ei('tag') + ' ', 'أرض للبيع'], form: ['' + ei('mail') + ' ', 'طلب اتصال'], chat: ['' + ei('chat') + ' ', 'محادثة'], wa: ['' + ei('wa') + ' ', 'واتساب'], call: ['' + ei('phone') + ' ', 'اتصال'], wanted: ['' + ei('doc') + ' ', 'طلب شراء'], alert: ['' + ei('bell') + ' ', 'تنبيه'], calc: ['' + ei('calc') + ' ', 'حاسبة'], hot: ['' + ei('flame') + ' ', 'عميل مهتم — فتح الأرض 3 مرات'], fav: ['' + ei('heart') + ' ', 'أضاف للمفضلة'], ref: ['' + ei('plusc') + ' ', 'دعوة'] };
+const SRC = { sell: ['' + ei('tag') + ' ', 'أرض للبيع'], form: ['' + ei('mail') + ' ', 'طلب اتصال'], chat: ['' + ei('chat') + ' ', 'محادثة'], wa: ['' + ei('wa') + ' ', 'واتساب'], call: ['' + ei('phone') + ' ', 'اتصال'], wanted: ['' + ei('doc') + ' ', 'طلب شراء'], alert: ['' + ei('bell') + ' ', 'تنبيه'], calc: ['' + ei('calc') + ' ', 'حاسبة'], hot: ['' + ei('flame') + ' ', 'فتح الأرض 3 مرات'], view2: ['' + ei('eye') + ' ', 'فتح الأرض مرتين'], fav: ['' + ei('heart') + ' ', 'أضاف للمفضلة'], ref: ['' + ei('plusc') + ' ', 'دعوة'] };
 const ST = { new: 'جديد', follow: 'قيد المتابعة', won: 'تم البيع', lost: 'غير مهتم' };
 const avatar = (u) => (u.avatar ? `<span class="acc-av img"><img src="${H.esc(u.avatar)}" alt="" referrerpolicy="no-referrer">${u.online ? '<i class="dot"></i>' : ''}</span>` : `<span class="acc-av">${H.esc((u.name || '?').charAt(0))}${u.online ? '<i class="dot"></i>' : ''}</span>`);
 const waUrl = (ph) => { let d = String(ph).replace(/\D/g, ''); if (d.startsWith('00')) d = d.slice(2); if (d.startsWith('0')) d = '971' + d.slice(1); if (/^5\d{8}$/.test(d)) d = '971' + d; return 'https://wa.me/' + d; };
 export function leadsPage() {
-  return `<div class="pad leads"><div class="chips scroll lchips"><button class="chip on" data-ls="">الكل</button><button class="chip due" data-ls="due">${ei('calendar')} متابعة اليوم <i></i></button>
+  return `<div class="pad leads"><div class="chips scroll lchips"><button class="chip on" data-ls="">الكل</button><button class="chip due" data-ls="due">${ei('calendar')} متابعة اليوم <i></i></button><button class="chip hotc" data-ls="hot">🔥 ساخنون <i></i></button>
     ${Object.entries(ST).map(([k, v]) => `<button class="chip" data-ls="${k}">${v} <i></i></button>`).join('')}</div><div id="llist">${loading}</div></div>`;
 }
 export function initLeads(pg) {
@@ -138,11 +138,11 @@ export function initLeads(pg) {
   const load = async () => {
     try {
       const j = await api('adm_leads', { status: st });
-      pg.querySelectorAll('[data-ls]').forEach((b) => { const i = b.querySelector('i'); if (i) i.textContent = b.dataset.ls === 'due' ? j.due || '' : j.counts[b.dataset.ls] || ''; });
+      pg.querySelectorAll('[data-ls]').forEach((b) => { const i = b.querySelector('i'); if (i) i.textContent = b.dataset.ls === 'due' ? j.due || '' : b.dataset.ls === 'hot' ? j.hot || '' : j.counts[b.dataset.ls] || ''; });
       box.innerHTML = j.items.length ? j.items.map((r) => `<button class="lrow${r.due ? ' due' : ''}" data-lead="${r.id}">${avatar(r)}
         <div><b class="notr">${H.esc(shownName(r))} ${r.verified ? H.I.verified : ''}</b>
           <span>${r.top ? `${(SRC[r.top.src] || ['•'])[0]} <span class="notr">${H.esc(r.top.name || (SRC[r.top.src] || ['', ''])[1])}</span>` : ''}</span>
-          <small>${r.stale ? '<em class="lstale">⏰ بانتظار الرد</em> ' : ''}${r.count} اهتمام · ${ago(r.last)}${r.next ? ` · ${ei('calendar')} ${day(r.next)}` : ''}${r.ownerName ? ` · ${ei('user')} <span class="notr">${H.esc(r.ownerName)}</span>` : ''}</small></div>
+          <small>${r.heat >= 4 ? '<em class="lhot">🔥 ساخن</em> ' : r.heat >= 2 ? '<em class="lwarm">مهتم</em> ' : ''}${r.stale ? '<em class="lstale">⏰ بانتظار الرد</em> ' : ''}${r.count} اهتمام · ${ago(r.last)}${r.next ? ` · ${ei('calendar')} ${day(r.next)}` : ''}${r.ownerName ? ` · ${ei('user')} <span class="notr">${H.esc(r.ownerName)}</span>` : ''}</small></div>
         <i class="lst ${r.status}">${ST[r.status]}</i></button>`).join('') : `<div class="cempty">${H.I.user || ''}<p>لا يوجد عملاء في هذه القائمة</p></div>`;
     } catch (e) { box.innerHTML = `<p class="muted">${H.esc(e.message)}</p>`; }
   };

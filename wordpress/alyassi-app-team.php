@@ -127,3 +127,57 @@ add_action( 'oay_hold_made', function ( $me, $id, $client, $hours ) {
 add_action( 'oay_hold_paid', function ( $me, $id, $client ) {
 	$p = oay_team_plot_label( $id ); oay_team_log( $me->ID, 'deal', 'عربون قطعة ' . $p['n'] . ' · ' . $p['proj'] . ' من ' . $client, $id );
 }, 10, 3 );
+
+/* ======================================================================================
+ * «ملخص الأسبوع»: what the office did in 7 days — sold / reserved (and their value), posts designed,
+ * new and hot clients, and the team's best member. Shown at the top of «التقرير الأسبوعي» and sent
+ * every Sunday morning to the admin and the managers.
+ * ==================================================================================== */
+add_action( 'oay_plot_saved', function ( $me, $slug, $n, $was, $s, $total ) {
+	if ( ! in_array( $s, array( 'res', 'sold' ), true ) || $s === $was ) { return; }
+	$log = get_option( 'oay_status_log', array() ); $log = is_array( $log ) ? $log : array();
+	array_unshift( $log, array( 't' => oay_team_ms(), 'id' => $slug . ':' . $n, 's' => $s, 'v' => (int) $total, 'u' => (int) $me->ID ) );
+	update_option( 'oay_status_log', array_slice( $log, 0, 1500 ), false );
+}, 20, 6 );
+function oay_week_biz( $end ) {
+	$to = $end * 1000; $from = $to - 7 * 86400000;
+	$o = array( 'sold' => 0, 'soldV' => 0, 'res' => 0, 'posts' => 0, 'leads' => 0, 'hot' => 0, 'best' => null, 'team' => array() );
+	$last = array();   // a plot reserved then sold in the same week counts once, as sold
+	foreach ( (array) get_option( 'oay_status_log', array() ) as $e ) {
+		if ( $e['t'] >= $to ) { continue; } if ( $e['t'] < $from ) { break; }
+		if ( ! isset( $last[ $e['id'] ] ) ) { $last[ $e['id'] ] = $e; }
+	}
+	foreach ( $last as $e ) { if ( 'sold' === $e['s'] ) { $o['sold']++; $o['soldV'] += (int) $e['v']; } else { $o['res']++; } }
+	$W = array( 'deal' => 5, 'hold' => 3, 'lead' => 1, 'chat' => 0.5, 'design' => 1, 'share_design' => 1, 'save_img' => 1, 'share_land' => 0.5, 'plot_new' => 0.5 );
+	$pts = array(); $parts = array(); $posts = array();
+	foreach ( (array) get_option( 'oay_team_log', array() ) as $e ) {
+		if ( $e['t'] >= $to ) { continue; } if ( $e['t'] < $from ) { break; }
+		$u = (int) $e['u'];
+		if ( in_array( $e['k'], array( 'design', 'share_design', 'save_img' ), true ) ) { $k = explode( '|', (string) $e['r'] )[0]; if ( isset( $posts[ $u . $k ] ) ) { continue; } $posts[ $u . $k ] = 1; $o['posts']++; $g = 'posts'; }
+		elseif ( 'deal' === $e['k'] ) { $g = 'deals'; } elseif ( 'hold' === $e['k'] ) { $g = 'holds'; } elseif ( in_array( $e['k'], array( 'lead', 'chat' ), true ) ) { $g = 'clients'; } else { $g = ''; }
+		if ( ! isset( $W[ $e['k'] ] ) ) { continue; }
+		$pts[ $u ] = ( $pts[ $u ] ?? 0 ) + $W[ $e['k'] ]; if ( $g ) { $parts[ $u ][ $g ] = ( $parts[ $u ][ $g ] ?? 0 ) + 1; }
+	}
+	foreach ( get_users( array( 'meta_key' => 'oay_lead_last', 'meta_value' => $from, 'meta_compare' => '>=', 'meta_type' => 'NUMERIC', 'number' => 2000 ) ) as $u ) {
+		$l = function_exists( 'oay_lead_get' ) ? oay_lead_get( $u->ID ) : null; if ( ! $l ) { continue; }
+		$c = (int) ( $l['created'] ?? 0 ); if ( $c >= $from && $c < $to ) { $o['leads']++; }
+		foreach ( $l['items'] as $it ) { if ( $it['t'] < $to && $it['t'] >= $from && in_array( $it['src'], array( 'hot', 'wa', 'call', 'form' ), true ) ) { $o['hot']++; break; } }
+	}
+	arsort( $pts );
+	foreach ( array_slice( $pts, 0, 3, true ) as $uid => $p ) {
+		$u = get_userdata( $uid ); if ( ! $u ) { continue; }
+		$o['team'][] = array( 'id' => (int) $uid, 'name' => $u->display_name, 'pts' => round( $p, 1 ), 'parts' => (object) ( $parts[ $uid ] ?? array() ) );
+	}
+	$o['best'] = $o['team'][0] ?? null;
+	return $o;
+}
+/** «1.2 مليون» / «850 ألف» */
+function oay_short_aed( $v ) { return $v >= 1000000 ? rtrim( rtrim( number_format( $v / 1000000, 2 ), '0' ), '.' ) . ' مليون' : ( $v >= 1000 ? number_format( round( $v / 1000 ) ) . ' ألف' : (string) $v ); }
+function oay_week_biz_text( $b ) {
+	$a = array();
+	$a[] = $b['sold'] ? 'بيع ' . $b['sold'] . ( $b['soldV'] ? ' (' . oay_short_aed( $b['soldV'] ) . ' درهم)' : '' ) : 'لا مبيعات';
+	if ( $b['res'] ) { $a[] = 'حجز ' . $b['res']; }
+	$a[] = $b['posts'] . ' بوست'; $a[] = $b['leads'] . ' عميل جديد'; if ( $b['hot'] ) { $a[] = $b['hot'] . ' ساخن'; }
+	if ( $b['best'] ) { $a[] = 'الأفضل: ' . $b['best']['name']; }
+	return implode( ' · ', $a );
+}
