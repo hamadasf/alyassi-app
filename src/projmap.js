@@ -49,16 +49,20 @@ const SCOL = { av: [22, 163, 74], res: [217, 119, 6], sold: [220, 38, 38] };
 /* one set of colours for the same kind of place in every project: gardens green, mosques and services light blue,
    shops red; homes yellow — a plan that marks its homes in a dark or blue colour (مزيرعة) gets the same yellow as the others */
 const GREEN = [112, 186, 88], BLUE = [150, 205, 236], SHOP = [200, 30, 40], HOME = [255, 215, 0], HOME2 = [218, 165, 32];
+const FILL_AS = { muzaira: { '178,178,177': GREEN } };
 const NAMED = { green: GREEN, park: GREEN, garden: GREEN, blue: BLUE, mosque: BLUE, svc: BLUE };
+const darkHome = (c) => (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255 < 0.5 || c[2] > c[0] + 30;
+const isHome = (y) => y && y.c && /سكن/.test(String(y.use || y.name || '')) && !/تجار|مكاتب|شقق/.test(String(y.use || y.name || ''));
+/** a plan whose homes are all in dark or blue colours (مزيرعة): drawn in the others' yellow */
+const hasYellow = (p) => { const H = Object.values(p.types || {}).filter(isHome); return !H.length || !H.every((y) => darkHome(y.c)); };
 function kindCol(p, t) {
   if (NAMED[t]) return NAMED[t];
   const ty = p.types && p.types[t], u = ty ? String(ty.use || ty.name || '') : '', c = ty && ty.c;
   if (/حديق|منتزه|park|garden/i.test(u)) return GREEN;
   if (/مسجد|مصل|خدمات|مرافق/i.test(u)) return BLUE;
   if (/^محلات/.test(u)) return SHOP;
-  if (c && /سكن/.test(u) && !/تجار|مكاتب|شقق/.test(u)) {
-    const lum = (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255, blueish = c[2] > c[0] + 30;
-    if (lum < 0.5 || blueish) return /^a?g/.test(t) ? HOME2 : HOME;
+  if (c && /سكن/.test(u) && !/تجار|مكاتب|شقق/.test(u) && !hasYellow(p)) {   // only a plan with no yellow homes at all (مزيرعة)
+    return /^a?g/.test(t) ? HOME2 : HOME;
   }
   return c || [242, 205, 70];
 }
@@ -153,7 +157,11 @@ export async function planPicture(p) {
     const fills = P.VS.filter((v) => v && v.t === 'f'), allFlag = fills.length > 0 && fills.every((v) => v.h);
     // white and light-grey lines: separators drawn for the plan's own colours, and the neighbours' plots — loose lines on the photo
     const white = (v) => v.t === 's' && v.c && Math.min(...v.c) >= 185 && Math.max(...v.c) - Math.min(...v.c) <= 25;
-    const VS = P.VS.map((v) => (v && ((v.h && (!allFlag || v.t === 's')) || white(v)) ? null : v));
+    // white fills too: some plans (مزيرعة) paint every plot white over the colour
+    const whiteFill = (v) => v.t === 'f' && v.c && Math.min(...v.c) >= 230 && Math.max(...v.c) - Math.min(...v.c) <= 25;
+    const re = FILL_AS[p.slug] || {};   // a plan's own colour for a kind of place → the shared one (its gardens in grey → green)
+    const VS = P.VS.map((v) => (v && ((v.h && (!allFlag || v.t === 's')) || white(v) || whiteFill(v)) ? null
+      : v && v.t === 'f' && v.c && re[v.c.join(',')] ? Object.assign({}, v, { c: re[v.c.join(',')], css: `rgb(${re[v.c.join(',')].join(',')})` }) : v));
     drawPlanView(c, { V: P.V, VS }, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false, bg: false, clip });
     if (!vecHasNumbers(P.V, O)) plotNumbers(c, O, s);   // some plans keep the plot numbers in their picture only: write them
     return crop(cv, s, p.part && clip, m);
