@@ -40,7 +40,8 @@ export function ownTag(l, w) {
 export function addSides(lands, planPlots, types = {}) {
   const all = (planPlots || []).filter((q) => q[6] && q[6].length > 2).map(([n, t, , m2, , , poly, pc]) => ({ n: String(n), t, p: poly, m2, c: pc || [poly.reduce((a, q) => a + q[0], 0) / poly.length, poly.reduce((a, q) => a + q[1], 0) / poly.length] }));
   if (!all.length) return;
-  const isPark = (q) => /green|park|garden/i.test(String(q.t || '')) || /حديقة|حدائق|منتزه/.test(String((types[q.t] || {}).use || '') + String((types[q.t] || {}).tag || ''));
+  // a garden only when the plan says so (a class named a garden) — a green colour alone can be anything (services, a mosque…)
+  const isPark = (q) => /^(park|garden)/i.test(String(q.t || '')) || /حديقة|حدائق|منتزه/.test(String((types[q.t] || {}).use || ''));
   for (const l of lands) {
     const me = all.find((q) => q.n === l.n); if (!me) continue;
     try { const w = plotWhere(me, all, isPark); if (w) { l.side = w.side; ownTag(l, w); } } catch { /* unreadable outline */ }
