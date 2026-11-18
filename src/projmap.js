@@ -122,11 +122,21 @@ export async function planPicture(p) {
       c.beginPath(); c.moveTo(f[0], f[1]); for (let i = 2; i < f.length; i += 2) c.lineTo(f[i], f[i + 1]); c.closePath();
       c.fillStyle = `rgb(${k[0]},${k[1]},${k[2]})`; c.fill();
     }
+    // each plot's own edge, in a darker shade of its colour (the plan's white separators are left out below: on the
+    // satellite photo they show as loose white lines — some plans also carry an older, shifted grid or the neighbours' plots in white)
+    { const sz = O.map((o) => { const [w, h] = size(o[2]); return Math.min(w, h); }).sort((x, y) => x - y), unit = sz[sz.length >> 1] || 10;
+      c.lineJoin = 'round'; c.lineWidth = Math.max(unit * 0.045, 0.6 / s);
+      for (const [, t, f] of O) {
+        const k = (p.types && p.types[t] && p.types[t].c) || [242, 205, 70];
+        c.beginPath(); c.moveTo(f[0], f[1]); for (let i = 2; i < f.length; i += 2) c.lineTo(f[i], f[i + 1]); c.closePath();
+        c.strokeStyle = `rgb(${Math.round(k[0] * 0.55)},${Math.round(k[1] * 0.55)},${Math.round(k[2] * 0.55)})`; c.stroke();
+      } }
     c.restore();
     // no hatching over the solid colour — it dulls it. Some plans (made from a PDF) flag every filled shape — names, plot
     // numbers, mosques, gardens — the same way: there the flag means nothing, and only hatched strokes are left out
     const fills = P.VS.filter((v) => v && v.t === 'f'), allFlag = fills.length > 0 && fills.every((v) => v.h);
-    const VS = P.VS.map((v) => (v && v.h && (!allFlag || v.t === 's') ? null : v));
+    const white = (v) => v.t === 's' && v.c && v.c.every((x) => x >= 235);   // white lines: separators drawn for the plan's own colours
+    const VS = P.VS.map((v) => (v && ((v.h && (!allFlag || v.t === 's')) || white(v)) ? null : v));
     drawPlanView(c, { V: P.V, VS }, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false, bg: false, clip });
     if (!vecHasNumbers(P.V, O)) plotNumbers(c, O, s);   // some plans keep the plot numbers in their picture only: write them
     return crop(cv, s, p.part && clip, m);
