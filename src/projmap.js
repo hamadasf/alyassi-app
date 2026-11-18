@@ -46,6 +46,22 @@ function planMpp(p) {   // metres per plan unit, from the plots whose area is kn
 /* the project on the map: its plots alone (no plan picture, no rectangle) — each in its kind's colour, the listed ones in
    their status colour, on a see-through picture */
 const SCOL = { av: [22, 163, 74], res: [217, 119, 6], sold: [220, 38, 38] };
+/* one set of colours for the same kind of place in every project: gardens green, mosques and services light blue,
+   shops red; homes yellow — a plan that marks its homes in a dark or blue colour (مزيرعة) gets the same yellow as the others */
+const GREEN = [112, 186, 88], BLUE = [150, 205, 236], SHOP = [200, 30, 40], HOME = [255, 215, 0], HOME2 = [218, 165, 32];
+const NAMED = { green: GREEN, park: GREEN, garden: GREEN, blue: BLUE, mosque: BLUE, svc: BLUE };
+function kindCol(p, t) {
+  if (NAMED[t]) return NAMED[t];
+  const ty = p.types && p.types[t], u = ty ? String(ty.use || ty.name || '') : '', c = ty && ty.c;
+  if (/حديق|منتزه|park|garden/i.test(u)) return GREEN;
+  if (/مسجد|مصل|خدمات|مرافق/i.test(u)) return BLUE;
+  if (/^محلات/.test(u)) return SHOP;
+  if (c && /سكن/.test(u) && !/تجار|مكاتب|شقق/.test(u)) {
+    const lum = (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255, blueish = c[2] > c[0] + 30;
+    if (lum < 0.5 || blueish) return /^a?g/.test(t) ? HOME2 : HOME;
+  }
+  return c || [242, 205, 70];
+}
 async function plotOutlines(p) {
   const raw = rawPlots(p.slug); let O;
   if (raw && raw.length) O = raw.filter((q) => Array.isArray(q[6]) && q[6].length > 2).map((q) => [String(q[0]), q[1], q[6].flat()]);
@@ -118,7 +134,7 @@ export async function planPicture(p) {
     // the satellite photo does not show through them
     c.save(); c.scale(s, s);
     for (const [, t, f] of O) {
-      const k = (p.types && p.types[t] && p.types[t].c) || [242, 205, 70];
+      const k = kindCol(p, t);
       c.beginPath(); c.moveTo(f[0], f[1]); for (let i = 2; i < f.length; i += 2) c.lineTo(f[i], f[i + 1]); c.closePath();
       c.fillStyle = `rgb(${k[0]},${k[1]},${k[2]})`; c.fill();
     }
@@ -127,7 +143,7 @@ export async function planPicture(p) {
     { const sz = O.map((o) => { const [w, h] = size(o[2]); return Math.min(w, h); }).sort((x, y) => x - y), unit = sz[sz.length >> 1] || 10;
       c.lineJoin = 'round'; c.lineWidth = Math.max(unit * 0.045, 0.6 / s);
       for (const [, t, f] of O) {
-        const k = (p.types && p.types[t] && p.types[t].c) || [242, 205, 70];
+        const k = kindCol(p, t);
         c.beginPath(); c.moveTo(f[0], f[1]); for (let i = 2; i < f.length; i += 2) c.lineTo(f[i], f[i + 1]); c.closePath();
         c.strokeStyle = `rgb(${Math.round(k[0] * 0.55)},${Math.round(k[1] * 0.55)},${Math.round(k[2] * 0.55)})`; c.stroke();
       } }
@@ -150,7 +166,7 @@ export async function planPicture(p) {
   c.scale(s, s); c.lineJoin = 'round'; c.lineWidth = Math.max(0.6, 1.1 / s);
   for (const [n, t, f] of O) {
     c.beginPath(); c.moveTo(f[0], f[1]); for (let i = 2; i < f.length; i += 2) c.lineTo(f[i], f[i + 1]); c.closePath();
-    const k = SCOL[st[n]] || ((p.types && p.types[t] && p.types[t].c) || [242, 205, 70]);
+    const k = SCOL[st[n]] || kindCol(p, t);
     c.fillStyle = `rgb(${k[0]},${k[1]},${k[2]})`; c.fill();
     c.strokeStyle = 'rgba(40,52,30,.85)'; c.stroke();
   }
