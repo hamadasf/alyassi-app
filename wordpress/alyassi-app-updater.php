@@ -33,11 +33,21 @@ function oay_self_update_run( $force = false ) {
 	$files = array();
 	foreach ( (array) json_decode( (string) $list, true ) as $f ) { if ( is_array( $f ) && preg_match( '/^alyassi-app-[a-z0-9-]+\.php$/', $f['name'] ?? '' ) ) { $files[] = $f['name']; } }
 	if ( ! $files ) { $st['error'] = 'no files listed'; update_option( 'oay_upd_state', $st, false ); delete_transient( 'oay_upd_lock' ); return 'no-files'; }
-	$done = array(); $bad = array();
+	$done = array(); $bad = array(); $codes = array();
 	foreach ( $files as $name ) {
 		$code = oay_upd_get( 'https://raw.githubusercontent.com/' . OAY_UPD_REPO . '/' . $sha . '/wordpress/' . $name );
 		if ( ! $code || 0 !== strpos( ltrim( $code ), '<?php' ) || false === strpos( $code, 'Plugin Name: Alyassi App' ) ) { $bad[] = $name . ' (download)'; continue; }
 		try { token_get_all( $code, TOKEN_PARSE ); } catch ( \Throwable $e ) { $bad[] = $name . ' (syntax: ' . $e->getMessage() . ')'; continue; }   // never install a file that does not parse
+		$codes[ $name ] = $code;
+	}
+	// a function or constant declared in two files stops the whole site (Novamira safe mode): then nothing is installed
+	$seen = array(); $dup = array();
+	foreach ( $codes as $name => $code ) {
+		preg_match_all( '/^(?:function\s+([a-z_0-9]+)\s*\(|const\s+([A-Z_0-9]+)\s*=)/mi', $code, $m, PREG_SET_ORDER );
+		foreach ( $m as $x ) { $k = strtolower( $x[1] ?: 'const ' . $x[2] ); if ( isset( $seen[ $k ] ) && $seen[ $k ] !== $name ) { $dup[] = $k . ' (' . $seen[ $k ] . ' + ' . $name . ')'; } $seen[ $k ] = $name; }
+	}
+	if ( $dup ) { $codes = array(); $bad[] = 'declared twice: ' . implode( ', ', array_slice( $dup, 0, 5 ) ); }
+	foreach ( $codes as $name => $code ) {
 		$path = __DIR__ . '/' . $name;
 		if ( file_exists( $path ) && md5_file( $path ) === md5( $code ) ) { continue; }
 		if ( file_exists( $path ) ) { @copy( $path, $path . '.bak' ); }
