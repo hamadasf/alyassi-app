@@ -474,7 +474,7 @@ add_action( 'template_redirect', function () {
 	$img = 'https://hamadasf.github.io/alyassi-app/og/' . rawurlencode( $slug ) . '/' . rawurlencode( $n ) . '.jpg';
 	$to = home_url( '/' . $slug . '/#p' . rawurlencode( $n ) );
 	$rc = isset( $_GET['r'] ) && preg_match( '/^[0-9a-z]{1,8}$/', (string) $_GET['r'] ) ? (string) $_GET['r'] : '';   // «رابط الموظف»
-	if ( $rc && function_exists( 'oay_ref_click' ) ) { oay_ref_click( $rc, $slug . ':' . $n ); }
+	if ( $rc && function_exists( 'oay_slink_click' ) ) { oay_slink_click( $rc, $slug . ':' . $n ); }
 	status_header( 200 ); nocache_headers(); header( 'Content-Type: text/html; charset=utf-8' );
 	echo '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
 		. '<title>' . esc_html( $title ) . '</title><meta name="description" content="' . esc_attr( $desc ) . '">'
