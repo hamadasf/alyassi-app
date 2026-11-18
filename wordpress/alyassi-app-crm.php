@@ -32,6 +32,7 @@ function oay_lead_add( $uid, $src, $lid = '', $name = '' ) {
 	array_unshift( $l['items'], array( 't' => $now, 'src' => $src, 'lid' => (string) $lid, 'name' => $name ) );
 	$l['items'] = array_slice( $l['items'], 0, 60 ); $l['last'] = $now;
 	if ( 'lost' === $l['status'] ) { $l['status'] = 'new'; }   // came back
+	if ( empty( $l['owner'] ) && ( $w = (int) get_user_meta( $uid, 'oay_lead_owner_wait', true ) ) ) { $l['owner'] = $w; delete_user_meta( $uid, 'oay_lead_owner_wait' ); }   // came from a member's link
 	update_user_meta( $uid, 'oay_lead', $l ); update_user_meta( $uid, 'oay_lead_last', $now );
 	oay_lead_heat_push( $u, $l );
 }
@@ -472,6 +473,8 @@ add_action( 'template_redirect', function () {
 	$desc = implode( ' · ', array_filter( array( $info ? ( $st[ $info['s'] ] ?? '' ) : '', $ft ? number_format( $ft ) . ' قدم²' : '', $info && 'sold' !== $info['s'] && $info['total'] ? number_format( $info['total'] ) . ' درهم' : '', 'موقع القطعة على المخطط التفاعلي' ) ) );
 	$img = 'https://hamadasf.github.io/alyassi-app/og/' . rawurlencode( $slug ) . '/' . rawurlencode( $n ) . '.jpg';
 	$to = home_url( '/' . $slug . '/#p' . rawurlencode( $n ) );
+	$rc = isset( $_GET['r'] ) && preg_match( '/^[0-9a-z]{1,8}$/', (string) $_GET['r'] ) ? (string) $_GET['r'] : '';   // «رابط الموظف»
+	if ( $rc && function_exists( 'oay_ref_click' ) ) { oay_ref_click( $rc, $slug . ':' . $n ); }
 	status_header( 200 ); nocache_headers(); header( 'Content-Type: text/html; charset=utf-8' );
 	echo '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
 		. '<title>' . esc_html( $title ) . '</title><meta name="description" content="' . esc_attr( $desc ) . '">'
@@ -482,7 +485,7 @@ add_action( 'template_redirect', function () {
 		. '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="' . esc_url( $img ) . '">'
 		. '<noscript><meta http-equiv="refresh" content="0;url=' . esc_url( $to ) . '"></noscript>'
 		// Android with the app installed: open the plot in the app (falls back to the plan on the website)
-		. '<script>(function(){var to=' . wp_json_encode( $to ) . ';if(/Android/i.test(navigator.userAgent)&&!/wv\)|; wv/.test(navigator.userAgent)){location.replace(' . wp_json_encode( 'intent://open/land/' . rawurlencode( $slug . ':' . $n ) . '#Intent;scheme=com.omaralyassi.realestate;package=com.omaralyassi.realestate;S.browser_fallback_url=' . rawurlencode( $to ) . ';end' ) . ');setTimeout(function(){if(!document.hidden)location.replace(to);},1800);}else{location.replace(to);}})()</script></head>'
+		. '<script>(function(){var to=' . wp_json_encode( $to ) . ';if(/Android/i.test(navigator.userAgent)&&!/wv\)|; wv/.test(navigator.userAgent)){location.replace(' . wp_json_encode( 'intent://open/land/' . rawurlencode( $slug . ':' . $n ) . ( $rc ? '?r=' . $rc : '' ) . '#Intent;scheme=com.omaralyassi.realestate;package=com.omaralyassi.realestate;S.browser_fallback_url=' . rawurlencode( $to ) . ';end' ) . ');setTimeout(function(){if(!document.hidden)location.replace(to);},1800);}else{location.replace(to);}})()</script></head>'
 		. '<body style="font-family:sans-serif;text-align:center;padding:40px"><a href="' . esc_url( $to ) . '">' . esc_html( $title ) . '</a></body></html>';
 	exit;
 }, 0 );

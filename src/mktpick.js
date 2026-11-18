@@ -37,3 +37,19 @@ export function pickForMarketing(lands, last, days = COOL) {
   for (let i = 0; out.length < ranked.length; i++) for (const q of order) if (q[i]) out.push(q[i]);
   return out;
 }
+
+/* «مقارنة بالسوق»: a plot whose price per foot is under the median of the available plots of its project and kind
+   (at least 4 of them), by 5% or more → that percentage (shown on the plot page, in the post and in its caption) */
+const mkMemo = new WeakMap();
+export function belowMarket(l, lands) {
+  if (!l || l.status !== 'av' || !l.total || !l.ft || !Array.isArray(lands)) return 0;
+  let g = mkMemo.get(lands);
+  if (!g) {
+    const a = {}; lands.filter((x) => x.status === 'av' && x.total && x.ft).forEach((x) => { (a[x.project + '|' + x.cat] = a[x.project + '|' + x.cat] || []).push(x.total / x.ft); });
+    g = {}; for (const [k, v] of Object.entries(a)) g[k] = v.length >= 4 ? med(v) : 0;
+    mkMemo.set(lands, g);
+  }
+  const m = g[l.project + '|' + l.cat]; if (!m) return 0;
+  const d = (m - l.total / l.ft) / m; return d >= 0.05 ? Math.min(40, Math.round(d * 100)) : 0;
+}
+export const belowText = (n) => `سعر أقل من متوسط المشروع بـ ${n}%`;

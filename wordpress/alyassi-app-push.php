@@ -22,7 +22,7 @@ add_action( 'admin_init', function () {
 
 function oay_ajax_changes() {
 	nocache_headers();
-	wp_send_json( array( 'at' => time() * 1000, 'items' => get_option( 'oay_changes', array() ), 'offers' => array_values( oay_offers() ) ) );
+	wp_send_json( array( 'at' => time() * 1000, 'items' => get_option( 'oay_changes', array() ), 'offers' => array_values( oay_offers() ), 'was' => (object) array_map( function ( $x ) { return array( (int) $x['was'], (int) $x['to'] ); }, (array) get_option( 'oay_price_was', array() ) ) ) );
 }
 add_action( 'wp_ajax_oay_changes', 'oay_ajax_changes' );
 add_action( 'wp_ajax_nopriv_oay_changes', 'oay_ajax_changes' );
@@ -44,9 +44,22 @@ function oay_plots( $v ) {
 	return ( is_array( $v ) && isset( $v['plots'] ) && is_array( $v['plots'] ) ) ? $v['plots'] : array();
 }
 
+/* «سعر مخفّض»: the price a plot had before it was lowered (kept 60 days; gone once the price is back up) — the ad designer
+   can show it struck through. Recorded even for imports and «حفظ بدون إشعار». */
+function oay_price_was_note( $id, $from, $to ) {
+	$w = get_option( 'oay_price_was', array() ); $w = is_array( $w ) ? $w : array(); $now = time();
+	foreach ( $w as $k => $x ) { if ( $now - (int) $x['t'] > 60 * DAY_IN_SECONDS ) { unset( $w[ $k ] ); } }
+	if ( $to > 0 && $from > $to ) { $w[ $id ] = array( 'was' => max( $from, (int) ( $w[ $id ]['was'] ?? 0 ) ), 'to' => $to, 't' => $now ); }
+	elseif ( isset( $w[ $id ] ) && ( ! $to || $to >= $w[ $id ]['was'] ) ) { unset( $w[ $id ] ); }
+	elseif ( isset( $w[ $id ] ) ) { $w[ $id ]['to'] = $to; }
+	update_option( 'oay_price_was', $w, false );
+}
 function oay_handle_change( $slug, $name, $old, $new ) {
-	if ( ! empty( $GLOBALS['oay_quiet_import'] ) ) { return; }   // a bulk import from Excel: no notification storm
 	$a = oay_plots( $old ); $b = oay_plots( $new );
+	if ( ! empty( $GLOBALS['oay_quiet_import'] ) ) {   // a bulk import from Excel: no notification storm (the lowered prices still noted)
+		foreach ( $b as $n => $p ) { $ot = (int) ( $a[ $n ]['total'] ?? 0 ); $t = (int) ( $p['total'] ?? 0 ); if ( $ot && $ot !== $t ) { oay_price_was_note( $slug . ':' . $n, $ot, $t ); } }
+		return;
+	}
 	if ( ! $b ) { return; }
 	$now = (int) round( microtime( true ) * 1000 ); $ch = array();
 	foreach ( $b as $n => $p ) {
@@ -60,6 +73,7 @@ function oay_handle_change( $slug, $name, $old, $new ) {
 		$os = $a[ $n ]['s']; $ot = isset( $a[ $n ]['total'] ) ? (int) $a[ $n ]['total'] : 0;
 		if ( $os !== $s ) { $ch[] = $base + array( 'kind' => 'status', 'from' => $os, 'to' => $s ); }
 		if ( $ot !== $t && 'sold' !== $s ) { $ch[] = $base + array( 'kind' => 'price', 'from' => $ot, 'to' => $t ); }
+		if ( $ot !== $t ) { oay_price_was_note( $slug . ':' . $n, $ot, $t ); }
 	}
 	if ( ! $ch ) { return; }
 	if ( empty( $GLOBALS['oay_no_push'] ) ) {   // «حفظ بدون إشعار»: no push, no «what's new» entry — the rest (comparables…) still runs

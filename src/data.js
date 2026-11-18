@@ -345,6 +345,9 @@ export const favs = {
 /* ---------- recent price / status changes ---------- */
 let changes = (cacheGet('changes') || {}).d || [];
 let offers = (cacheGet('offers') || {}).d || [];
+let was = (cacheGet('pwas') || {}).d || {};
+/** «سعر مخفّض»: the price before it was lowered (only while the plot still has the lowered price), else 0 */
+export function wasPrice(l) { const w = l && was[l.id]; return w && l.status === 'av' && +w[1] === +l.total && +w[0] > +l.total ? +w[0] : 0; }
 export function getChanges() { return changes; }
 /** Active limited-time offer for a plot (only while it is still available). */
 export function offerFor(l) {
@@ -359,6 +362,7 @@ export async function loadChanges() {
     changes = Array.isArray(j.items) ? j.items : [];
     cacheSet('changes', changes);
     if (Array.isArray(j.offers)) { offers = j.offers; cacheSet('offers', offers); }
+    if (j.was && typeof j.was === 'object') { was = j.was; cacheSet('pwas', was); }
   } catch { /* keep the cached list */ }
   return changes;
 }

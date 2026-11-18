@@ -1,4 +1,4 @@
-import { markMarketed, lastMarketed, pickForMarketing } from './mktpick.js';
+import { markMarketed, lastMarketed, pickForMarketing, belowMarket, belowText } from './mktpick.js';
 import { ei } from './icons.js';
 // «مولّد منشورات الإعلانات»: the website's ad designer (alyassi-dabdaba-plan → advertisement designer) inside the app.
 // The same four templates (الشركة · عبادة · آية الرفاعي · أمل), cash and instalment versions, filled from the plot
@@ -9,7 +9,7 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { SITE } from './config.js';
 import { loadPlan, drawPlanBase, drawPlanLoc, plotCentre } from './planloc.js';
-import { rawPlots } from './data.js';
+import { rawPlots, wasPrice } from './data.js';
 import { AD_LOGOS } from './adlogos.js';
 import { uiConfirm, uiPrompt } from './dialog.js';
 
@@ -717,6 +717,7 @@ function adFeats(p) {
     if (near('blue', 160)) out.push('قريبة من الخدمات');
     if (near('green', 200)) out.push('قريبة من حديقة');
   } catch { /* read nothing */ }
+  const mk = p && belowMarket(p.l, ad && ad.proj && ad.proj.lands); if (mk) out.unshift(belowText(mk));   // «مقارنة بالسوق» first: it sells
   return out.length ? out : [ad.pl && ad.pl.infra ? 'فرصة قبل اكتمال البنية التحتية' : 'أرض مميزة في موقع حيوي'];
 }
 /** the project's ownership line in the form the older templates write it */
@@ -951,7 +952,25 @@ function exArrow(c, cx, cy, K, deg) {   // centred at (cx, cy), pointing along `
   c.lineJoin = 'round'; c.lineWidth = 16; c.strokeStyle = '#FFFFFF'; c.stroke(); c.fillStyle = '#000000'; c.fill();
   c.restore();
 }
+/** «سعر مخفّض» (optional): a red badge with the price before it was lowered, struck through; moved / enlarged like any part */
+function drawDrop(c, v, at) {
+  const was = v.drop && ad && ad.p && wasPrice(ad.p.l), now = ad && ad.p && ad.p.l && ad.p.l.total; if (!was || !now) return;
+  const k = AD_W / 1600, w = 560 * k, h = 250 * k, x = 50 * k, y = AD_H * 0.36, off = Math.round((1 - now / was) * 100);
+  at('drop', x, y, w, h, () => {
+    c.save(); c.translate(x + w / 2, y + h / 2); c.rotate(-0.07); c.translate(-w / 2, -h / 2);
+    c.shadowColor = 'rgba(0,0,0,.28)'; c.shadowBlur = 24 * k; c.shadowOffsetY = 8 * k;
+    c.fillStyle = '#D90B16'; box(c, 0, 0, w, h, 34 * k); c.fill(); c.shadowColor = 'transparent';
+    c.strokeStyle = '#fff'; c.lineWidth = 5 * k; c.setLineDash([14 * k, 10 * k]); box(c, 14 * k, 14 * k, w - 28 * k, h - 28 * k, 24 * k); c.stroke(); c.setLineDash([]);
+    c.fillStyle = '#fff'; c.textAlign = 'center'; c.direction = 'rtl';
+    c.font = FO(900, Math.round(72 * k)); c.fillText('🔥 سعر مخفّض' + (off >= 2 ? ` ${off}%` : ''), w / 2, 100 * k);
+    c.direction = 'ltr'; c.font = FO(800, Math.round(58 * k)); const t = fmt(was) + ' AED', tw = c.measureText(t).width;
+    c.globalAlpha = 0.85; c.fillText(t, w / 2, 190 * k); c.globalAlpha = 1;
+    c.strokeStyle = '#fff'; c.lineWidth = 7 * k; c.beginPath(); c.moveTo(w / 2 - tw / 2 - 10 * k, 170 * k); c.lineTo(w / 2 + tw / 2 + 10 * k, 170 * k); c.stroke();
+    c.direction = 'rtl'; c.restore();
+  });
+}
 function drawExtras(c, v, at) {
+  drawDrop(c, v, at);
   (v.ex || []).forEach((e, i) => {
     const k = 'ex' + i;
     if (e.t === 'box') {
@@ -978,7 +997,8 @@ function drawExtras(c, v, at) {
 function exForm(v) {
   const ex = v.ex || [];
   const sw = (i, cur) => `<div class="ex-cols">${EX_COLS.map((col) => `<button type="button" data-exc="${i}|${col}" class="${cur === col ? 'on' : ''}" style="background:${col}" aria-label="لون"></button>`).join('')}</div>`;
-  return `<div class="ex-add"><button type="button" class="btn sm" data-exadd="box">＋ مربع نص</button><button type="button" class="btn sm" data-exadd="arrow">＋ سهم</button><button type="button" class="btn sm" data-exadd="ring">＋ دائرة</button></div>
+  const was = ad && ad.p && wasPrice(ad.p.l);
+  return `${was ? `<label class="chk ex-drop"><input type="checkbox" data-k="drop"${v.drop ? ' checked' : ''}> شارة «سعر مخفّض» — السعر السابق ${fmt(was)} مشطوباً</label>` : ''}<div class="ex-add"><button type="button" class="btn sm" data-exadd="box">＋ مربع نص</button><button type="button" class="btn sm" data-exadd="arrow">＋ سهم</button><button type="button" class="btn sm" data-exadd="ring">＋ دائرة</button></div>
     ${ex.map((e, i) => `<div class="pz-slot ex-item"><div class="pz-sh"><b>${e.t === 'box' ? 'مربع نص' : e.t === 'arrow' ? 'سهم' : 'دائرة'} ${i + 1}</b><span class="rowbtns"><button type="button" class="btn sm danger" data-exdel="${i}">حذف</button></span></div>
       ${e.t === 'box' ? `<label>الكتابة (سطر جديد = Enter)<textarea dir="auto" rows="2" data-exk="${i}|text">${esc(e.text || '')}</textarea></label>${sw(i, e.bg)}
         <label>حجم الخط<input type="range" min="30" max="140" step="2" data-exk="${i}|s" value="${e.s || 64}"></label>`
@@ -1250,7 +1270,7 @@ export function adgenPage(l, projects) {
     <input type="file" id="pzFile" accept="image/*,application/pdf" hidden>
     <div class="adg-bar pzbar"><button class="btn primary" id="pzShare">${ei('share')} مشاركة</button><button class="btn" id="pzSave">${ei('pdf')} حفظ الصورة</button><button class="btn pz-more" id="pzMore" aria-label="المزيد">⋯</button></div>
     <div class="adg-allpop" id="pzMorePop" hidden><div class="adg-allin"><b>خيارات أخرى</b>
-      <button class="btn block" id="pzCap">${ei('doc')} نسخ نص البوست</button><button class="btn block" id="pzStory">${ei('image')} ستوري 9:16</button><button class="btn block" id="pzKeep">${ei('bookmark')} حفظ التصميم</button><button class="btn gold block" id="pzAll" hidden>${ei('grid')} كل القوالب مرة واحدة</button><button class="btn ghost block" id="pzMoreNo">إغلاق</button></div></div>
+      <button class="btn block reel-btn" id="pzReel" hidden>🎬 ريل فيديو 9:16 <small>للإدارة</small></button><button class="btn block" id="pzCap">${ei('doc')} نسخ نص البوست</button><button class="btn block" id="pzStory">${ei('image')} ستوري 9:16</button><button class="btn block" id="pzKeep">${ei('bookmark')} حفظ التصميم</button><button class="btn gold block" id="pzAll" hidden>${ei('grid')} كل القوالب مرة واحدة</button><button class="btn ghost block" id="pzMoreNo">إغلاق</button></div></div>
     <div class="adg-allpop" id="pzAllPop" hidden><div class="adg-allin"><b>كل القوالب مرة واحدة</b><p class="muted" id="pzAllTxt"></p>
       <button class="btn primary block" id="pzAllShare">${ei('share')} مشاركة الكل</button><button class="btn ghost block" id="pzAllSave">${ei('pdf')} حفظ الكل</button><button class="btn block" id="pzAllNo">إلغاء</button></div></div>
     <div class="adg-crop" id="pzCropBox" hidden><div class="adg-cropin">
@@ -1408,19 +1428,42 @@ function capOf() {
   const fl = String(v.cap2 || '').trim(), tag = (t) => '#' + String(t).trim().replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '');
   const phone = String((layoutOf(v.theme) === 'wa' ? v.w_phone : v.phone) || '').trim();
   return [
-    `🏡 ${String(v.title || 'أرض').trim().replace(/^أرض\s+(أراضي|أراضٍ|أراض|أرض)\s+/, 'أرض ')} للبيع في ${l.projectName} – الشارقة`,
+    `🏡 ${cleanTitle(v.title)} للبيع في ${l.projectName} – الشارقة`,
     `📍 قطعة رقم ${ad.p.n}`,
     v.area ? `📐 المساحة: ${v.area} قدم مربع${l.m2 ? ` (${fmt(Math.round(l.m2))} م²)` : ''}` : '',
     l.use ? `🏗️ الاستخدام: ${bareUse(l.use) || l.use}${fl ? ' · ' + fl : ''}` : '',
     price ? (inst ? `💰 السعر: ${price} درهم${v.down ? ` — الدفعة الأولى ${v.down} درهم` : ''} والباقي على ${v.nInst} ${v.nInst > 2 && v.nInst < 11 ? 'أقساط' : 'قسط'}` : `💰 السعر: ${price} درهم كاش`) : '💰 السعر عند الاستفسار',
+    v.drop && wasPrice(l) ? `🔥 سعر مخفّض — كان ${fmt(wasPrice(l))} درهم` : '',
     ...String(v.feat || '').split('\n').map((x) => x.trim()).filter(Boolean).map((x) => '✅ ' + x),
     phone ? `📞 للتواصل والاستفسار: ${phone}` : '',
     '',
     [tag('عقارات الشارقة'), tag('أراضي للبيع'), tag('أراضي ' + l.projectName), tag('الشارقة'), tag('عمر الياسي للعقارات')].join(' '),
   ].filter((x, i, a) => x !== '' || (i && a[i - 1] !== '')).join('\n');
 }
+const cleanTitle = (t) => String(t || 'أرض').trim().replace(/^أرض\s+(أراضي|أراضٍ|أراض|أرض)\s+/, 'أرض ');
+/** «ريل فيديو» (the admin): the plan zooming to the plot → the post → the company's card, ~10 s, made on the phone */
+async function reelNow() {
+  if (!ad || !ad.P || !ad.proj || !ad.proj.map) { H.toast('مخطط المشروع لم يجهز بعد — حاول بعد لحظات'); return; }
+  const cp = copyCap(), l = ad.p.l, v = ad.v;
+  const ov = document.createElement('div'); ov.className = 'reel-ov'; ov.innerHTML = '<div><i class="spin"></i><b>جارِ صناعة الريل…</b><span>0%</span><small>يستغرق دقيقة تقريباً — أبقِ التطبيق مفتوحاً</small></div>'; document.body.appendChild(ov);
+  try {
+    const cv = document.createElement('canvas'); ad.export = true; drawAd(cv); ad.export = false;
+    const { makeReel } = await import('./reel.js');
+    const pr = v.price || ((String(v.o_priceC || '').match(/\d[\d,]*/) || [''])[0]);
+    const b = await makeReel({ post: cv, P: ad.P, lands: ad.proj.lands, map: ad.proj.map, land: l, proj: l.projectName, title: cleanTitle(v.title) + ' للبيع',
+      info: [v.area ? v.area + ' قدم²' : '', pr ? pr + ' درهم' : ''].filter(Boolean).join(' · '), phone: String((layoutOf(v.theme) === 'wa' ? v.w_phone : v.phone) || '').trim(), logo: PZ_THEMES.co.logo,
+      onStep: (f) => { const x = ov.querySelector('span'); if (x) x.textContent = Math.round(f * 100) + '%'; } });
+    ov.remove();
+    const name = `reel-${l.project}-${l.n}.${/mp4/.test(b.type) ? 'mp4' : 'webm'}`;
+    const share = await uiConfirm(`الريل جاهز (${Math.round(b.size / 1024 / 102.4) / 10} م.ب)${/mp4/.test(b.type) ? '' : ' — بصيغة WebM لأن هذا الجهاز لا يصنع MP4'}.`, { title: '🎬 ريل القطعة ' + l.n, ok: 'مشاركة', cancel: 'حفظ في الجهاز' });
+    await shareBlobs([{ b, name }], share, `ريل قطعة ${l.n} · ${l.projectName}`);
+    capToast(cp); markMarketed([l.id]); if (H.teamEv) H.teamEv(share ? 'share_design' : 'save_img', l.id, v.theme);
+  } catch (e) { if (!/cancel|abort/i.test(String(e && (e.message || e)))) H.toast('تعذّرت صناعة الريل: ' + String((e && e.message) || e).slice(0, 90)); }
+  finally { ov.remove(); }
+}
 const capNow = () => (ad && ad.cap != null ? ad.cap : ad ? capOf() : '');
 /** copied right on the tap (iPhone allows the clipboard only then); the answer comes later */
+function copyText(t) { try { return navigator.clipboard.writeText(t).then(() => true, () => false); } catch { return Promise.resolve(false); } }
 function copyCap() { const t = capNow(); try { return navigator.clipboard.writeText(t).then(() => true, () => false); } catch { return Promise.resolve(false); } }
 const capToast = async (p) => { if (await p) H.toast('📋 نُسخ نص البوست — الصقه مع الصورة'); };
 async function finishAll(share, cp) {
@@ -1443,7 +1486,7 @@ async function finishAll(share, cp) {
       await Share.share({ title, files: uris, dialogTitle: share ? 'مشاركة كل القوالب' : 'حفظ كل القوالب' });
       return;
     }
-    const files = list.map((x) => new File([x.b], x.name, { type: 'image/jpeg' }));
+    const files = list.map((x) => new File([x.b], x.name, { type: x.b.type || 'image/jpeg' }));
     if (share && navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files, title }); return; }
     for (const x of list) { const a = document.createElement('a'), u = URL.createObjectURL(x.b); a.href = u; a.download = x.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000); await new Promise((r) => setTimeout(r, 350)); }
     H.toast(`تم تجهيز ${list.length} صور`);
@@ -1728,8 +1771,9 @@ export async function initAdgen2(pg, l, proj) {
   { const n = allowed().length, all = $('pzAll'), pop = $('pzAllPop');
     all.hidden = n < 2;
     const more = $('pzMorePop'); $('pzMore').onclick = () => { more.hidden = false; }; $('pzMoreNo').onclick = () => { more.hidden = true; };
-    more.onclick = (e) => { if (e.target === more || e.target.closest('#pzStory,#pzKeep,#pzAll,#pzCap')) more.hidden = true; };
+    more.onclick = (e) => { if (e.target === more || e.target.closest('#pzStory,#pzKeep,#pzAll,#pzCap,#pzReel')) more.hidden = true; };
     $('pzCap').onclick = () => capToast(copyCap());
+    $('pzReel').hidden = !(H.isAdmin && H.isAdmin()); $('pzReel').onclick = () => reelNow();
     all.onclick = () => { $('pzAllTxt').textContent = `${n} صور — صورة بكل قالب (${allowed().map((k) => PZ_THEMES[k].name.replace('قالب ', '')).join('، ')}). القالب المحفوظ يُستخدم كما حفظته.`; pop.hidden = false; };
     $('pzAllNo').onclick = () => { pop.hidden = true; };
     $('pzAllShare').onclick = () => { pop.hidden = true; finishAll(true, copyCap()); };
@@ -2032,11 +2076,12 @@ async function batchRender(lands, projects, theme, kinds, onStep) {
         ad.v = sv ? Object.assign(v, sv.v, { theme }) : v;
         try { ad.img = await adPictures(ad.p); } catch { /* without pictures */ }
         ad.export = true; drawAd(cv); ad.export = false;
+        let cap = ''; try { cap = capOf(); } catch { /* no caption */ }
         const warn = [!l.total && 'بدون سعر', !l.ft && 'بدون مساحة', l.status !== 'av' && 'غير متاحة'].filter(Boolean).join(' · ');
         for (const k of kinds) {
           const src = k === 'story' ? storyOf(cv) : cv;
           const b = await new Promise((ok) => src.toBlob(ok, 'image/jpeg', 0.9));
-          if (b) out.push({ l, b, k, warn, name: `post-${l.project}-${l.n}${k === 'story' ? '-story' : ''}.jpg` });
+          if (b) out.push({ l, b, k, warn, cap, name: `post-${l.project}-${l.n}${k === 'story' ? '-story' : ''}.jpg` });
         }
       } catch { /* the next plot */ }
       await new Promise((r) => setTimeout(r, 0));   // let the counter paint
@@ -2088,11 +2133,14 @@ export async function initAdbatch(pg, projects, pre) {
         <button class="btn primary block" data-bgo${st.sel.size ? '' : ' disabled'}>${ei('image')} تصميم ${st.sel.size} ${st.sel.size === 1 ? 'أرض' : 'أرض'}</button></div>`;
   };
   let res = [];
+  /** one caption per plot (a post and its story share it), each under its number */
+  const allCaps = () => { const seen = new Set(); return res.filter((x) => x.cap && !seen.has(x.l.id) && seen.add(x.l.id)).map((x) => `— قطعة ${x.l.n} · ${x.l.projectName} —\n${x.cap}`).join('\n\n━━━━━━━━━━\n\n'); };
   const review = () => {
     box.innerHTML = `<p class="muted adb-hint">راجع المنشورات: اضغط ✕ لإزالة منشور، أو اضغط على المنشور لفتحه وتعديله وحده.</p>
       <div class="adb-grid">${res.map((x, i) => `<div class="adb-card${x.warn ? ' warn' : ''}"><img src="${x.u}" alt="" data-bopen="${esc(x.l.id)}"><button class="adb-x" data-bx="${i}" aria-label="إزالة">✕</button>
-        <span>${esc(x.l.n)} · ${esc(x.l.projectName)}${x.k === 'story' ? ' · ستوري' : ''}</span>${x.warn ? `<em>⚠ ${esc(x.warn)}</em>` : ''}</div>`).join('')}</div>
-      <div class="adb-bar"><button class="btn primary block" data-bshare>${ei('share')} مشاركة الكل (${res.length})</button><button class="btn ghost block" data-bsave>${ei('pdf')} حفظ الكل</button><button class="btn block" data-bback>اختيار أراضٍ أخرى</button></div>`;
+        <span>${esc(x.l.n)} · ${esc(x.l.projectName)}${x.k === 'story' ? ' · ستوري' : ''}</span>${x.warn ? `<em>⚠ ${esc(x.warn)}</em>` : ''}${x.cap ? `<button class="btn sm adb-cap" data-bcap="${i}">${ei('doc')} نسخ نص البوست</button>` : ''}</div>`).join('')}</div>
+      <p class="muted adb-hint">«مشاركة الكل» و«حفظ الكل» ينسخان نصوص كل المنشورات معاً — نص كل أرض تحت رقمها.</p>
+      <div class="adb-bar"><button class="btn ghost block" data-bcaps>${ei('doc')} نسخ كل النصوص</button><button class="btn primary block" data-bshare>${ei('share')} مشاركة الكل (${res.length})</button><button class="btn ghost block" data-bsave>${ei('pdf')} حفظ الكل</button><button class="btn block" data-bback>اختيار أراضٍ أخرى</button></div>`;
   };
   pick();
   box.addEventListener('change', (e) => {
@@ -2122,8 +2170,10 @@ export async function initAdbatch(pg, projects, pre) {
     if (d.bx !== undefined) { const [x] = res.splice(+d.bx, 1); if (x) URL.revokeObjectURL(x.u); if (res.length) review(); else pick(); return; }
     if (d.bopen) { if (H.openDesign) H.openDesign(d.bopen); return; }
     if (d.bback !== undefined) { pick(); return; }
+    if (d.bcap !== undefined) { const x = res[+d.bcap]; if (x) copyText(x.cap).then((ok) => H.toast(ok ? '📋 نُسخ نص بوست القطعة ' + x.l.n : 'تعذّر النسخ')); return; }
+    if (d.bcaps !== undefined) { copyText(allCaps()).then((ok) => H.toast(ok ? '📋 نُسخت نصوص كل المنشورات' : 'تعذّر النسخ')); return; }
     if (d.bshare !== undefined || d.bsave !== undefined) {
-      const share = d.bshare !== undefined;
+      const share = d.bshare !== undefined; copyText(allCaps()).then((ok) => ok && H.toast('📋 نُسخت نصوص المنشورات — الصق كل نص مع صورته'));
       try {
         await shareBlobs(res, share, `منشورات ${res.length} أرض · عمر الياسي للعقارات`);
         if (H.teamEv) [...new Set(res.map((x) => x.l.id))].forEach((id) => H.teamEv(share ? 'share_design' : 'save_img', id, st.theme));   // each plot counts as marketed

@@ -112,7 +112,8 @@ function oay_acc_team_report() {
 		$feed[] = $e; if ( count( $feed ) >= 300 ) { break; }
 	}
 	$mc = function_exists( 'oay_month_counts' ) ? oay_month_counts() : array(); $tg = function_exists( 'oay_targets' ) ? oay_targets() : array();
-	foreach ( $team as &$x ) { $x['month'] = (object) ( $mc[ $x['id'] ] ?? array() ); $x['target'] = (object) ( $tg[ $x['id'] ] ?? array() ); } unset( $x );
+	$rf = function_exists( 'oay_ref_counts' ) ? oay_ref_counts( $since ) : array();
+	foreach ( $team as &$x ) { $x['month'] = (object) ( $mc[ $x['id'] ] ?? array() ); $x['target'] = (object) ( $tg[ $x['id'] ] ?? array() ); $x['ref'] = (object) ( $rf[ $x['id'] ] ?? array() ); } unset( $x );
 	oay_acc_ok( array( 'team' => $team, 'feed' => $feed, 'kinds' => OAY_TEAM_EV, 'roles' => OAY_ROLES, 'days' => $days, 'boss' => oay_acc_is_admin( $me ) ) );
 }
 
@@ -180,4 +181,57 @@ function oay_week_biz_text( $b ) {
 	$a[] = $b['posts'] . ' بوست'; $a[] = $b['leads'] . ' عميل جديد'; if ( $b['hot'] ) { $a[] = $b['hot'] . ' ساخن'; }
 	if ( $b['best'] ) { $a[] = 'الأفضل: ' . $b['best']['name']; }
 	return implode( ' · ', $a );
+}
+
+/* ======================================================================================
+ * «رابط الموظف»: a plot link shared by a team member carries ?r=<their code> — the share page counts who opened it
+ * (people, not the WhatsApp preview), and the app hands the code back when the person signs up / signs in:
+ * the client then belongs to that member («المتابِع») and counts as theirs.
+ * ==================================================================================== */
+foreach ( array( 'ref_hit' ) as $a ) { add_action( 'wp_ajax_oay_acc_' . $a, 'oay_acc_' . $a ); add_action( 'wp_ajax_nopriv_oay_acc_' . $a, 'oay_acc_' . $a ); }
+function oay_ref_code( $uid ) { return base_convert( (string) (int) $uid, 10, 36 ); }
+function oay_ref_user( $code ) {
+	if ( ! preg_match( '/^[0-9a-z]{1,8}$/', (string) $code ) ) { return null; }
+	$u = get_userdata( (int) base_convert( $code, 36, 10 ) ); return $u && oay_is_team( $u ) ? $u : null;
+}
+function oay_ref_log( $uid, $k, $who = '', $id = '' ) {
+	$log = get_option( 'oay_ref_log', array() ); $log = is_array( $log ) ? $log : array();
+	array_unshift( $log, array( 't' => oay_team_ms(), 'u' => (int) $uid, 'k' => $k, 'w' => (string) $who, 'id' => (string) $id ) );
+	update_option( 'oay_ref_log', array_slice( $log, 0, 4000 ), false );
+}
+/** opens of a member's links (same person, same plot: once in 6 hours; link-preview robots not counted) */
+function oay_ref_click( $code, $id ) {
+	$m = oay_ref_user( $code ); if ( ! $m ) { return; }
+	$ua = (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' );
+	if ( '' === $ua || preg_match( '/bot|crawl|spider|preview|facebookexternalhit|WhatsApp|TelegramBot|Twitterbot|Slackbot|Discordbot|SkypeUriPreview|Google-|HeadlessChrome|curl|wget|python/i', $ua ) ) { return; }
+	$key = 'oay_rc_' . md5( $m->ID . '|' . $id . '|' . ( $_SERVER['REMOTE_ADDR'] ?? '' ) . '|' . $ua );
+	if ( get_transient( $key ) ) { return; } set_transient( $key, 1, 6 * HOUR_IN_SECONDS );
+	oay_ref_log( $m->ID, 'click', '', $id );
+}
+/** the app: the person opened a member's link — signed in now (or later) → that member follows them */
+function oay_acc_ref_hit() {
+	$me = oay_acc_user_from_token( oay_acc_arg( 'token', 120 ) ); $m = oay_ref_user( oay_acc_arg( 'r', 10 ) );
+	if ( $m && oay_acc_arg( 'open', 2 ) && ( ! $me || ! oay_is_team( $me ) ) ) { oay_ref_click( oay_acc_arg( 'r', 10 ), oay_acc_arg( 'land', 40 ) ); }   // opened straight in the app (Android App Links skip the share page)
+	if ( ! $me || ! $m || oay_is_team( $me ) ) { oay_acc_ok( array() ); }
+	if ( ! get_user_meta( $me->ID, 'oay_ref_by', true ) ) {
+		update_user_meta( $me->ID, 'oay_ref_by', $m->ID );
+		$new = strtotime( $me->user_registered . ' UTC' ) > time() - 15 * MINUTE_IN_SECONDS;
+		oay_ref_log( $m->ID, $new ? 'reg' : 'lead', $me->ID, oay_acc_arg( 'land', 40 ) );
+		if ( function_exists( 'oay_lead_get' ) ) {
+			$l = oay_lead_get( $me->ID );
+			if ( $l && empty( $l['owner'] ) ) { $l['owner'] = (int) $m->ID; update_user_meta( $me->ID, 'oay_lead', $l ); }
+			elseif ( ! $l ) { update_user_meta( $me->ID, 'oay_lead_owner_wait', (int) $m->ID ); oay_lead_add( $me->ID, 'slink', oay_acc_arg( 'land', 40 ) ); }
+		}
+		if ( function_exists( 'oay_push_to' ) ) { oay_push_to( array( $m->ID ), $new ? '🎉 عميل جديد من رابطك' : '🔗 عميل فتح رابطك', $me->display_name . ( $new ? ' سجّل في التطبيق من رابط شاركته' : ' فتح رابطاً شاركته — أصبح من عملائك' ), array( 'open' => 'lead', 'id' => (string) $me->ID ) ); }
+	}
+	oay_acc_ok( array() );
+}
+/** per member: opens of their links, sign-ups and clients they got, since $since (ms) */
+function oay_ref_counts( $since ) {
+	$o = array();
+	foreach ( (array) get_option( 'oay_ref_log', array() ) as $e ) {
+		if ( $e['t'] < $since ) { break; }
+		$o[ $e['u'] ][ $e['k'] ] = ( $o[ $e['u'] ][ $e['k'] ] ?? 0 ) + 1;
+	}
+	return $o;
 }

@@ -7,6 +7,7 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { cardModel, buildLandPdf } from './card.js';
 import { paintPlanLoc, paintCardLoc } from './planloc.js';
+import { belowMarket, belowText } from './mktpick.js';
 import { session, refreshMe, ownerLands, loadOwnerLands, api as accApi, can, isBroker } from './owner.js';
 import { initChat, refreshUnread, renderChatsTab, chatPage, initChatPage, askAbout, myChatPage, initMyChat, groupPage, initGroup, profPage, initProf, quoteToOffice } from './chat.js';
 import { initNotifs, notifsPage } from './notifs.js';
@@ -65,7 +66,23 @@ const landUrl = (l) => `${SITE}/${l.project}/#p${l.n}`;
 /** Link for messages: its WhatsApp preview shows the plot highlighted on the plan (the website page then opens the plan). */
 // switched on once the website has the share page (alyassi-app-crm.php §8)
 const SHARE_PAGE = true;
-const shareUrl = (l) => (SHARE_PAGE ? `${SITE}/l/${encodeURIComponent(l.project + '-' + l.n)}` : landUrl(l));   // opens the app on Android (App Links), else the share page
+/** «رابط الموظف»: a team member's links carry their code — who opened it, and who signed up from it, count as theirs */
+const myRef = () => { const u = session.user(); return u && u.team && u.id ? '?r=' + Number(u.id).toString(36) : ''; };
+const shareUrl = (l) => (SHARE_PAGE ? `${SITE}/l/${encodeURIComponent(l.project + '-' + l.n)}${myRef()}` : landUrl(l));   // opens the app on Android (App Links), else the share page
+/** a member's link was opened here: kept 30 days, handed to the server once the person is signed in */
+const REF_K = 'oay:refby';
+function keepRef(url, land) {
+  const r = (/[?&]r=([0-9a-z]{1,8})\b/.exec(url || '') || [])[1]; if (!r) return;
+  const tok = !!session.token();
+  accApi('ref_hit', { r, land: land || '', open: 1 }).catch(() => {});   // counts the open; signed in → the member follows this person
+  try { const o = JSON.parse(localStorage.getItem(REF_K) || 'null'); if (o && o.sent) return; localStorage.setItem(REF_K, JSON.stringify({ r, land: land || '', t: Date.now(), sent: tok ? 1 : 0 })); } catch { /* private mode */ }
+}
+async function sendRef() {
+  let o = null; try { o = JSON.parse(localStorage.getItem(REF_K) || 'null'); } catch { /* private mode */ }
+  const u = session.user();
+  if (!o || o.sent || !session.token() || !u || u.team || Date.now() - o.t > 30 * 864e5) return;
+  try { await accApi('ref_hit', { r: o.r, land: o.land }); localStorage.setItem(REF_K, JSON.stringify({ ...o, sent: 1 })); } catch { /* try again later */ }
+}
 const landMsg = (l) => waText(`قطعة رقم ${l.n} · ${l.projectName}`, shareUrl(l), refOf(l));
 
 async function openWeb(url, title) {
@@ -987,7 +1004,7 @@ function projectPage(p) {
     </div>`;
 }
 
-function priceboxHTML(l) { return `<div class="pricebox">${priceHTML(l, true)}${l.ppf && l.status !== 'sold' && !glock() ? `<span>سعر القدم ${money(l.ppf)} د.إ</span>` : ''}</div>`; }
+function priceboxHTML(l) { const mk = glock() ? 0 : belowMarket(l, DATA().lands); return `<div class="pricebox">${priceHTML(l, true)}${l.ppf && l.status !== 'sold' && !glock() ? `<span>سعر القدم ${money(l.ppf)} د.إ</span>` : ''}${mk ? `<em class="mkt-below">${I.chart || ''} ${belowText(mk)} — مقارنة بالأراضي المتاحة المماثلة</em>` : ''}</div>`; }
 function planboxHTML(l) {
   const sumInst = l.inst.reduce((a, x) => a + (+x[1] || 0), 0);
   return `${l.inst.length && l.status !== 'sold' && glock() ? `<h2 class="h2">خطة السداد</h2><button class="lockbox" data-signin="price">${I.lock}<b>سجّل دخولك لعرض السعر وخطة السداد</b><span>الدفعة الأولى والأقساط وتواريخها — مجاناً للأعضاء</span></button>` : ''}
@@ -1548,7 +1565,7 @@ function refreshOpenPrices() {
 }
 syncNav();
 reloadOwners();
-session.subs.add(() => { reloadOwners(); syncNav(); if (wasGuest !== guest()) { wasGuest = guest(); renderAll(); refreshOpenPrices(); document.querySelectorAll('.page').forEach((p) => p.dispatchEvent(new Event('oay:refresh'))); } renderContact(); refreshUnread(); push.link(); if (current === 'chats') renderChatsTab($('#chats .content')); });
+session.subs.add(() => { sendRef(); reloadOwners(); syncNav(); if (wasGuest !== guest()) { wasGuest = guest(); renderAll(); refreshOpenPrices(); document.querySelectorAll('.page').forEach((p) => p.dispatchEvent(new Event('oay:refresh'))); } renderContact(); refreshUnread(); push.link(); if (current === 'chats') renderChatsTab($('#chats .content')); });
 
 /* offline: a small bar on top; everything shown comes from what the phone saved last time */
 function netState() {
@@ -1600,9 +1617,9 @@ async function boot() {
     // links from the home-screen widget: com.omaralyassi.realestate://open/news | home | land/<id> | oland/<id>
     const widgetLink = (url) => {
       const sh = /^https:\/\/(?:www\.)?omaralyassirealestate\.com\/l\/([a-z0-9-]+)-([A-Za-z0-9]+)\/?/.exec(url || '');   // a shared plot link opened in the app
-      if (sh) { setTimeout(() => { closeAll(); refresh(false); openLandId(sh[1] + ':' + sh[2]); }, 400); return; }
+      if (sh) { keepRef(url, sh[1] + ':' + sh[2]); setTimeout(() => { closeAll(); refresh(false); openLandId(sh[1] + ':' + sh[2]); }, 400); return; }
       const m = /^com\.omaralyassi\.realestate:\/\/open\/([^/?#]+)(?:\/([^?#]+))?/.exec(url || ''); if (!m) return;
-      const id = m[2] ? decodeURIComponent(m[2]) : '';
+      const id = m[2] ? decodeURIComponent(m[2]) : ''; keepRef(url, m[1] === 'land' ? id : '');
       setTimeout(() => {
         if (m[1] === 'news') { closeAll(); showTab('home'); pushPage('news'); }
         else if (m[1] === 'land' && id) { closeAll(); openLandId(id); }
