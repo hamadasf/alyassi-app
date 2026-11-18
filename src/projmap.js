@@ -136,6 +136,13 @@ export async function planPicture(p) {
     const pad = Math.max(m.w, m.h) * 0.025, clip = H0.map(([x, y]) => { const d = Math.hypot(x - cx, y - cy) || 1; return [x + (x - cx) / d * pad, y + (y - cy) / d * pad]; });
     // the plan hatches its plots (the solid colour is in the plan picture we leave out): fill each plot solid first, so
     // the satellite photo does not show through them
+    // a plan that paints its plots and its open spaces the same grey (مزيرعة): that grey goes under everything in green —
+    // the plots then cover it in their own colours, and the gardens and squares stay green
+    const re = FILL_AS[p.slug] || {};
+    if (Object.keys(re).length) {
+      const VS0 = P.VS.map((v) => (v && v.t === 'f' && v.c && re[v.c.join(',')] ? Object.assign({}, v, { css: `rgb(${re[v.c.join(',')].join(',')})` }) : null));
+      drawPlanView(c, { V: P.V, VS: VS0 }, [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false, bg: false, clip });
+    }
     c.save(); c.scale(s, s);
     for (const [, t, f] of O) {
       const k = kindCol(p, t);
@@ -159,9 +166,7 @@ export async function planPicture(p) {
     const white = (v) => v.t === 's' && v.c && Math.min(...v.c) >= 185 && Math.max(...v.c) - Math.min(...v.c) <= 25;
     // white fills too: some plans (مزيرعة) paint every plot white over the colour
     const whiteFill = (v) => v.t === 'f' && v.c && Math.min(...v.c) >= 230 && Math.max(...v.c) - Math.min(...v.c) <= 25;
-    const re = FILL_AS[p.slug] || {};   // a plan's own colour for a kind of place → the shared one (its gardens in grey → green)
-    const VS = P.VS.map((v) => (v && ((v.h && (!allFlag || v.t === 's')) || white(v) || whiteFill(v)) ? null
-      : v && v.t === 'f' && v.c && re[v.c.join(',')] ? Object.assign({}, v, { c: re[v.c.join(',')], css: `rgb(${re[v.c.join(',')].join(',')})` }) : v));
+    const VS = P.VS.map((v) => (v && ((v.h && (!allFlag || v.t === 's')) || white(v) || whiteFill(v) || (v.t === 'f' && v.c && re[v.c.join(',')])) ? null : v));
     drawPlanView(c, { V: P.V, VS }, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false, bg: false, clip });
     if (!vecHasNumbers(P.V, O)) plotNumbers(c, O, s);   // some plans keep the plot numbers in their picture only: write them
     return crop(cv, s, p.part && clip, m);
