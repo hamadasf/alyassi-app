@@ -1876,3 +1876,4 @@ body.cast .top, body.cast .nav, body.cast .ptr, body.cast .castbtn { display: no
 body.cast .tab, body.cast .page { padding-bottom: 0 !important; }
 .castx { position: fixed; top: 14px; left: 14px; z-index: 100000; padding: 12px 20px; border: 0; border-radius: 999px; background: rgba(15,18,45,.72); color: #fff; font: inherit; font-size: 16px; font-weight: 800; box-shadow: 0 6px 20px rgba(0,0,0,.3); backdrop-filter: blur(6px); }
 .castx { animation: castfade .6s 4s forwards; } .castx:active { opacity: 1 !important; } @keyframes castfade { to { opacity: .45; } }
+.citm .cb .chby { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-style: normal; font-size: 12px; font-weight: 700; color: #1d4ed8; } .citm .cb .chby svg { width: 13px; height: 13px; }

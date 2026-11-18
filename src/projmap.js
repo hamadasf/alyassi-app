@@ -135,7 +135,8 @@ export async function planPicture(p) {
     // no hatching over the solid colour — it dulls it. Some plans (made from a PDF) flag every filled shape — names, plot
     // numbers, mosques, gardens — the same way: there the flag means nothing, and only hatched strokes are left out
     const fills = P.VS.filter((v) => v && v.t === 'f'), allFlag = fills.length > 0 && fills.every((v) => v.h);
-    const white = (v) => v.t === 's' && v.c && v.c.every((x) => x >= 235);   // white lines: separators drawn for the plan's own colours
+    // white and light-grey lines: separators drawn for the plan's own colours, and the neighbours' plots — loose lines on the photo
+    const white = (v) => v.t === 's' && v.c && Math.min(...v.c) >= 185 && Math.max(...v.c) - Math.min(...v.c) <= 25;
     const VS = P.VS.map((v) => (v && ((v.h && (!allFlag || v.t === 's')) || white(v)) ? null : v));
     drawPlanView(c, { V: P.V, VS }, p.lands || [], m, { w: cv.width, h: cv.height, ppu: s, x0: 0, y0: 0, labels: false, bg: false, clip });
     if (!vecHasNumbers(P.V, O)) plotNumbers(c, O, s);   // some plans keep the plot numbers in their picture only: write them

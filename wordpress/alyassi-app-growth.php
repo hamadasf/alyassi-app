@@ -286,6 +286,7 @@ function oay_plot_save_do( $me, $slug, $n, $i, $in ) {
 	$lo = esc_url_raw( (string) ( $in['lo'] ?? '' ) ); $lo = preg_match( '#^https://#', $lo ) ? $lo : '';
 	$was = is_array( $i['cur'] ?? null ) ? (string) ( $i['cur']['s'] ?? '' ) : '';
 	$GLOBALS['oay_no_push'] = ! empty( $in['quiet'] ) && ( oay_acc_is_admin( $me ) || ( function_exists( 'oay_role' ) && 'mgr' === oay_role( $me ) ) );   // «حفظ بدون إشعار»: the management and the managers only
+	$GLOBALS['oay_by'] = (int) $me->ID;   // «من غيّرها» in «آخر التحديثات» (the admin only)
 	$ok = oay_plan_write( $i['proj'], function ( &$st ) use ( $n, $s, $total, $ppf, $ft, $inst, $in, $lo ) {
 		$e = isset( $st['plots'][ (string) $n ] ) && is_array( $st['plots'][ (string) $n ] ) ? $st['plots'][ (string) $n ] : array();   // keeps pictures, documents, sketches
 		if ( '' === $s ) { unset( $e['s'] ); } else { $e['s'] = $s; }
@@ -607,3 +608,19 @@ add_action( 'oay_mkt_daily', function () {
 	$to = array_values( array_filter( oay_admin_ids(), function ( $id ) { $u = get_userdata( $id ); return $u && ( oay_acc_can( $u, 'design' ) || ( function_exists( 'oay_role' ) && 'mkt' === oay_role( $u ) ) ); } ) );
 	oay_push_to( $to, '📣 ' . $n . ' أرض متاحة لم تُسوَّق منذ أسبوعين', 'افتح «أراضٍ تحتاج تسويقاً» لتصميم منشوراتها', array( 'open' => 'needmkt' ) );
 } );
+
+/* «من غيّرها»: who changed each item of «آخر التحديثات» — for the admin only (the public list carries no names) */
+add_action( 'wp_ajax_oay_acc_changes_by', 'oay_acc_changes_by' ); add_action( 'wp_ajax_nopriv_oay_acc_changes_by', 'oay_acc_changes_by' );
+function oay_acc_changes_by() {
+	oay_acc_need_admin();
+	$plog = (array) get_option( 'oay_plot_log', array() ); $out = array(); $names = array();
+	$who = function ( $uid ) use ( &$names ) { if ( ! isset( $names[ $uid ] ) ) { $u = get_userdata( $uid ); $names[ $uid ] = $u ? ( function_exists( 'oay_shown_name' ) ? oay_shown_name( $u ) : $u->display_name ) : ''; } return $names[ $uid ]; };
+	foreach ( (array) get_option( 'oay_changes', array() ) as $c ) {
+		$uid = (int) ( $c['by'] ?? 0 );
+		if ( ! $uid ) {   // older items: the app's save of the same plot at the same moment
+			foreach ( $plog as $e ) { if ( ( $e['id'] ?? '' ) === ( $c['id'] ?? '' ) && abs( (int) $e['t'] - (int) $c['t'] ) < 120000 ) { $uid = (int) $e['uid']; break; } }
+		}
+		if ( $uid && ( $n = $who( $uid ) ) ) { $out[ $c['t'] . '|' . $c['id'] . '|' . $c['kind'] ] = $n; }
+	}
+	oay_acc_ok( array( 'by' => (object) $out ) );
+}

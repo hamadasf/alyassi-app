@@ -22,7 +22,7 @@ add_action( 'admin_init', function () {
 
 function oay_ajax_changes() {
 	nocache_headers();
-	wp_send_json( array( 'at' => time() * 1000, 'items' => get_option( 'oay_changes', array() ), 'offers' => array_values( oay_offers() ), 'was' => (object) array_map( function ( $x ) { return array( (int) $x['was'], (int) $x['to'] ); }, (array) get_option( 'oay_price_was', array() ) ) ) );
+	wp_send_json( array( 'at' => time() * 1000, 'items' => array_map( function ( $c ) { unset( $c['by'] ); return $c; }, (array) get_option( 'oay_changes', array() ) ), 'offers' => array_values( oay_offers() ), 'was' => (object) array_map( function ( $x ) { return array( (int) $x['was'], (int) $x['to'] ); }, (array) get_option( 'oay_price_was', array() ) ) ) );
 }
 add_action( 'wp_ajax_oay_changes', 'oay_ajax_changes' );
 add_action( 'wp_ajax_nopriv_oay_changes', 'oay_ajax_changes' );
@@ -65,7 +65,7 @@ function oay_handle_change( $slug, $name, $old, $new ) {
 	foreach ( $b as $n => $p ) {
 		$s = isset( $p['s'] ) ? $p['s'] : ''; if ( '' === $s ) { continue; }
 		$t = isset( $p['total'] ) ? (int) $p['total'] : 0;
-		$base = array( 't' => $now, 'id' => $slug . ':' . $n, 'n' => (string) $n, 'project' => $slug, 'projectName' => $name );
+		$base = array( 't' => $now, 'id' => $slug . ':' . $n, 'n' => (string) $n, 'project' => $slug, 'projectName' => $name, 'by' => (int) ( $GLOBALS['oay_by'] ?? get_current_user_id() ) );
 		if ( ! isset( $a[ $n ] ) || empty( $a[ $n ]['s'] ) ) {
 			if ( 'av' === $s ) { $ch[] = $base + array( 'kind' => 'new', 'to' => $t ); }
 			continue;

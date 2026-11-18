@@ -166,6 +166,12 @@ function updateBell() {
   const n = unseenCount(); const b = $('#bellN');
   if (b) { b.textContent = n > 99 ? '99+' : n; b.hidden = !n; }
 }
+/** «من غيّرها» (the admin only): the name of whoever changed each item, under it */
+async function fillChangesBy(pg) {
+  if (!(session.user() || {}).admin) return;
+  let by = {}; try { by = (await accApi('changes_by', {})).by || {}; } catch { return; }
+  pg.querySelectorAll('[data-chby]').forEach((el) => { const n = by[el.dataset.chby]; if (n && !el.querySelector('.chby')) el.insertAdjacentHTML('beforeend', `<em class="chby">${I.user || ''} بواسطة: ${esc(n)}</em>`); });
+}
 function changesPage() {
   const items = getChanges();
   if (!items.length) return `<div class="pad changes">${notifCard()}</div><div class="empty">${I.bell}<p>لا توجد تحديثات حالياً</p><p class="sub">ستظهر هنا أي تغييرات في الأسعار أو حالة الأراضي</p></div>`;
@@ -181,7 +187,7 @@ function changesPage() {
     const thumb = l && (l.poly || l.pc) ? `<canvas class="cardloc" data-loc="${esc(l.id)}"></canvas>` : l && l.img ? `<img loading="lazy" src="${esc(l.img)}" alt="" onerror="this.remove()">` : '';
     html += `<div class="citm${unread ? ' unseen' : ''}" data-chr="${esc(key)}" ${l ? `data-land="${esc(c.id)}"` : ''}>
       <div class="cth${thumb ? '' : ' none'}">${thumb}<i class="ck ${c.kind}">${c.kind === 'price' ? I.tag : c.kind === 'new' || c.kind === 'offer' ? I.star : I.info}</i></div>
-      <div class="cb"><b>قطعة ${esc(c.n)} · ${esc(c.projectName)}</b><span>${changeLine(c)}</span></div>
+      <div class="cb" data-chby="${esc(c.t + '|' + c.id + '|' + c.kind)}"><b>قطعة ${esc(c.n)} · ${esc(c.projectName)}</b><span>${changeLine(c)}</span></div>
       <time>${new Date(c.t).toLocaleTimeString(document.documentElement.lang === 'en' ? 'en-GB' : 'ar-AE', { hour: 'numeric', minute: '2-digit' })}</time></div>`;
   }
   return `<div class="pad changes">${notifCard()}${html}</div>`;
@@ -1159,6 +1165,7 @@ function pushPage(kind, id) {
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
   pg.innerHTML = own ? `${html}` : `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${kind === 'plan' ? esc(p.name) : TITLE[kind] || 'تفاصيل الأرض'}</span>${castBtn()}${kind === 'land' || kind === 'project' ? `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>` : ''}</header><div class="scroller">${html}</div>`;
+  if (kind === 'changes') fillChangesBy(pg);
   document.body.appendChild(pg);
   if (kind === 'account') initAccount(pg, id);
   if (kind === 'addland') initAddLand(pg);
