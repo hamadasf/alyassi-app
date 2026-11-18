@@ -1865,3 +1865,14 @@ html.oay-studio-on, html.oay-studio-on body { overflow: hidden; }
 .reel-ov span { font-size: 28px; font-weight: 900; color: var(--navy); }
 .reel-ov small { color: #64748b; }
 #pzMorePop .reel-btn small { font-size: 11px; color: #b45309; margin-inline-start: 6px; }
+
+/* ---- «عرض الشاشة» (cast): sideways, full screen, only «خروج» ---- */
+.top .castbtn { margin-inline-start: auto; flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); color: #fff; font: inherit; font-size: 12.5px; }
+.top .castbtn b { font-weight: 700; }
+.top .castbtn + .share-top { margin-inline-start: 0; }
+.top.sub span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.cast { --st: 0px !important; --sb: 0px !important; }
+body.cast .top, body.cast .nav, body.cast .ptr, body.cast .castbtn { display: none !important; }
+body.cast .tab, body.cast .page { padding-bottom: 0 !important; }
+.castx { position: fixed; top: 14px; left: 14px; z-index: 100000; padding: 12px 20px; border: 0; border-radius: 999px; background: rgba(15,18,45,.72); color: #fff; font: inherit; font-size: 16px; font-weight: 800; box-shadow: 0 6px 20px rgba(0,0,0,.3); backdrop-filter: blur(6px); }
+.castx { animation: castfade .6s 4s forwards; } .castx:active { opacity: 1 !important; } @keyframes castfade { to { opacity: .45; } }

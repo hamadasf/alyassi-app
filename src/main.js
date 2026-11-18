@@ -2,6 +2,7 @@ import { NEW_USER } from './firstrun.js';
 import { tr, startI18n, isEn, setLang } from './i18n.js';
 import { Capacitor, CapacitorHttp, SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { App } from '@capacitor/app';
+import { ScreenOrientation } from '@capacitor/screen-orientation';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -1157,7 +1158,7 @@ function pushPage(kind, id) {
   pg.className = 'page' + (kind === 'land' || kind === 'oland' ? ' has-bar' : '');
   const own = kind === 'chat' || kind === 'mychat' || kind === 'group';   // these draw their own WhatsApp-style header
   if (native && own) SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {});
-  pg.innerHTML = own ? `${html}` : `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${kind === 'plan' ? esc(p.name) : TITLE[kind] || 'تفاصيل الأرض'}</span>${kind === 'land' || kind === 'project' ? `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>` : ''}</header><div class="scroller">${html}</div>`;
+  pg.innerHTML = own ? `${html}` : `<header class="top sub"><button class="back" data-back aria-label="رجوع">${I.back}</button><span>${kind === 'plan' ? esc(p.name) : TITLE[kind] || 'تفاصيل الأرض'}</span>${castBtn()}${kind === 'land' || kind === 'project' ? `<button class="back share-top" data-share="${kind}:${esc(id)}" aria-label="مشاركة">${I.share}</button>` : ''}</header><div class="scroller">${html}</div>`;
   document.body.appendChild(pg);
   if (kind === 'account') initAccount(pg, id);
   if (kind === 'addland') initAddLand(pg);
@@ -1261,7 +1262,39 @@ function askExit() {
   d.onclick = (e) => { const b = e.target.closest('[data-exit]'); if (e.target === d || b) { d.remove(); if (b && b.dataset.exit === '1') App.exitApp(); } };
   document.body.appendChild(d); requestAnimationFrame(() => d.classList.add('in'));
 }
+/* «عرض الشاشة»: for casting the phone to a screen — the app turns sideways, fills the screen (no bars, no app header or
+   tab bar) and only a «خروج» button stays */
+const CAST_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>';
+const castBtn = () => `<button class="castbtn" data-cast aria-label="عرض الشاشة">${CAST_SVG}<b>عرض الشاشة</b></button>`;
+const casting = () => document.body.classList.contains('cast');
+async function castOn() {
+  if (casting()) return;
+  document.body.classList.add('cast');
+  if (!document.getElementById('castX')) document.body.insertAdjacentHTML('beforeend', '<button id="castX" class="castx" aria-label="خروج">✕ خروج</button>');
+  document.getElementById('castX').onclick = () => castOff();
+  try { if (document.documentElement.requestFullscreen && !native) await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch { /* not allowed */ }
+  if (native) {
+    try { await SystemBars.hide(); } catch { /* older Android */ }
+    try { await ScreenOrientation.lock({ orientation: 'landscape' }); } catch { /* no plugin */ }
+  } else { try { await screen.orientation.lock('landscape'); } catch { /* the phone turned by hand */ } }
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 400);
+}
+async function castOff() {
+  if (!casting()) return;
+  document.body.classList.remove('cast'); const x = document.getElementById('castX'); if (x) x.remove();
+  try { if (document.fullscreenElement) await document.exitFullscreen(); } catch { /* none */ }
+  if (native) {
+    try { await ScreenOrientation.lock({ orientation: 'portrait' }); } catch { /* none */ }
+    try { await SystemBars.show(); } catch { /* none */ }
+  } else { try { screen.orientation.unlock(); } catch { /* none */ } }
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 400);
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-cast]')) castOn(); });
+document.addEventListener('fullscreenchange', () => { if (!native && !document.fullscreenElement && casting()) castOff(); });
+document.querySelectorAll('section.tab > header.top').forEach((h) => h.insertAdjacentHTML('beforeend', castBtn()));
+
 function goBack() {
+  if (casting()) { castOff(); return; }
   if (studioOpen()) { const b = document.getElementById('ezClose') || document.getElementById('stClose'); if (b) b.click(); else closeStudio(); return; }
   if (closeOverlay()) return;
   if (stack.length) { history.back(); return; }
