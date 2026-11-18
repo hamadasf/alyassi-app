@@ -1243,10 +1243,12 @@ export function adgenPage(l, projects) {
   return `<div class="adg">
     <div class="adg-prev"><canvas id="pzCv" width="${AD_W}" height="${AD_H}"></canvas><div class="adg-load" id="adgLoad"><i class="spin"></i><span>جارِ تجهيز التصميم…</span></div>
       <button class="adg-big" id="adgBig" aria-label="تكبير المعاينة">⤢</button>
-      <div class="adg-tools"><button type="button" id="pzUndo" disabled><b>↶</b>تراجع</button><button type="button" id="pzRedo" disabled>إعادة<b>↷</b></button></div></div>
+      <div class="adg-tools"><button type="button" id="pzUndo" disabled aria-label="تراجع" title="تراجع">↶</button><button type="button" id="pzRedo" disabled aria-label="إعادة" title="إعادة">↷</button></div></div>
     <div class="adg-form" id="pzForm"></div>
     <input type="file" id="pzFile" accept="image/*,application/pdf" hidden>
-    <div class="adg-bar"><button class="btn primary" id="pzShare">${ei('share')} مشاركة</button><button class="btn" id="pzSave">${ei('pdf')} حفظ الصورة</button><button class="btn" id="pzStory">${ei('image')} ستوري 9:16</button><button class="btn" id="pzKeep">${ei('bookmark')} حفظ التصميم</button><button class="btn gold" id="pzAll" hidden>${ei('grid')} كل القوالب</button></div>
+    <div class="adg-bar pzbar"><button class="btn primary" id="pzShare">${ei('share')} مشاركة</button><button class="btn" id="pzSave">${ei('pdf')} حفظ الصورة</button><button class="btn pz-more" id="pzMore" aria-label="المزيد">⋯</button></div>
+    <div class="adg-allpop" id="pzMorePop" hidden><div class="adg-allin"><b>خيارات أخرى</b>
+      <button class="btn block" id="pzStory">${ei('image')} ستوري 9:16</button><button class="btn block" id="pzKeep">${ei('bookmark')} حفظ التصميم</button><button class="btn gold block" id="pzAll" hidden>${ei('grid')} كل القوالب مرة واحدة</button><button class="btn ghost block" id="pzMoreNo">إغلاق</button></div></div>
     <div class="adg-allpop" id="pzAllPop" hidden><div class="adg-allin"><b>كل القوالب مرة واحدة</b><p class="muted" id="pzAllTxt"></p>
       <button class="btn primary block" id="pzAllShare">${ei('share')} مشاركة الكل</button><button class="btn ghost block" id="pzAllSave">${ei('pdf')} حفظ الكل</button><button class="btn block" id="pzAllNo">إلغاء</button></div></div>
     <div class="adg-crop" id="pzCropBox" hidden><div class="adg-cropin">
@@ -1275,11 +1277,11 @@ function pzForm() {
       <span class="rowbtns"><button type="button" class="btn sm" data-picreset="${i}">إرجاع</button><button type="button" class="btn sm" data-slotcut="${i}">✂️ قصّ يدوي</button></span></div>` : '';
     return `<div class="pz-slot"><div class="pz-sh"><span><b>${t}</b><small>${s ? esc(s.name) : 'بدون صورة'}</small></span><span class="rowbtns"><button type="button" class="btn sm" data-pzup="${i}">${s ? 'تغيير' : 'إضافة'}</button>${s && s.fit !== 'crop' ? `<button type="button" class="btn sm" data-pzfit="${i}">${s.fit === 'cover' ? 'ملء الإطار' : 'الصورة كاملة'}</button>` : ''}${s ? `<button type="button" class="btn sm danger" data-pzrm="${i}">حذف</button>` : ''}</span></div>${crop}</div>`;
   }).join('');
-  const was = new Set([...$('pzForm').querySelectorAll('details[open]')].map((d) => d.dataset.sec));
-  const fresh = !$('pzForm').querySelector('details');
-  const sec = (k, t, body, open) => `<details class="pz-sec" data-sec="${k}"${(fresh ? open : was.has(k)) ? ' open' : ''}><summary>${t}</summary><div class="pz-body">${body}</div></details>`;
+  // the parts of the form are tabs: one shown at a time, so the form never runs long under the preview
+  const TABN = { th: only ? 'نوع الدفع' : 'القالب', tx: 'الكتابة', im: 'الصور', mp: 'الخريطة', ex: 'إضافات', fs: 'الخط والأماكن' }, tabs = [];
+  const sec = (k, t, body) => { tabs.push([k, k === 'ex' && v.ex && v.ex.length ? `${TABN.ex} (${v.ex.length})` : TABN[k] || t]); return `<section class="pz-pan" data-sec="${k}"><div class="pz-body">${body}</div></section>`; };
   const sv = ad.saved && ad.saved[v.theme];
-  $('pzForm').innerHTML = (sv ? `<div class="pz-saved">${ei('bookmark')} تصميم محفوظ لهذا القالب · <span class="num">${esc(dmy(sv.t))}</span>${sv.by ? ' · ' + esc(sv.by) : ''}<span class="rowbtns"><button type="button" class="btn sm" data-pznew>بدء تصميم جديد</button><button type="button" class="btn sm danger" data-pzunsave>حذف المحفوظ</button></span></div>` : '') + `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه · إصبعان لتكبيره أو تصغيره · عدّل الكتابة من الأسفل · ثم اضغط «مشاركة» أو «حفظ الصورة»</p>` + sec('th', only ? '١. نوع الدفع' : '١. القالب ونوع الدفع', `<div class="pz-th"${only ? ' hidden' : ''}>${Object.entries(PZ_THEMES).filter(([k]) => okT.includes(k)).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
+  const html = (sv ? `<div class="pz-saved">${ei('bookmark')} تصميم محفوظ لهذا القالب · <span class="num">${esc(dmy(sv.t))}</span>${sv.by ? ' · ' + esc(sv.by) : ''}<span class="rowbtns"><button type="button" class="btn sm" data-pznew>بدء تصميم جديد</button><button type="button" class="btn sm danger" data-pzunsave>حذف المحفوظ</button></span></div>` : '') + `<p class="pz-tip">👆 اسحب أي نص على الصورة لتحريكه، وكبّره بإصبعين</p>%%TABS%%` + sec('th', only ? '١. نوع الدفع' : '١. القالب ونوع الدفع', `<div class="pz-th"${only ? ' hidden' : ''}>${Object.entries(PZ_THEMES).filter(([k]) => okT.includes(k)).map(([k, t]) => `<button type="button" data-pzth="${k}" class="${v.theme === k ? 'on' : ''}"><i style="background:${t.bar}"></i>${t.name}</button>`).join('')}</div>
     <div class="seg"${wg ? ' hidden' : ''}><button type="button" data-pzmode="cash" class="${v.mode === 'cash' ? 'on' : ''}">قالب الكاش</button><button type="button" data-pzmode="inst" class="${v.mode === 'inst' ? 'on' : ''}">قالب الأقساط</button></div>${wg ? `<h3>شكل التصميم</h3><div class="seg pz-wacol">${WG_STYLES.map(([k, l]) => `<button type="button" data-gst="${k}" class="${(v.gSt || '1') === k ? 'on' : ''}">${l}</button>`).join('')}</div><p class="help">التصاميم الخمسة كما هي، بأسماء المناطق مصحّحة. تقدر تضيف نص أو سهم من «أشكال إضافية».</p>` : ''}${wa ? `<h3>لون القالب</h3><div class="seg pz-wacol">${Object.entries(WA_COLS).map(([k, t]) => `<button type="button" data-wacol="${k}" class="${(v.wCol || 'gold') === k ? 'on' : ''}"><i style="background:linear-gradient(90deg,${t.rib[0]},${t.rib[1]})"></i>${t.name}</button>`).join('')}</div><label class="chk"><input type="checkbox" data-k="wLogo"${v.wLogo ? ' checked' : ''}> شعار الشركة</label>` : wr ? `<label class="chk"><input type="checkbox" data-k="wAv"${v.wAv !== false ? ' checked' : ''}> صورة المعلنة</label>` : ''}`, true)
     + sec('tx', '٢. الكتابة والأسعار', `<label class="fld pz-ppf"${wg ? ' hidden' : ''}>سعر القدم (درهم) — يحسب الإجمالي تلقائياً<input type="text" inputmode="decimal" data-ppf value="${esc(v.ppf || '')}" placeholder="مثلاً 143"></label><p class="help" id="pzTot"${wg ? ' hidden' : ''}>${ppfHelp()}</p>${(aya ? (ad.v.theme === 'ayk' ? AYK_FIELDS : AYA_FIELDS) : oy ? OY_FIELDS : ar ? AR_FIELDS : wa ? WA_FIELDS : wr ? WR_FIELDS : wg ? WG_FIELDS : AD_FIELDS).map(f).join('')}
     ${oy ? `<p class="help">السطران الأبيضان خاصّان بكل مشروع (جاهز للبناء، تملّك حر للعرب أو لكل الجنسيات، البنية التحتية…)${ad.pl ? '' : ' — لم تُحدَّد بعد لهذا المشروع'}.</p>${H.isAdmin && H.isAdmin() ? `<button type="button" class="btn sm" data-pzpl>${ei('bookmark')} اجعل السطرين الأبيضين لكل بوستات مشروع ${esc(ad.p.l.projectName)}</button>` : ''}` : ''}
@@ -1303,6 +1305,10 @@ function pzForm() {
       <div class="pz-arrows"><button type="button" class="btn" data-mv="0,-1" aria-label="فوق">▲</button><button type="button" class="btn" data-mv="1,0" aria-label="يمين">▶</button><button type="button" class="btn" data-mv="-1,0" aria-label="يسار">◀</button><button type="button" class="btn" data-mv="0,1" aria-label="تحت">▼</button></div>
       <span class="rowbtns"><button type="button" class="btn sm" data-mvreset>إرجاع مكانه</button><button type="button" class="btn sm" data-mvall>إرجاع كل الأماكن</button>${v.hide && Object.keys(v.hide).length ? `<button type="button" class="btn sm" data-unhide>إظهار العناصر المحذوفة (${Object.keys(v.hide).length})</button>` : ''}</span></div>`, false)
     + `<p class="help">يُحفظ على هذا الجهاز: القالب المختار، رقم كل قالب، والسطر تحت اسم المشروع وسطر التواصل والعنوان.</p>`;
+  if (!tabs.some(([k]) => k === ad.tab)) ad.tab = tabs[0][0];
+  $('pzForm').innerHTML = html.replace('%%TABS%%', `<div class="pz-tabs" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" data-pztab="${k}" class="${k === ad.tab ? 'on' : ''}">${l}</button>`).join('')}</div>`);
+  $('pzForm').querySelectorAll('.pz-pan').forEach((x) => { x.hidden = x.dataset.sec !== ad.tab; });
+  { const th = $('pzForm').querySelector('.pz-th .on'), tb = $('pzForm').querySelector('.pz-tabs .on'); th && th.scrollIntoView({ block: 'nearest', inline: 'center' }); tb && tb.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
 }
 
 /* ---------- cutting a part out of a picture or a PDF page: a frame of the post's shape, dragged over the page ---------- */
@@ -1691,14 +1697,25 @@ export async function initAdgen2(pg, l, proj) {
     b.disabled = false;
   };
   { const n = allowed().length, all = $('pzAll'), pop = $('pzAllPop');
-    all.hidden = n < 2; pg.querySelector('.adg-bar').classList.toggle('four', n >= 2);
+    all.hidden = n < 2;
+    const more = $('pzMorePop'); $('pzMore').onclick = () => { more.hidden = false; }; $('pzMoreNo').onclick = () => { more.hidden = true; };
+    more.onclick = (e) => { if (e.target === more || e.target.closest('#pzStory,#pzKeep,#pzAll')) more.hidden = true; };
     all.onclick = () => { $('pzAllTxt').textContent = `${n} صور — صورة بكل قالب (${allowed().map((k) => PZ_THEMES[k].name.replace('قالب ', '')).join('، ')}). القالب المحفوظ يُستخدم كما حفظته.`; pop.hidden = false; };
     $('pzAllNo').onclick = () => { pop.hidden = true; };
     $('pzAllShare').onclick = () => { pop.hidden = true; finishAll(true); };
     $('pzAllSave').onclick = () => { pop.hidden = true; finishAll(false); };
   }
   $('pzUndo').onclick = () => undo(false); $('pzRedo').onclick = () => undo(true);
-  $('adgBig').onclick = () => pg.querySelector('.adg').classList.toggle('big');
+  const box = pg.querySelector('.adg'), sc = pg.querySelector('.scroller') || pg;
+  $('adgBig').onclick = () => { box.classList.toggle('big'); box.classList.remove('mini'); };
+  // the preview shrinks while the form is scrolled down, and the bottom bar steps aside while typing
+  sc.addEventListener('scroll', () => { if (box.classList.contains('big')) return; const t = sc.scrollTop; if (t > 90) box.classList.add('mini'); else if (t < 8) box.classList.remove('mini'); }, { passive: true });
+  const typing = (el) => el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && /^(text|search|tel|number|)$/.test(el.type)));
+  $('pzForm').addEventListener('focusin', (e) => { if (typing(e.target)) box.classList.add('typing'); });
+  $('pzForm').addEventListener('focusout', () => { setTimeout(() => { if (!typing(document.activeElement)) box.classList.remove('typing'); }, 60); });
+  $('pzForm').addEventListener('click', (e) => { const b = e.target.closest('[data-pztab]'); if (!b) return; ad.tab = b.dataset.pztab;
+    $('pzForm').querySelectorAll('[data-pztab]').forEach((x) => x.classList.toggle('on', x === b)); $('pzForm').querySelectorAll('.pz-pan').forEach((x) => { x.hidden = x.dataset.sec !== ad.tab; });
+    b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); });
   $('pzShare').onclick = () => finish(true);
   $('pzSave').onclick = () => finish(false);
   $('pzStory').onclick = () => finish(true, true);

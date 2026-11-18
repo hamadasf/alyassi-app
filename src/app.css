@@ -1825,3 +1825,27 @@ html.oay-studio-on, html.oay-studio-on body { overflow: hidden; }
 .mk-q { display: flex; gap: 4px; } .mk-q button { flex: 1; }
 .op-mk.pick { border-color: #0e1c36; } .mk-i { font-style: normal; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #0e1c36; color: #fff; font-size: 11px; margin-inline-end: 6px; }
 .mk-why { display: flex; flex-wrap: wrap; gap: 4px; } .mk-why em { font-style: normal; font-size: 11px; background: #fff7e0; color: #8a5a00; border-radius: 999px; padding: 2px 8px; }
+
+/* ---- designer: roomier layout (tabs, template strip, one-row bar, shrinking preview) ---- */
+.pz-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -14px; padding: 8px 14px; background: var(--bg, #f6f7fb); border-bottom: 1px solid var(--line); }
+.pz-tabs::-webkit-scrollbar { display: none; }
+.pz-tabs button { flex: none; padding: 9px 15px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font-weight: 800; font-size: 13.5px; color: #475569; white-space: nowrap; }
+.pz-tabs button.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+.pz-pan { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding-top: 14px; }
+.pz-th { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -14px; padding: 2px 14px 4px; }
+.pz-th::-webkit-scrollbar { display: none; }
+.pz-th button { flex: none; padding: 9px 14px; border-radius: 999px; white-space: nowrap; }
+.pz-th button i { width: 14px; height: 14px; }
+.pz-tip { margin: 0; padding: 7px 12px; font-size: 12px; }
+.adg-tools { position: absolute; right: 12px; bottom: 12px; flex-direction: column; gap: 8px; }
+.adg-tools button { width: 38px; height: 38px; padding: 0; justify-content: center; border-radius: 50%; font-size: 20px; }
+.adg-prev canvas { transition: height .2s ease; }
+.adg.mini .adg-prev { padding: 6px; }
+.adg.mini .adg-prev canvas { height: 19vh; }
+.adg.mini .adg-big, .adg.mini .adg-tools { bottom: 6px; transform: scale(.85); }
+.adg-bar.pzbar { grid-template-columns: 1.5fr 1fr 52px; padding-top: 8px; padding-bottom: calc(8px + var(--sb, 0px)); }
+.adg-bar.pzbar .btn { min-height: 46px; }
+.adg-bar .pz-more { font-size: 24px; line-height: 1; padding: 0; }
+.adg.typing .adg-bar.pzbar { display: none; }
+.adg.typing .adg-prev canvas { height: 19vh; }
+#pzMorePop .btn:not(.gold) { background: #fff; border: 1px solid var(--line); color: var(--navy); }
