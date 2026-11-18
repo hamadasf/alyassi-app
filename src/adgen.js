@@ -212,29 +212,50 @@ function oyArrow(c, tx, ty, K) {   // a thick black arrow coming down from the u
   c.lineJoin = 'round'; c.lineWidth = 7; c.strokeStyle = '#FFFFFF'; c.stroke(); c.fillStyle = '#000000'; c.fill();
   c.restore();
 }
+/** plots touching this one (sharing a side) → for «أرضين متجاورتين»: [{ n, c, p }] nearest first */
+export function oyNeighbours(p) {
+  if (!ad || !p || !p.p || p.p.length < 3) return [];
+  const area = Math.abs(p.p.reduce((s, q, i) => { const r = p.p[(i + 1) % p.p.length]; return s + q[0] * r[1] - r[0] * q[1]; }, 0)) / 2;
+  const u = Math.sqrt(area / (+p.m2 || area)) || 1, near = 1.2 * u;   // ~1 m in plan units
+  const touch = (a, b) => a.filter((x) => b.some((y) => Math.hypot(x[0] - y[0], x[1] - y[1]) < near)).length >= 2;   // two shared corners = a shared side
+  return (ad.all || []).filter((q) => q.n !== p.n && q.p && q.p.length > 2 && Math.hypot(q.c[0] - p.c[0], q.c[1] - p.c[1]) < 80 * u && touch(p.p, q.p))
+    .sort((a, b) => Math.hypot(a.c[0] - p.c[0], a.c[1] - p.c[1]) - Math.hypot(b.c[0] - p.c[0], b.c[1] - p.c[1])).slice(0, 6);
+}
 function oyDraw(c, v, p, at) {
+  const two = v.o_two ? (ad.all || []).find((q) => q.n === String(v.o_two) && q.p) : null;   // «أرضين متجاورتين»: a ring on each
+  const mid = two ? [(p.c[0] + two.c[0]) / 2, (p.c[1] + two.c[1]) / 2] : p.c;
   const k = 2.2 * (+v.zoom || 1), px = AD_W * 0.36, py = AD_H * 0.62;
-  const x0 = p.c[0] - px / k - (+v.mx || 0) / k, y0 = p.c[1] - py / k - (+v.my || 0) / k;
+  const x0 = mid[0] - px / k - (+v.mx || 0) / k, y0 = mid[1] - py / k - (+v.my || 0) / k;
   c.save(); c.fillStyle = '#E9DCC0'; c.fillRect(0, 0, AD_W, AD_H); c.scale(k, k); c.translate(-x0, -y0); drawPlan(c, x0, y0, x0 + AD_W / k, y0 + AD_H / k, k); c.restore();
   ad.hits.push({ k: 'map', pan: 1, x: 0, y: 0, w: AD_W, h: AD_H });
-  const sx = (p.c[0] - x0) * k, sy = (p.c[1] - y0) * k;
-  let rr = 0; (p.p || []).forEach((q) => { rr = Math.max(rr, Math.hypot((q[0] - p.c[0]) * k, (q[1] - p.c[1]) * k)); });
-  const K = +v.pinK || 1, R = Math.max(44, rr + 14) * K;
+  const K = +v.pinK || 1;
+  const ringOf = (q, pad) => { let rr = 0; (q.p || []).forEach((t) => { rr = Math.max(rr, Math.hypot((t[0] - q.c[0]) * k, (t[1] - q.c[1]) * k)); }); const R0 = Math.max(two ? 30 : 44, rr * (two ? 0.78 : 1) + pad); return { x: (q.c[0] - x0) * k, y: (q.c[1] - y0) * k, R: (two ? Math.min(R0, Math.max(26, Math.hypot(two.c[0] - p.c[0], two.c[1] - p.c[1]) * k * 0.62)) : R0) * K }; };
   if (v.pin) {
-    c.lineWidth = 9 * K; c.strokeStyle = OY.ring; c.beginPath(); c.arc(sx, sy, R, 0, 7); c.stroke();
-    oyArrow(c, sx + R * 0.74 + 12, sy - R * 0.74 - 12, K * 1.25);
+    const rings = two ? [ringOf(p, 6), ringOf(two, 6)] : [ringOf(p, 14)];
+    c.lineWidth = (two ? 8 : 9) * K; c.strokeStyle = OY.ring; rings.forEach((r) => { c.beginPath(); c.arc(r.x, r.y, r.R, 0, 7); c.stroke(); });
+    // the arrow: on the one ring, or above the pair (at the ring furthest up and right)
+    const t = rings.reduce((a, r) => (r.x - r.y > a.x - a.y ? r : a), rings[0]);
+    if (two) { const m = { x: (rings[0].x + rings[1].x) / 2, y: (rings[0].y + rings[1].y) / 2 }, Rm = Math.max(rings[0].R, rings[1].R); oyArrow(c, m.x + Rm * 0.55 + 10, Math.min(rings[0].y, rings[1].y) - Rm * 0.9 - 8, K * 1.25); }
+    else oyArrow(c, t.x + t.R * 0.74 + 12, t.y - t.R * 0.74 - 12, K * 1.25);
   }
   PZS = v.fsT;
-  // the three boxes: one size for all (as wide as the longest of the three needs), one right edge (OY_R), one height;
-  // the words fill their box — a short word is drawn bigger, a long one smaller
-  const useT = [v.o_use1, v.o_use2].filter(Boolean).join('  ');
-  c.font = FO(800, Math.round(84 * PZS));
-  const BW = Math.max(470, Math.min(1000, Math.max(...[v.o_proj, v.o_area, useT].map((t) => c.measureText(t || '').width)) + 110)), BH = 118, X = OY_R - BW;
-  const oyB = (k, t, top, fill) => at(k, X, top, BW, BH, () => {
-    if (!t) return; c.fillStyle = fill; box(c, X, top, BW, BH, 30); c.fill();
-    c.direction = isLatin(t) ? 'ltr' : 'rtl'; adFitV(c, t, X + BW / 2, top + 16, top + BH - 18, BW - 70, 96, 800, '#FFFFFF', 'center', FO); c.direction = 'rtl';
+  // the three boxes: short (as wide as their longest line needs), one size, one right edge (OY_R); the red one holds the use
+  // on two lines («سكني استثماري» over «G + 2»), so the boxes stay narrow
+  const useL = [v.o_use1, v.o_use2].filter(Boolean);
+  c.font = FO(800, Math.round(66 * PZS));
+  const BW = Math.max(330, Math.min(560, Math.max(...[v.o_proj, v.o_area, ...useL].map((t) => c.measureText(t || '').width)) + 64)), BH = 104, X = OY_R - BW, G = 16;
+  const oyB = (k, t, top, fill, h = BH) => at(k, X, top, BW, h, () => {
+    if (!t) return; c.fillStyle = fill; box(c, X, top, BW, h, 28); c.fill();
+    c.direction = isLatin(t) ? 'ltr' : 'rtl'; adFitV(c, t, X + BW / 2, top + 14, top + h - 16, BW - 56, 92, 800, '#FFFFFF', 'center', FO); c.direction = 'rtl';
   });
-  oyB('proj', v.o_proj, 34, OY.black); oyB('area', v.o_area, 34 + BH + 20, OY.blue); oyB('use', useT, 34 + 2 * (BH + 20), OY.red);
+  oyB('proj', v.o_proj, 34, OY.black); oyB('area', v.o_area, 34 + BH + G, OY.blue);
+  const ut = 34 + 2 * (BH + G), uh = useL.length > 1 ? Math.round(BH * 1.62) : BH;
+  if (useL.length > 1) at('use', X, ut, BW, uh, () => {
+    c.fillStyle = OY.red; box(c, X, ut, BW, uh, 28); c.fill();
+    useL.forEach((t, i) => { c.direction = isLatin(t) ? 'ltr' : 'rtl'; const y = ut + 12 + i * (uh - 18) / 2; adFitV(c, t, X + BW / 2, y, y + (uh - 30) / 2, BW - 56, 80, 800, '#FFFFFF', 'center', FO); });
+    c.direction = 'rtl';
+  });
+  else oyB('use', useL[0] || '', ut, OY.red);
   PZS = v.fsN;
   at('price', 62, 1474, 1466, 176, () => {
     const s = v.mode === 'inst' ? v.o_priceI : v.o_priceC; c.fillStyle = OY.purple; box(c, 62, 1474, 1466, 176, 64); c.fill();
@@ -1270,7 +1291,7 @@ function pzForm() {
     <label>تكبير الخريطة<input type="range" data-k="zoom" min="0.5" max="3" step="0.1" value="${v.zoom}"></label>
     <label>حجم الدبوس <b class="num" data-fsv="pinK">${Math.round((v.pinK || 1) * 100)}%</b><input type="range" data-k="pinK" min="0.4" max="2.5" step="0.05" value="${v.pinK || 1}"></label>
     <label class="chk"><input type="checkbox" data-k="pin"${v.pin ? ' checked' : ''}> الدبوس</label>
-    ${ar ? `<label class="chk"><input type="checkbox" data-k="rAv"${v.rAv ? ' checked' : ''}> صورة المعلن</label><label class="chk"><input type="checkbox" data-k="rLines"${v.rLines ? ' checked' : ''}> سطرا التملّك ومميزات الأرض</label>` : oy ? `<label class="chk"><input type="checkbox" data-k="oFlag"${v.oFlag ? ' checked' : ''}> خريطة الإمارات</label><label class="chk"><input type="checkbox" data-k="oLogo"${v.oLogo ? ' checked' : ''}> شعار الشركة</label><label class="chk"><input type="checkbox" data-k="oP1"${v.oP1 ? ' checked' : ''}> السطر الأسود الأول (جاهزة للبناء…)</label><label class="chk"><input type="checkbox" data-k="oP2"${v.oP2 ? ' checked' : ''}> السطر الأسود الثاني (التملّك)</label>` : `<label class="chk"><input type="checkbox" data-k="lab"${v.lab ? ' checked' : ''}> بطاقة الموقع على الخريطة</label>`}
+    ${ar ? `<label class="chk"><input type="checkbox" data-k="rAv"${v.rAv ? ' checked' : ''}> صورة المعلن</label><label class="chk"><input type="checkbox" data-k="rLines"${v.rLines ? ' checked' : ''}> سطرا التملّك ومميزات الأرض</label>` : oy ? `<label class="chk"><input type="checkbox" data-k="oFlag"${v.oFlag ? ' checked' : ''}> خريطة الإمارات</label><label class="chk"><input type="checkbox" data-k="oLogo"${v.oLogo ? ' checked' : ''}> شعار الشركة</label><label class="chk"><input type="checkbox" data-k="oP1"${v.oP1 ? ' checked' : ''}> السطر الأسود الأول (جاهزة للبناء…)</label><label class="chk"><input type="checkbox" data-k="oP2"${v.oP2 ? ' checked' : ''}> السطر الأسود الثاني (التملّك)</label>${(() => { const nb = oyNeighbours(ad.p); return nb.length ? `<label class="fld">أرض ثانية ملاصقة (دائرتان على المخطط)<select data-k="o_two"><option value="">لا — أرض واحدة</option>${nb.map((q) => `<option value="${esc(q.n)}"${String(v.o_two) === q.n ? ' selected' : ''}>قطعة ${esc(q.n)}</option>`).join('')}</select></label>` : ''; })()}` : `<label class="chk"><input type="checkbox" data-k="lab"${v.lab ? ' checked' : ''}> بطاقة الموقع على الخريطة</label>`}
     <button type="button" class="btn sm" data-mapcenter>إرجاع الخريطة إلى القطعة</button>`, false))
     + sec('ex', '＋ أشكال إضافية' + (v.ex && v.ex.length ? ` (${v.ex.length})` : ''), exForm(v), !!(v.ex && v.ex.length))
     + sec('fs', (wg ? '٣' : aya || oy || ar || wa || wr ? '٤' : '٥') + '. حجم الخط وأماكن العناصر', `<h3>حجم الخط</h3>
@@ -1512,6 +1533,7 @@ export async function initAdgen2(pg, l, proj) {
     ad.v[k] = t.type === 'checkbox' ? t.checked : t.type === 'range' ? +t.value : t.value;
     const fv = form.querySelector('[data-fsv="' + k + '"]'); if (fv) fv.textContent = Math.round(+t.value * 100) + '%';
     if (/^(area|o_area|r_area)$/.test(k) && num(ad.v.ppf)) { applyPpf(); ['price', 'o_priceC', 'o_priceI', 'r_priceC', 'r_priceI'].forEach((f) => { const el = form.querySelector(`[data-k="${f}"]`); if (el) el.value = ad.v[f]; }); const h = $('pzTot'); if (h) h.innerHTML = ppfHelp(); }
+    if (k === 'o_two' && t.value && !/متجاور|متلاصق/.test(ad.v.o_p3 || '')) { ad.v.o_p3 = 'أرضين متجاورتين'; const el = form.querySelector('[data-k="o_p3"]'); if (el) el.value = ad.v.o_p3; }
     if (k === 'phone') pzKeep((s) => { (s.phones = s.phones || {})[ad.v.theme] = t.value; });
     if (AD_KEEP.includes(k)) pzKeep((s) => { s[k] = t.value; });
     adRedraw();
