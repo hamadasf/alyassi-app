@@ -47,7 +47,11 @@ jobs:
 
       - name: Collect live data from the website
         run: |
-          for i in 1 2 3; do node scripts/snapshot.mjs web/data.json && exit 0; sleep 20; done; exit 1
+          for i in 1 2 3; do node scripts/snapshot.mjs web/data.json && exit 0; sleep 20; done
+          # the website did not answer (slow or busy for a few minutes): keep the data now online — phones read the
+          # live prices from the website anyway — instead of failing the whole run
+          echo "::warning::the website did not answer — keeping the published data until the next run"
+          curl -fsS --retry 3 -o web/data.json https://hamadasf.github.io/alyassi-app/data.json
 
       - name: Restore project PDFs
         uses: actions/cache/restore@v4
