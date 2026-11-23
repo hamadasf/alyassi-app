@@ -190,3 +190,7 @@ function oay_acc_adm_mail_now() {
 	$q = get_option( 'oay_mail_q', array() ); if ( is_array( $q ) && $q ) { oay_acc_err( 'يوجد إرسال جارٍ — انتظر حتى ينتهي' ); }
 	oay_mail_start(); oay_acc_ok( array( 'state' => oay_mail_state() ) );
 }
+
+/* the sender's name on every email the site sends (offers, codes, notices): the company, not WordPress's default
+   «WordPress». The address itself stays as the site sends it (changing it could send the mail to spam). */
+add_filter( 'wp_mail_from_name', function ( $name ) { return ( '' === trim( (string) $name ) || 'wordpress' === strtolower( trim( (string) $name ) ) ) ? 'عمر الياسي للعقارات' : $name; }, 99 );
