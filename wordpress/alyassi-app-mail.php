@@ -194,3 +194,5 @@ function oay_acc_adm_mail_now() {
 /* the sender's name on every email the site sends (offers, codes, notices): the company, not WordPress's default
    «WordPress». The address itself stays as the site sends it (changing it could send the mail to spam). */
 add_filter( 'wp_mail_from_name', function ( $name ) { return ( '' === trim( (string) $name ) || 'wordpress' === strtolower( trim( (string) $name ) ) ) ? 'عمر الياسي للعقارات' : $name; }, 99 );
+/* …and the address: the company's own mailbox instead of WordPress's default «wordpress@…» (same domain, so its SPF/DKIM still apply) */
+add_filter( 'wp_mail_from', function ( $from ) { return 0 === stripos( (string) $from, 'wordpress@' ) ? 'info@omaralyassirealestate.com' : $from; }, 99 );
